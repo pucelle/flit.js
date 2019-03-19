@@ -1,0 +1,25 @@
+{
+	"name": "ff",
+	"version": "1.0.0",
+	"description": "A small JavaScript web component system",
+	"main": "out/index.js",
+	"scripts": {
+		"compile": "tsc -b",
+		"watch": "tsc -b -w",
+		"test": "jest"
+	},
+	"author": "pucelle",
+	"license": "MIT",
+	"devDependencies": {
+		"@types/jest": "^24.0.11",
+		"@types/node": "^11.11.3",
+		"browserify": "^16.2.3",
+		"gulp": "^4.0.0",
+		"gulp-util": "^3.0.8",
+		"jest": "^24.1.0",
+		"ts-jest": "^24.0.0",
+		"typescript": "^3.3.3",
+		"vinyl-source-stream": "^2.0.0",
+		"watchify": "^3.11.1"
+	}
+}
