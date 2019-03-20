@@ -1,5 +1,4 @@
 import {getComponentConstructor} from './component'
-import {createTemplateFromHTMLCodes} from './template'
 
 
 /**
@@ -43,7 +42,7 @@ export function render(htmlCodes: string, options?: null | object | HTMLElement,
 			throw new Error(`"${tagName}" is not defined as an component`)
 		}
 
-		new Com(fragment.firstElementChild, options)
+		new Com(fragment.firstElementChild as HTMLElement, options)
 	}
 
 	if (target) {

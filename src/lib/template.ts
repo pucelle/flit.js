@@ -5,19 +5,32 @@ export function html(strings: string[], values: any[]): Template {
 	return new Template('html', strings, values)
 }
 
-export function svg() {
-
+export function svg(strings: string[], values: any[]): Template {
+	return new Template('svg', strings, values)
 }
 
-export function css() {
-	
+export function css(strings: string[], values: any[]): Template {
+	return new Template('css', strings, values)
+}
+
+export function text(strings: string[], values: any[]): Template {
+	return new Template('text', strings, values)
 }
 
 
-interface ValueDiff {
-	index: number
-	value: any
+export function joinStringsAndValue(strings: string[], values: any[]): any {
+	let text = strings[0]
+
+	for (let i = 0; i < strings.length - 1; i++) {
+		let value = values[i]
+		text += value === null || value === undefined ? '' : String(value)
+		text += strings[i + 1]
+	}
+
+	return text
 }
+
+
 
 export class Template {
 
@@ -49,33 +62,15 @@ export class Template {
 		return true
 	}
 
-	compareValues(t: Template): ValueDiff[] | null {
-		let diff: ValueDiff[] = []
+	compareValues(t: Template): number[] | null {
+		let diff: number[] = []
 
 		for (let i = 0; i < this.values.length; i++) {
 			if (this.values[i] !== t.values[i]) {
-				diff.push({
-					index: i,
-					value: this.values[i]
-				})
+				diff.push(i)
 			}
 		}
 
 		return diff.length > 0 ? diff : null
 	}
 }
-
-
-
-
-
-export function createTemplateFromHTMLCodes(htmlCodes: string): HTMLTemplateElement {
-	let template = document.createElement('template')
-	template.innerHTML = clearWhiteSpaces(htmlCodes)
-	return template
-}
-
-function clearWhiteSpaces(htmlCodes: string): string {
-	return htmlCodes.trimLeft().replace(/>[ \t\r\n]+/g, '>')
-}
-

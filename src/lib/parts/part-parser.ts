@@ -1,14 +1,14 @@
-import {TemplateType} from './template'
-import {PartType} from './part'
+import {TemplateType} from '../template'
+import {PartType} from './shared'
 
 
 export interface ParseResult {
-	node: Node,
+	fragment: DocumentFragment,
 	nodesInPlaces: Node[] | null
-	valuePlaces: ValuePlace[] | null
+	places: Place[] | null
 }
 
-export interface ValuePlace {
+export interface Place {
 	readonly type: PartType
 	readonly name: string | null
 	readonly strings: string[] | null
@@ -18,7 +18,7 @@ export interface ValuePlace {
 
 export interface SharedParseReulst {
 	readonly template: HTMLTemplateElement
-	readonly valuePlaces: ValuePlace[]
+	readonly valuePlaces: Place[]
 }
 
 
@@ -55,18 +55,11 @@ export function parse(type: TemplateType, strings: string[]): ParseResult {
 
 		return generateParseResult(sharedResult)
 	}
-	else if (type === 'css') {
-		return {
-			node: createTemplate(strings[0].trim()),
-			nodesInPlaces: null,
-			valuePlaces: null
-		}
-	}
 	else {
 		return {
-			node: document.createTextNode(strings[0].trim()),
+			fragment: createTemplate(strings[0].trim()).content,
 			nodesInPlaces: null,
-			valuePlaces: null
+			places: null
 		}
 	}
 }
@@ -85,8 +78,8 @@ class ElementParser {
 	private string: string
 	private lastIndex = 0
 	private nodeIndex = 0
-	private valuePlaces: ValuePlace[] = []
-	private interpolationNodeIndexs: number[] = []
+	private places: Place[] = []
+	private placeNodeIndexs: number[] = []
 	
 
 	constructor(type: TemplateType, string: string) {
@@ -157,7 +150,7 @@ class ElementParser {
 
 		return {
 			template,
-			valuePlaces: this.valuePlaces
+			valuePlaces: this.places
 		}
 	}
 
@@ -171,16 +164,16 @@ class ElementParser {
 			let splitted = text.split(VALUE_MARKER)
 			text = splitted.join('<!--->')
 
-			for (let i = 0; i < splitted.length - 1; i++) {
-				this.valuePlaces.push({
-					type: PartType.Node,
+			for (let i = 1; i < splitted.length; i++) {
+				this.places.push({
+					type: PartType.Child,
 					name: null,
 					strings: null,
 					width: 1,
 					nodeIndex: this.nodeIndex
 				})
 
-				this.interpolationNodeIndexs.push(this.nodeIndex)
+				this.placeNodeIndexs.push(this.nodeIndex)
 				this.nodeIndex += 1
 			}
 		}
@@ -189,7 +182,7 @@ class ElementParser {
 	}
 
 	parseAttribute(attr: string): string {
-		const attrRE = /(\S+)\s*=(".*?"|'.*?'|\$\{flit\})\s*/g
+		const attrRE = /(\S+)\s*=\s*(".*?"|'.*?'|\$\{flit\})\s*/g
 
 		return attr.replace(attrRE, (m0, name: string, value: string) => {
 			let type: PartType | undefined = undefined
@@ -213,8 +206,12 @@ class ElementParser {
 					break
 			}
 
-			if (type !== undefined && hasMarker) {
-				type = PartType.Attr
+			if (type !== undefined) {
+				name = name.slice(1)
+
+				if (hasMarker) {
+					type = PartType.Attr
+				}
 			}
 
 			if (type !== undefined) {
@@ -222,11 +219,11 @@ class ElementParser {
 					value = value.slice(1, -1)
 				}
 
-				let strings = value === VALUE_MARKER ? null
+				let strings = value === VALUE_MARKER || type === PartType.MayAttr || type === PartType.Event ? null
 					: hasMarker ? value.split(VALUE_MARKER)
 					: [value]
  
-				this.valuePlaces.push({
+				this.places.push({
 					type,
 					name: name.slice(1),
 					strings,
@@ -234,7 +231,7 @@ class ElementParser {
 					nodeIndex: this.nodeIndex
 				})
 
-				this.interpolationNodeIndexs.push(this.nodeIndex)
+				this.placeNodeIndexs.push(this.nodeIndex)
 
 				if (type === PartType.Attr) {
 					return name + '="" '
@@ -253,7 +250,7 @@ class ElementParser {
 //Benchmark: https://jsperf.com/treewalker-vs-nodeiterator
 function generateParseResult(sharedResult: SharedParseReulst): ParseResult {
 	let {template, valuePlaces} = sharedResult
-	let fragment = template.content.cloneNode(true)
+	let fragment = template.content.cloneNode(true) as DocumentFragment
 	let nodeIndex = 0	//ignore root fragment
 	let valueIndex = 0
 	let nodesInPlaces: Node[] = []
@@ -275,8 +272,8 @@ function generateParseResult(sharedResult: SharedParseReulst): ParseResult {
 	}
 
 	return {
-		node: fragment,
+		fragment,
 		nodesInPlaces,
-		valuePlaces
+		places: valuePlaces
 	}
 }
