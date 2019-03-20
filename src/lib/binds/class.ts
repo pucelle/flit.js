@@ -1,4 +1,4 @@
-import {Bind, defineBind} from './index'
+import {Bind, defineBind} from './define'
 
 
 /**
@@ -11,9 +11,9 @@ defineBind('class', class ClassNameBind implements Bind {
 
 	private el: HTMLElement
 	private modifiers: string[] | null
-	private value: any = null
+	private value: unknown = null
 
-	constructor(el: HTMLElement, value: any, modifiers: string[] | null) {
+	constructor(el: HTMLElement, value: unknown, modifiers: string[] | null) {
 		if (modifiers) {
 			if (modifiers.length > 1) {
 				throw new Error(`Modifier "${modifiers.join('.')}" is not allowed, only one modifier can be specified for ":class"`)
@@ -29,7 +29,7 @@ defineBind('class', class ClassNameBind implements Bind {
 		this.update(value)
 	}
 
-	update(newValue: any) {
+	update(newValue: unknown) {
 		if (this.value) {
 			this.removeClass(this.value)
 		}
@@ -41,17 +41,17 @@ defineBind('class', class ClassNameBind implements Bind {
 		this.value = newValue
 	}
 
-	removeClass(value: any) {
+	removeClass(value: unknown) {
 		let names = this.parseClass(value)
 		this.el.classList.remove(...names)
 	}
 
-	addClass(value: any) {
+	addClass(value: unknown) {
 		let names = this.parseClass(value)
 		this.el.classList.add(...names)
 	}
 
-	parseClass(value: any): string[] {
+	parseClass(value: unknown): string[] {
 		let o: {[key: string]: boolean} = {}
 
 		if (this.modifiers) {
@@ -65,8 +65,8 @@ defineBind('class', class ClassNameBind implements Bind {
 			}
 		}
 		else if (value && typeof value === 'object') {
-			for (let key in value) {
-				o[key] = !!value[key]
+			for (let key of Object.keys(value as any)) {
+				o[key] = !!(value as any)[key]
 			}
 		}
 		else if (typeof value === 'string') {

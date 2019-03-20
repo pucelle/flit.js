@@ -1,4 +1,4 @@
-import {Bind, defineBind} from './index'
+import {Bind, defineBind} from './define'
 
 
 /**
@@ -11,10 +11,10 @@ defineBind('style', class StyleBind implements Bind {
 
 	private el: HTMLElement
 	private modifiers: string[] | null
-	private value: any = null
+	private value: unknown = null
 	private allowedModifiers = ['px', 'percent', 'url']
 
-	constructor(el: HTMLElement, value: any, modifiers: string[] | null) {
+	constructor(el: HTMLElement, value: unknown, modifiers: string[] | null) {
 		if (modifiers) {
 			if (modifiers.length > 2) {
 				throw new Error(`Modifier "${modifiers.join('.')}" is not allowed, at most two modifiers can be specified for ":style"`)
@@ -34,7 +34,7 @@ defineBind('style', class StyleBind implements Bind {
 		this.update(value)
 	}
 
-	update(newValue: any) {
+	update(newValue: unknown) {
 		if (this.value) {
 			this.removeStyle(this.value)
 		}
@@ -46,7 +46,7 @@ defineBind('style', class StyleBind implements Bind {
 		this.value = newValue
 	}
 
-	removeStyle(style: any) {
+	removeStyle(style: unknown) {
 		let o = this.parseStyle(style)
 		
 		for (let name of Object.keys(o)) {
@@ -54,7 +54,7 @@ defineBind('style', class StyleBind implements Bind {
 		}
 	}
 
-	addStyle(style: any) {
+	addStyle(style: unknown) {
 		let o = this.parseStyle(style)
 		let unit = this.modifiers ? this.modifiers[1] : ''
 		
@@ -78,8 +78,8 @@ defineBind('style', class StyleBind implements Bind {
 		}
 	}
 
-	parseStyle(style: any): {[key: string]: any} {
-		let obj: {[key: string]: any} = {}
+	parseStyle(style: unknown): {[key: string]: unknown} {
+		let obj: {[key: string]: unknown} = {}
 
 		if (this.modifiers) {
 			if (style && style !== null && style !== undefined) {
@@ -95,7 +95,7 @@ defineBind('style', class StyleBind implements Bind {
 			}
 		}
 		else if (style && typeof style === 'object') {
-			obj = style
+			obj = style as any
 		}
 		else if (style && typeof style === 'string') {
 			for (let item of style.split(/\s*;\s*/)) {

@@ -11,7 +11,7 @@
 // 	private el: HTMLElement
 // 	private modifiers: string[] | null
 // 	private context: Component
-// 	private value: any = null
+// 	private value: unknown = null
 // 	private allowedModifiers = ['lazy', 'number']
 // 	private isComEvent: boolean
 // 	private isBooleanValue: boolean = false
@@ -20,7 +20,7 @@
 // 	private eventName: string
 // 	private locked: boolean = false
 
-// 	constructor(el: HTMLElement, value: any, modifiers: string[] | null, context: Component) {
+// 	constructor(el: HTMLElement, value: unknown, modifiers: string[] | null, context: Component) {
 // 		if (typeof value !== 'string') {
 // 			throw new Error('The value of ":model" must be string type')
 // 		}
@@ -86,12 +86,12 @@
 // 		}
 // 	}
 
-// 	onComValueChange(value: any) {
-// 		(this.context as any)[this.property] = value
+// 	onComValueChange(value: unknown) {
+// 		(this.context as unknown)[this.property] = value
 // 	}
 
 // 	onInputOrChange (e: Event) {
-// 		let value = (this.el as any)[this.property]
+// 		let value = (this.el as unknown)[this.property]
 
 // 		if (this.isBooleanValue) {
 // 			this.setValue(!!value)

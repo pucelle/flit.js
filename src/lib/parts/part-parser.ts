@@ -1,5 +1,5 @@
 import {TemplateType} from '../template'
-import {PartType} from './shared'
+import {PartType} from "./types"
 
 
 export interface ParseResult {
@@ -44,7 +44,7 @@ const SELF_CLOSE_TAGS = {
 }
 
 
-export function parse(type: TemplateType, strings: string[]): ParseResult {
+export function parse(type: TemplateType, strings: TemplateStringsArray): ParseResult {
 	if (type === 'html' || type === 'svg') {
 		let string = strings.join(VALUE_MARKER)
 		let sharedResult = parseResultMap.get(string)
@@ -76,7 +76,6 @@ class ElementParser {
 
 	private type: TemplateType
 	private string: string
-	private lastIndex = 0
 	private nodeIndex = 0
 	private places: Place[] = []
 	private placeNodeIndexs: number[] = []
@@ -91,14 +90,15 @@ class ElementParser {
 		const tagRE = /<!--[\s\S]*?-->|<(\w+)([\s\S]*?)\/?>|<\/\w+>/g
 
 		let codes = ''
-		
+		let lastIndex = 0
 		let isFirstTag = false
 		let svgWrapped = false
 
 		let match: RegExpExecArray | null
 		while (match = tagRE.exec(this.string)) {
 			let code = match[0]
-			codes += this.parseText(this.string.slice(this.lastIndex, tagRE.lastIndex - code.length))
+			codes += this.parseText(this.string.slice(lastIndex, tagRE.lastIndex - code.length))
+			lastIndex = tagRE.lastIndex
 			
 			//ignore comment nodes
 			if (code[1] === '!') {
@@ -135,7 +135,7 @@ class ElementParser {
 			}
 		}
 
-		codes += this.parseText(this.string.slice(this.lastIndex))
+		codes += this.parseText(this.string.slice(lastIndex))
 
 		if (svgWrapped) {
 			codes += '</svg>'
@@ -208,10 +208,10 @@ class ElementParser {
 
 			if (type !== undefined) {
 				name = name.slice(1)
+			}
 
-				if (hasMarker) {
-					type = PartType.Attr
-				}
+			if (type === undefined && hasMarker) {
+				type = PartType.Attr
 			}
 
 			if (type !== undefined) {
@@ -225,7 +225,7 @@ class ElementParser {
  
 				this.places.push({
 					type,
-					name: name.slice(1),
+					name,
 					strings,
 					width: strings ? strings.length - 1 : 1,
 					nodeIndex: this.nodeIndex
@@ -247,28 +247,36 @@ class ElementParser {
 }
 
 
-//Benchmark: https://jsperf.com/treewalker-vs-nodeiterator
+//TreeWalker Benchmark: https://jsperf.com/treewalker-vs-nodeiterator
 function generateParseResult(sharedResult: SharedParseReulst): ParseResult {
 	let {template, valuePlaces} = sharedResult
-	let fragment = template.content.cloneNode(true) as DocumentFragment
+	let fragment = document.importNode(template.content, true) as DocumentFragment
 	let nodeIndex = 0	//ignore root fragment
-	let valueIndex = 0
 	let nodesInPlaces: Node[] = []
 
-	let walker = document.createTreeWalker(fragment, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_COMMENT, null)
-	let node: Node | null
+	if (valuePlaces.length > 0) {
+		let valueIndex = 0
+		let walker = document.createTreeWalker(fragment, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_COMMENT, null)
+		let node: Node | null
+		let end = false
 
-	while(node = walker.nextNode()) {
-		if (valuePlaces[valueIndex].nodeIndex === nodeIndex) {
-			nodesInPlaces.push(node)
-			valueIndex++
+		while (node = walker.nextNode()) {
+			while (valuePlaces[valueIndex].nodeIndex === nodeIndex) {
+				nodesInPlaces.push(node)
+				valueIndex++
 
-			if (valueIndex === valuePlaces.length) {
+				if (valueIndex === valuePlaces.length) {
+					end = true
+					break
+				}
+			}
+
+			if (end) {
 				break
 			}
-		}
 
-		nodeIndex++
+			nodeIndex++
+		}
 	}
 
 	return {

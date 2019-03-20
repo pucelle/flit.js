@@ -1,5 +1,5 @@
 import {Component, getComponentAt, onComponentCreatedAt} from '../component'
-import {Part, PartType} from './shared'
+import {Part, PartType} from "./types"
 
 
 export class EventPart implements Part {
@@ -39,9 +39,9 @@ export class EventPart implements Part {
 		}
 		else {
 			//TO DO
-			if (!oldHandler) {
-				this.el.removeEventListener(this.name, oldHandler)
-			}
+			// if (oldHandler) {
+			// 	this.el.removeEventListener(this.name, oldHandler as Function)
+			// }
 
 			this.el.addEventListener(this.name, newHandler.bind(this.context))
 		}

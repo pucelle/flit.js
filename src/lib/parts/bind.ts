@@ -1,4 +1,4 @@
-import {Part, PartType} from './shared'
+import {Part, PartType} from "./types"
 import {Bind, getBind} from '../binds'
 import {Component} from '../component'
 
@@ -11,7 +11,7 @@ export class BindPart implements Part {
 
 	private bind: Bind
 
-	constructor(el: HTMLElement, name: string, value: any, context: Component) {
+	constructor(el: HTMLElement, name: string, value: unknown, context: Component) {
 		let dotIndex = name.indexOf('.')
 		let bindName = dotIndex > -1 ? name.slice(0, dotIndex) : name
 		let bindModifiers = dotIndex > -1 ? name.slice(dotIndex + 1).split('.') : null
@@ -24,7 +24,7 @@ export class BindPart implements Part {
 		this.bind = new Cls(el, value, bindModifiers, context)
 	}
 
-	update(value: any) {
+	update(value: unknown) {
 		this.bind.update(value)
 	}
 }

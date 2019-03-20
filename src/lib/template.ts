@@ -1,24 +1,25 @@
 export type TemplateType = 'html' | 'svg' | 'css' | 'text'
 
 
-export function html(strings: string[], values: any[]): Template {
+
+export function html(strings: TemplateStringsArray, ...values: unknown[]): Template {
 	return new Template('html', strings, values)
 }
 
-export function svg(strings: string[], values: any[]): Template {
+export function svg(strings: TemplateStringsArray, ...values: unknown[]): Template {
 	return new Template('svg', strings, values)
 }
 
-export function css(strings: string[], values: any[]): Template {
+export function css(strings: TemplateStringsArray, ...values: unknown[]): Template {
 	return new Template('css', strings, values)
 }
 
-export function text(strings: string[], values: any[]): Template {
+export function text(strings: TemplateStringsArray, ...values: unknown[]): Template {
 	return new Template('text', strings, values)
 }
 
 
-export function join(strings: string[] | null, values: any[]): any {
+export function join(strings: TemplateStringsArray | string[] | null, values: unknown[]): unknown {
 	if (!strings) {
 		return values[0]
 	}
@@ -39,10 +40,10 @@ export function join(strings: string[] | null, values: any[]): any {
 export class Template {
 
 	type: TemplateType
-	strings: string[]
-	values: any[]
+	strings: TemplateStringsArray
+	values: unknown[]
 
-	constructor(type: TemplateType, strings: string[], values: any[]) {
+	constructor(type: TemplateType, strings: TemplateStringsArray, values: unknown[]) {
 		this.type = type
 		this.strings = strings
 		this.values = values

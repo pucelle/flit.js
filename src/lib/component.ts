@@ -1,5 +1,5 @@
 import {Emitter} from './emitter'
-import {Template, text} from './template'
+import {Template} from './template'
 import {RootPart} from "./parts"
 
 
@@ -64,21 +64,22 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 		
 		elementComponentMap.set(el, this)
 		emitComponentCreated(el, this)
+		
+		Promise.resolve().then(() => {
+			this.update()
+		})
 	}
 
 	abstract render(): string | Template
 
 	protected update() {
-		let result = this.render()
-		if (!(result instanceof Template)) {
-			result = text([String(result)], [])
-		}
+		let value = this.render()
 
 		if (this._node) {
-			this._node.update(result)
+			this._node.update(value)
 		}
 		else {
-			this._node = new RootPart(this.el, result, this)
+			this._node = new RootPart(this.el, value, this)
 		}
 	}
 

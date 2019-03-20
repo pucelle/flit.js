@@ -1,4 +1,4 @@
-import {Part, PartType} from './shared'
+import {Part, PartType} from "./types"
 
 
 export class AttrPart implements Part {
@@ -10,18 +10,18 @@ export class AttrPart implements Part {
 	private el: HTMLElement
 	private name: string
 
-	constructor(el: HTMLElement, name: string, value: any) {
+	constructor(el: HTMLElement, name: string, value: unknown) {
 		this.el = el
 		this.name = name
 		this.setValue(value)
 	}
 
-	private setValue(value: any) {
+	private setValue(value: unknown) {
 		value === null || value === undefined ? '' : String(value)
-		this.el.setAttribute(this.name, value)
+		this.el.setAttribute(this.name, value as string)
 	}
 
-	update(values: any) {
+	update(values: unknown) {
 		this.setValue(values)
 	}
 }
