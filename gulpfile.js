@@ -2,7 +2,9 @@ const gulp = require('gulp')
 const browserify = require('browserify')
 const source = require('vinyl-source-stream')
 const watchify = require('watchify')
+const tsify = require('tsify')
 const gutil = require('gulp-util')
+const glob = require('glob')
 const exorcist = require('exorcist')
 
 
@@ -10,12 +12,12 @@ function bundle(task) {
 	let browser = browserify({
 		basedir: '.',
 		debug: true,
-		entries: ['out/index.js']
+		entries: task.startsWith('test') ? glob.sync(__dirname + '/test/**/*.test.ts') : ['src/index.ts']
 	})
 	browser.plugin(tsify)
 	browser.on('log', gutil.log)
 
-	if (task === 'bundle-watch') {
+	if (task.endsWith('-watch')) {
 		browser.plugin(watchify)
 		browser.on('update', () => {
 			browser.close()
@@ -32,3 +34,5 @@ function bundle(task) {
 
 gulp.task('bundle', () => bundle('bundle'))
 gulp.task('bundle-watch', () => bundle('bundle-watch'))
+gulp.task('test', () => bundle('bundle'))
+gulp.task('test-watch', () => bundle('bundle-watch'))

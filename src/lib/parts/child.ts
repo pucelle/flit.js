@@ -4,8 +4,11 @@ import {RootChildShared, Part, PartType} from './shared'
 
 
 export class ChildPart extends RootChildShared implements Part {
-	width = 1
-	type = PartType.Child
+
+	type: PartType = PartType.Child
+	width: number = 1
+	strings: string[] | null = null
+
 	private comment: Comment
 	private parentNode: Node
 	private els: Node[] | null = null

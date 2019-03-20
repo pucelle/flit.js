@@ -2,8 +2,11 @@ import {Part, PartType} from './shared'
 
 
 export class MayAttrPart implements Part {
-	type = PartType.MayAttr
-	width = 1
+
+	type: PartType = PartType.MayAttr
+	width: number = 1
+	strings: string[] | null = null
+
 	private el: HTMLElement
 	private name: string
 
@@ -22,7 +25,7 @@ export class MayAttrPart implements Part {
 		}
 	}
 
-	merge(value: any) {
+	update(value: any) {
 		this.setValue(value)
 	}
 }

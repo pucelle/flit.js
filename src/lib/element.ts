@@ -1,4 +1,4 @@
-import {ComponentConstructor, defineComponent, get} from './component'
+import {ComponentConstructor, defineComponent, getComponentAt} from './component'
 
 
 /**
@@ -14,9 +14,17 @@ export function define(name: string, Com: ComponentConstructor) {
 
 	customElements.define(name, class CustomElement extends HTMLElement {
 		connectedCallback() {
-			let com = get(this)
+			let com = getComponentAt(this)
 			if (!com) {
 				com = new Com(this)
+			}
+			com.onConnected()
+		}
+
+		disconnectedCallback() {
+			let com = getComponentAt(this)
+			if (com) {
+				com.onDisconnected()
 			}
 		}
 	})

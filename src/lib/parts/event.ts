@@ -1,31 +1,13 @@
-import {Component, get} from '../component'
+import {Component, getComponentAt, onComponentCreatedAt} from '../component'
 import {Part, PartType} from './shared'
 
 
-const deferredEventPartsMap: WeakMap<HTMLElement, EventPart[]> = new WeakMap()
-
-export function tryBindDeferredEvents(el: HTMLElement) {
-	let parts = deferredEventPartsMap.get(el)
-	if (parts) {
-		for (let part of parts) {
-			part.bindDeferred()
-		}
-		deferredEventPartsMap.delete(el)
-	}
-}
-
-function addDeferredEventParts(el: HTMLElement, part: EventPart) {
-	let parts = deferredEventPartsMap.get(el)
-	if (!parts) {
-		deferredEventPartsMap.set(el, (parts = []))
-	}
-	parts.push(part)
-}
-
-
 export class EventPart implements Part {
-	type = PartType.Event
-	width = 1
+
+	type: PartType = PartType.Event
+	width: number = 1
+	strings: string[] | null = null
+
 	private el: HTMLElement
 	private name: string
 	private handler!: Function
@@ -44,7 +26,7 @@ export class EventPart implements Part {
 		let oldHandler = this.handler
 
 		if (this.isComEvent) {
-			let com = get(this.el)
+			let com = getComponentAt(this.el)
 			if (com) {
 				if (oldHandler) {
 					com.off(this.name, oldHandler, this.context)
@@ -52,7 +34,7 @@ export class EventPart implements Part {
 				com.on(this.name, newHandler, this.context)
 			}
 			else if (!oldHandler) {
-				addDeferredEventParts(this.el, this)
+				onComponentCreatedAt(this.el, this.setHandlerLater.bind(this))
 			}
 		}
 		else {
@@ -67,14 +49,11 @@ export class EventPart implements Part {
 		this.handler = newHandler
 	}
 
-	bindDeferred() {
-		let com = get(this.el)
-		if (com) {
-			com.on(this.name, this.handler, com)
-		}
+	setHandlerLater(com: Component) {
+		com.on(this.name, this.handler, com)
 	}
 
-	merge(handler: Function) {
+	update(handler: Function) {
 		this.setHandler(handler)
 	}
 }

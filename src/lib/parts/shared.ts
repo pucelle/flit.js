@@ -1,4 +1,4 @@
-import {Template, text} from '../template'
+import {Template, text, join} from '../template'
 import {Component} from '../component'
 import {parse} from './part-parser'
 import {ChildPart} from './child'
@@ -22,7 +22,8 @@ export enum PartType {
 export interface Part {
 	type: PartType
 	width: number
-	merge(value: any): void
+	strings: string[] | null
+	update(value: any): void
 }
 
 
@@ -66,28 +67,31 @@ export abstract class RootChildShared {
 						break
 
 					case PartType.Attr:
-						part = new AttrPart(node as HTMLElement, place.name!, place.strings, values.slice(valueIndex, valueIndex + place.width))
+						part = new AttrPart(node as HTMLElement, place.name!, join(place.strings, values.slice(valueIndex, valueIndex + place.width)))
 						break
 
 					case PartType.Bind:
-						part = new BindPart(node as HTMLElement, place.name!, place.strings, values.slice(valueIndex, valueIndex + place.width))
+						part = new BindPart(node as HTMLElement, place.name!, join(place.strings, values.slice(valueIndex, valueIndex + place.width)), this.context)
 						break
 
 					case PartType.Property:
-						part = new PropertyPart(node as HTMLElement, place.name!, place.strings, values.slice(valueIndex, valueIndex + place.width))
+						part = new PropertyPart(node as HTMLElement, place.name!, join(place.strings, values.slice(valueIndex, valueIndex + place.width)))
 						break
-
 				}
 
 				valueIndex += place.width
 
+				part!.strings = place.strings
+
 				//we add null as placeholders to align with values
 				if (place.width > 1) {
+					part!.width = place.width
 					for (let i = 1; i < place.width; i++) {
 						this.parts.push(null)
 					}
 				}
 
+				//like `:ref="name"`
 				if (place.width > 0) {
 					this.parts.push(part!)
 				}
@@ -99,7 +103,7 @@ export abstract class RootChildShared {
 
 	protected abstract afterParse(fragment: DocumentFragment): void
 	
-	merge(t: Template) {
+	update(t: Template) {
 		if (!t.compareType(this.template) || !t.compareStrings(this.template)) {
 			this.clean()
 			this.template = t
@@ -139,11 +143,11 @@ export abstract class RootChildShared {
 			case PartType.Child:
 			case PartType.MayAttr:
 			case PartType.Event:
-				part.merge(values[0])
+				part.update(values[0])
 				break
 
 			default:
-				part.merge(values)
+				part.update(join(part.strings, values))
 		}
 	}
 

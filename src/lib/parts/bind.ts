@@ -1,37 +1,30 @@
 import {Part, PartType} from './shared'
-import {joinStringsAndValue} from '../template'
+import {Bind, getBind} from '../binds'
+import {Component} from '../component'
 
 
 export class BindPart implements Part {
-	type = PartType.Bind
-	width: number
-	private el: HTMLElement
-	private name: string
-	private strings: string[] | null
 
-	constructor(el: HTMLElement, name: string, strings: string[] | null, values: any[]) {
-		this.el = el
-		this.name = name
-		this.width = strings ? strings.length - 1 : 1
-		this.strings = strings
-		this.setValues(values)
-	}
+	type: PartType = PartType.Bind
+	width: number = 1
+	strings: string[] | null = null
 
-	private setValues(values: any[]) {
-		let value: string
-		
-		if (this.strings) {
-			value = joinStringsAndValue(this.strings, values)
-		}
-		else {
-			value = values[0]
-			value === null || value === undefined ? '' : String(value)
+	private bind: Bind
+
+	constructor(el: HTMLElement, name: string, value: any, context: Component) {
+		let dotIndex = name.indexOf('.')
+		let bindName = dotIndex > -1 ? name.slice(0, dotIndex) : name
+		let bindModifiers = dotIndex > -1 ? name.slice(dotIndex + 1).split('.') : null
+
+		let Cls = getBind(bindName)
+		if (!Cls) {
+			throw new Error(`"${bindName}" is not a binded class`)
 		}
 
-		//TODO
+		this.bind = new Cls(el, value, bindModifiers, context)
 	}
 
-	merge(values: any) {
-		this.setValues(values)
+	update(value: any) {
+		this.bind.update(value)
 	}
 }

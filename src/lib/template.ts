@@ -18,7 +18,11 @@ export function text(strings: string[], values: any[]): Template {
 }
 
 
-export function joinStringsAndValue(strings: string[], values: any[]): any {
+export function join(strings: string[] | null, values: any[]): any {
+	if (!strings) {
+		return values[0]
+	}
+
 	let text = strings[0]
 
 	for (let i = 0; i < strings.length - 1; i++) {
