@@ -54,5 +54,5 @@ export function render(htmlCodes: string, options?: null | object | HTMLElement,
 
 
 function clearWhiteSpaces(htmlCodes: string): string {
-	return htmlCodes.trimLeft().replace(/>[ \t\r\n]+/g, '>')
+	return htmlCodes.trimLeft().replace(/>\s+/g, '>')
 }

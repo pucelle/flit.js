@@ -34,7 +34,7 @@ src_1.define('test-com', class TestCom extends src_1.Component {
   
 		${this.a.a.map(i => src_1.html `<div>a${i}b</div>`)}
 		
-		${this.pie ? src_1.html `<lazy-element a="b"></lazy-element>` : src_1.html ``}
+		${this.pie ? src_1.html `<lazy-element a="b"></lazy-element>` : ''}
 	  `;
     }
 });
@@ -47,10 +47,10 @@ var element_1 = require("./lib/element");
 exports.define = element_1.define;
 var render_1 = require("./lib/render");
 exports.render = render_1.render;
-var template_1 = require("./lib/template");
-exports.html = template_1.html;
-exports.css = template_1.css;
-exports.svg = template_1.svg;
+var template_result_1 = require("./lib/template-result");
+exports.html = template_result_1.html;
+exports.css = template_result_1.css;
+exports.svg = template_result_1.svg;
 var component_1 = require("./lib/component");
 exports.getComponentAt = component_1.getComponentAt;
 exports.onComponentCreatedAt = component_1.onComponentCreatedAt;
@@ -63,7 +63,7 @@ exports.defineBind = binds_1.defineBind;
 // }
 // export function update() {
 // }
-},{"./lib/binds":5,"./lib/component":10,"./lib/element":11,"./lib/emitter":12,"./lib/render":22,"./lib/template":23}],3:[function(require,module,exports){
+},{"./lib/binds":5,"./lib/component":10,"./lib/element":11,"./lib/emitter":12,"./lib/render":24,"./lib/template-result":25}],3:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const define_1 = require("./define");
@@ -151,16 +151,16 @@ function defineBind(name, Com) {
     defineMap.set(name, Com);
 }
 exports.defineBind = defineBind;
-function getBind(name) {
+function getBindedClass(name) {
     return defineMap.get(name);
 }
-exports.getBind = getBind;
+exports.getBindedClass = getBindedClass;
 },{}],5:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var define_1 = require("./define");
 exports.defineBind = define_1.defineBind;
-exports.getBind = define_1.getBind;
+exports.getBindedClass = define_1.getBindedClass;
 require("./class");
 require("./style");
 require("./model");
@@ -434,10 +434,20 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const emitter_1 = require("./emitter");
 const parts_1 = require("./parts");
 const componentMap = new Map();
+/**
+ * Define a component with specified name and class, called by `define()`.
+ * @param name The component name, same with `define()`.
+ * @param Com The component class.
+ */
 function defineComponent(name, Com) {
     componentMap.set(name, Com);
 }
 exports.defineComponent = defineComponent;
+/**
+ * Get component constructor from name, then we can instantiate it.
+ * @param name The component name, same with `define()`.
+ * @param Com The component class.
+ */
 function getComponentConstructor(name) {
     return componentMap.get(name);
 }
@@ -445,13 +455,17 @@ exports.getComponentConstructor = getComponentConstructor;
 const elementComponentMap = new WeakMap();
 /**
  * Get component instance from root element.
- * @param el The element.
+ * @param el The element to get component instance at.
  */
 function getComponentAt(el) {
     return elementComponentMap.get(el);
 }
 exports.getComponentAt = getComponentAt;
 const componentCreatedMap = new WeakMap();
+/**
+ * Call callback after component instance created.
+ * @param el The element which will create instance at.
+ */
 function onComponentCreatedAt(el, callback) {
     let callbacks = componentCreatedMap.get(el);
     if (!callbacks) {
@@ -469,6 +483,9 @@ function emitComponentCreated(el, com) {
         componentCreatedMap.delete(el);
     }
 }
+/**
+ * The abstract component class, you can instantiate it from just create an element, or call `render()` if you want to config it.
+ */
 class Component extends emitter_1.Emitter {
     constructor(el, options) {
         super();
@@ -477,10 +494,15 @@ class Component extends emitter_1.Emitter {
         Object.assign(this, options);
         elementComponentMap.set(el, this);
         emitComponentCreated(el, this);
+        //TODO
         Promise.resolve().then(() => {
             this.update();
         });
     }
+    /**
+     * Call this to check if need to update the rendering and partial update if needed.
+     * You should not overwrite this method until you know what you are doing.
+     */
     update() {
         let value = this.render();
         if (this._node) {
@@ -490,11 +512,18 @@ class Component extends emitter_1.Emitter {
             this._node = new parts_1.RootPart(this.el, value, this);
         }
     }
+    /**
+     * Called when root element inserted into document.
+     */
     onConnected() { }
+    /**
+     * Called when root element removed from document.
+     * If you registered global listeners, don't forget to remove it here.
+     */
     onDisconnected() { }
 }
 exports.Component = Component;
-},{"./emitter":12,"./parts":16}],11:[function(require,module,exports){
+},{"./emitter":12,"./parts":17}],11:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const component_1 = require("./component");
@@ -628,10 +657,12 @@ exports.Emitter = Emitter;
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const types_1 = require("./types");
+/**
+ * attr="${...}"
+ */
 class AttrPart {
     constructor(el, name, value) {
         this.type = types_1.PartType.Attr;
-        this.width = 1;
         this.strings = null;
         this.el = el;
         this.name = name;
@@ -641,45 +672,174 @@ class AttrPart {
         value === null || value === undefined ? '' : String(value);
         this.el.setAttribute(this.name, value);
     }
-    update(values) {
-        this.setValue(values);
+    update(value) {
+        this.setValue(value);
     }
 }
 exports.AttrPart = AttrPart;
-},{"./types":21}],14:[function(require,module,exports){
+},{"./types":23}],14:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const types_1 = require("./types");
 const binds_1 = require("../binds");
+/**
+ * Transfer arguments to binds module.
+ * :class="${...}", :style="${...}", :props="${...}"
+ */
 class BindPart {
     constructor(el, name, value, context) {
         this.type = types_1.PartType.Bind;
-        this.width = 1;
         this.strings = null;
         let dotIndex = name.indexOf('.');
         let bindName = dotIndex > -1 ? name.slice(0, dotIndex) : name;
         let bindModifiers = dotIndex > -1 ? name.slice(dotIndex + 1).split('.') : null;
-        let Cls = binds_1.getBind(bindName);
-        if (!Cls) {
+        let BindedClass = binds_1.getBindedClass(bindName);
+        if (!BindedClass) {
             throw new Error(`"${bindName}" is not a binded class`);
         }
-        this.bind = new Cls(el, value, bindModifiers, context);
+        this.bind = new BindedClass(el, value, bindModifiers, context);
     }
     update(value) {
         this.bind.update(value);
     }
 }
 exports.BindPart = BindPart;
-},{"../binds":5,"./types":21}],15:[function(require,module,exports){
+},{"../binds":5,"./types":23}],15:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const template_result_1 = require("../template-result");
+const types_1 = require("./types");
+const template_1 = require("./template");
+class ChildPart {
+    constructor(comment, value, context) {
+        this.type = types_1.PartType.Child;
+        this.templates = null;
+        this.textNode = null;
+        this.context = context;
+        this.comment = comment;
+        this.update(value);
+    }
+    update(value) {
+        if (value instanceof template_result_1.TemplateResult) {
+            value = [value];
+        }
+        if (Array.isArray(value)) {
+            this.becomeTemplateResults(value);
+        }
+        if (this.templates) {
+            if (Array.isArray(value)) {
+                this.mergeTemplates(value);
+            }
+            else {
+                for (let template of this.templates) {
+                    template.remove();
+                }
+                this.templates = null;
+                this.renderText(value);
+            }
+        }
+        else {
+            if (Array.isArray(value)) {
+                this.restoreComment();
+                this.templates = [];
+                this.mergeTemplates(value);
+            }
+            else {
+                this.renderText(value);
+            }
+        }
+    }
+    becomeTemplateResults(array) {
+        for (let i = 0; i < array.length; i++) {
+            if (!(array[i] instanceof template_result_1.TemplateResult)) {
+                array[i] = template_result_1.text `${array[i]}`;
+            }
+        }
+        return array;
+    }
+    mergeTemplates(results) {
+        let templates = this.templates;
+        if (templates.length > 0 && results.length > 0) {
+            for (let i = 0; i < templates.length && i < results.length; i++) {
+                let template = templates[i];
+                let result = results[i];
+                if (template.canMergeWith(result)) {
+                    template.merge(result);
+                }
+                else {
+                    let newTemplate = new template_1.Template(result, this.context);
+                    template.replaceWithFragment(newTemplate.parse());
+                    templates[i] = newTemplate;
+                }
+            }
+        }
+        if (results.length < templates.length) {
+            for (let i = results.length; i < templates.length; i++) {
+                let template = templates[i];
+                template.remove();
+            }
+        }
+        else if (templates.length < results.length) {
+            for (let i = templates.length; i < results.length; i++) {
+                let template = new template_1.Template(results[i], this.context);
+                this.renderFragment(template.parse());
+                this.templates.push(template);
+            }
+        }
+    }
+    renderFragment(fragment) {
+        this.comment.before(fragment);
+    }
+    renderText(value) {
+        let text = value === null || value === undefined ? '' : String(value).trim();
+        if (text) {
+            if (!this.textNode) {
+                this.textNode = document.createTextNode(text);
+                this.comment.replaceWith(this.textNode);
+            }
+            else {
+                this.textNode.textContent = text;
+                if (!this.textNode.parentNode) {
+                    this.comment.replaceWith(this.textNode);
+                }
+            }
+        }
+        else {
+            if (this.textNode) {
+                this.textNode.textContent = '';
+            }
+        }
+    }
+    restoreComment() {
+        if (this.textNode && this.textNode.parentNode) {
+            this.textNode.replaceWith(this.comment);
+        }
+    }
+    remove() {
+        if (this.templates) {
+            this.templates.forEach(template => template.remove());
+        }
+        if (this.comment && this.comment.parentNode) {
+            this.comment.remove();
+        }
+        if (this.textNode && this.textNode.parentNode) {
+            this.textNode.remove();
+        }
+    }
+}
+exports.ChildPart = ChildPart;
+},{"../template-result":25,"./template":22,"./types":23}],16:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const component_1 = require("../component");
 const types_1 = require("./types");
+/**
+ * <component-name @custom-event="${this.onAny}">
+ * <div @click="${this.onClick}">
+ */
 class EventPart {
     constructor(el, name, handler, context) {
         this.type = types_1.PartType.Event;
-        this.width = 1;
-        this.strings = null;
         this.el = el;
         this.name = name[0] === '@' ? name.slice(1) : name;
         this.context = context;
@@ -717,20 +877,21 @@ class EventPart {
     }
 }
 exports.EventPart = EventPart;
-},{"../component":10,"./types":21}],16:[function(require,module,exports){
+},{"../component":10,"./types":23}],17:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-var root_child_1 = require("./root-child");
-exports.RootPart = root_child_1.RootPart;
-},{"./root-child":20}],17:[function(require,module,exports){
+var root_1 = require("./root");
+exports.RootPart = root_1.RootPart;
+},{"./root":20}],18:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const types_1 = require("./types");
+/**
+ * ?checked="${...}", remove the attribute if expression returns false.
+ */
 class MayAttrPart {
     constructor(el, name, value) {
         this.type = types_1.PartType.MayAttr;
-        this.width = 1;
-        this.strings = null;
         this.el = el;
         this.name = name;
         this.setValue(value);
@@ -748,28 +909,92 @@ class MayAttrPart {
     }
 }
 exports.MayAttrPart = MayAttrPart;
-},{"./types":21}],18:[function(require,module,exports){
+},{"./types":23}],19:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const types_1 = require("./types");
+/**
+ * .property="${...}", which will be assigned by `element.property = value`.
+ */
+class PropertyPart {
+    constructor(el, name, value) {
+        this.type = types_1.PartType.Property;
+        this.strings = null;
+        this.el = el;
+        this.name = name;
+        this.setValue(value);
+    }
+    setValue(value) {
+        this.el[this.name] = value;
+    }
+    update(value) {
+        this.setValue(value);
+    }
+}
+exports.PropertyPart = PropertyPart;
+},{"./types":23}],20:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const template_result_1 = require("../template-result");
+const template_1 = require("./template");
+const types_1 = require("./types");
+class RootPart {
+    constructor(el, value, context) {
+        this.type = types_1.PartType.Root;
+        this.template = null;
+        this.el = el;
+        this.context = context;
+        this.update(value);
+    }
+    update(value) {
+        if (this.template) {
+            if (value instanceof template_result_1.TemplateResult) {
+                if (this.template.canMergeWith(value)) {
+                    this.template.merge(value);
+                }
+                else {
+                    this.template.remove();
+                    this.createTemplateAndRender(value);
+                }
+            }
+        }
+        else {
+            if (value instanceof template_result_1.TemplateResult) {
+                this.createTemplateAndRender(value);
+            }
+            else {
+                this.renderText(value);
+            }
+        }
+    }
+    createTemplateAndRender(result) {
+        this.template = new template_1.Template(result, this.context);
+        this.renderFragment(this.template.parse());
+    }
+    renderFragment(fragment) {
+        while (this.el.firstChild) {
+            this.el.firstChild.remove();
+        }
+        this.el.append(fragment);
+    }
+    renderText(value) {
+        let text = value === null || value === undefined ? '' : String(value).trim();
+        this.el.textContent = text;
+    }
+}
+exports.RootPart = RootPart;
+},{"../template-result":25,"./template":22,"./types":23}],21:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const types_1 = require("./types");
 const parseResultMap = new Map();
 const VALUE_MARKER = '${flit}';
-const SELF_CLOSE_TAGS = {
-    area: true,
-    base: true,
-    br: true,
-    col: true,
-    embed: true,
-    hr: true,
-    img: true,
-    input: true,
-    link: true,
-    meta: true,
-    param: true,
-    source: true,
-    track: true,
-    wbr: true
-};
+/**
+ * Parse template strings to an fragment and interlations and their related nodes.
+ * Always prepend a comment in the front to mark current template start position.
+ * @param type
+ * @param strings
+ */
 function parse(type, strings) {
     if (type === 'html' || type === 'svg') {
         let string = strings.join(VALUE_MARKER);
@@ -778,7 +1003,7 @@ function parse(type, strings) {
             sharedResult = new ElementParser(type, string).parse();
             parseResultMap.set(string, sharedResult);
         }
-        return generateParseResult(sharedResult);
+        return cloneParseResult(sharedResult);
     }
     else {
         return {
@@ -796,15 +1021,16 @@ function createTemplate(html) {
 }
 class ElementParser {
     constructor(type, string) {
-        this.nodeIndex = 0;
+        this.nodeIndex = 1;
         this.places = [];
-        this.placeNodeIndexs = [];
+        this.nodeIndexs = [];
         this.type = type;
         this.string = string;
     }
+    //Benchmark: https://jsperf.com/regexp-exec-match-replace-speed
     parse() {
-        const tagRE = /<!--[\s\S]*?-->|<(\w+)([\s\S]*?)\/?>|<\/\w+>/g;
-        let codes = '';
+        const tagRE = /<!--[\s\S]*?-->|<(\w+)([\s\S]*?)>|<\/\w+>/g;
+        let codes = '<!---->';
         let lastIndex = 0;
         let isFirstTag = false;
         let svgWrapped = false;
@@ -813,33 +1039,28 @@ class ElementParser {
             let code = match[0];
             codes += this.parseText(this.string.slice(lastIndex, tagRE.lastIndex - code.length));
             lastIndex = tagRE.lastIndex;
-            //ignore comment nodes
+            //ignore existed comment nodes
             if (code[1] === '!') {
                 continue;
             }
-            if (code[1] === '/') {
+            else if (code[1] === '/') {
                 codes += code;
+                continue;
             }
-            else {
-                let tag = match[1];
-                let attr = match[2];
-                if (!isFirstTag) {
-                    if (this.type === 'svg' && tag !== 'svg') {
-                        codes = '<svg>' + codes;
-                        svgWrapped = true;
-                    }
-                    isFirstTag = true;
+            let tag = match[1];
+            let attr = match[2];
+            if (!isFirstTag) {
+                if (this.type === 'svg' && tag !== 'svg') {
+                    codes = '<svg>' + codes;
+                    svgWrapped = true;
                 }
-                if (attr.length > 5) {
-                    attr = this.parseAttribute(attr);
-                }
-                codes += '<' + tag + attr + '>';
-                //`<div/>` -> `<div></div>`
-                if (code[code.length - 2] === '/' && !SELF_CLOSE_TAGS.hasOwnProperty(tag)) {
-                    codes += '</' + tag + '>';
-                }
-                this.nodeIndex++;
+                isFirstTag = true;
             }
+            if (attr.length > 5) {
+                attr = this.parseAttribute(attr);
+            }
+            codes += '<' + tag + attr + '>';
+            this.nodeIndex++;
         }
         codes += this.parseText(this.string.slice(lastIndex));
         if (svgWrapped) {
@@ -869,10 +1090,10 @@ class ElementParser {
                     type: types_1.PartType.Child,
                     name: null,
                     strings: null,
-                    width: 1,
-                    nodeIndex: this.nodeIndex
+                    nodeIndex: this.nodeIndex,
+                    placeable: true,
                 });
-                this.placeNodeIndexs.push(this.nodeIndex);
+                this.nodeIndexs.push(this.nodeIndex);
                 this.nodeIndex += 1;
             }
         }
@@ -882,7 +1103,7 @@ class ElementParser {
         const attrRE = /(\S+)\s*=\s*(".*?"|'.*?'|\$\{flit\})\s*/g;
         return attr.replace(attrRE, (m0, name, value) => {
             let type = undefined;
-            let hasMarker = value.includes(VALUE_MARKER);
+            let markerIndex = value.indexOf(VALUE_MARKER);
             switch (name[0]) {
                 case '.':
                     type = types_1.PartType.Property;
@@ -900,24 +1121,27 @@ class ElementParser {
             if (type !== undefined) {
                 name = name.slice(1);
             }
-            if (type === undefined && hasMarker) {
+            if (type === undefined && markerIndex > -1) {
                 type = types_1.PartType.Attr;
+            }
+            if (markerIndex > -1 && value.slice(markerIndex + VALUE_MARKER.length).includes(VALUE_MARKER)) {
+                throw new Error(`Only one "\${...}" is allowed in one attribute value`);
             }
             if (type !== undefined) {
                 if (value[0] === '\'' || value[0] === '"') {
                     value = value.slice(1, -1);
                 }
                 let strings = value === VALUE_MARKER || type === types_1.PartType.MayAttr || type === types_1.PartType.Event ? null
-                    : hasMarker ? value.split(VALUE_MARKER)
+                    : markerIndex > -1 ? value.split(VALUE_MARKER)
                         : [value];
                 this.places.push({
                     type,
                     name,
                     strings,
-                    width: strings ? strings.length - 1 : 1,
-                    nodeIndex: this.nodeIndex
+                    nodeIndex: this.nodeIndex,
+                    placeable: markerIndex > -1
                 });
-                this.placeNodeIndexs.push(this.nodeIndex);
+                this.nodeIndexs.push(this.nodeIndex);
                 if (type === types_1.PartType.Attr) {
                     return name + '="" ';
                 }
@@ -929,11 +1153,15 @@ class ElementParser {
         });
     }
 }
+/**
+ * Clone the result fragment and link it with node indexes from the parsed result.
+ */
 //TreeWalker Benchmark: https://jsperf.com/treewalker-vs-nodeiterator
-function generateParseResult(sharedResult) {
+//Clone benchmark: https://jsperf.com/clonenode-vs-importnode
+function cloneParseResult(sharedResult) {
     let { template, valuePlaces } = sharedResult;
-    let fragment = document.importNode(template.content, true);
-    let nodeIndex = 0; //ignore root fragment
+    let fragment = template.content.cloneNode(true);
+    let nodeIndex = 0;
     let nodesInPlaces = [];
     if (valuePlaces.length > 0) {
         let valueIndex = 0;
@@ -961,225 +1189,156 @@ function generateParseResult(sharedResult) {
         places: valuePlaces
     };
 }
-},{"./types":21}],19:[function(require,module,exports){
+},{"./types":23}],22:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const types_1 = require("./types");
-class PropertyPart {
-    constructor(el, name, value) {
-        this.type = types_1.PartType.Property;
-        this.width = 1;
-        this.strings = null;
-        this.el = el;
-        this.name = name;
-        this.setValue(value);
-    }
-    setValue(value) {
-        this.el[this.name] = value;
-    }
-    update(values) {
-        this.setValue(values);
-    }
-}
-exports.PropertyPart = PropertyPart;
-},{"./types":21}],20:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const template_1 = require("../template");
-const part_parser_1 = require("./part-parser");
+const template_parser_1 = require("./template-parser");
+const child_1 = require("./child");
 const may_attr_1 = require("./may-attr");
 const event_1 = require("./event");
 const attr_1 = require("./attr");
 const bind_1 = require("./bind");
 const property_1 = require("./property");
-const types_1 = require("./types");
-class RootChildShared {
-    constructor(context) {
+class Template {
+    constructor(result, context) {
+        this.comment = null;
         this.parts = [];
+        this.notInPartsNodes = null;
+        this.result = result;
         this.context = context;
     }
-    update(newValue) {
-        let oldValue = this.value;
-        if ((newValue instanceof template_1.Template)) {
-            if (oldValue instanceof template_1.Template) {
-                this.compareTemplate(oldValue, newValue);
-            }
-            else {
-                this.parseTemplate(newValue);
+    /**
+     * Compare if two template result can be merged.
+     */
+    canMergeWith(result) {
+        if (this.result.type !== result.type) {
+            return false;
+        }
+        if (this.result.strings.length !== result.strings.length) {
+            return false;
+        }
+        for (let i = 0; i < this.result.strings.length; i++) {
+            if (this.result.strings[i] !== result.strings[i]) {
+                return false;
             }
         }
-        else {
-            if (oldValue instanceof template_1.Template) {
-                this.cleanTemplate();
-            }
-            this.renderText(newValue === null || newValue === undefined ? '' : String(newValue).trim());
-        }
-        this.value = newValue;
+        return true;
     }
-    compareTemplate(oldTemplate, newTemplate) {
-        if (!newTemplate.compareType(oldTemplate) || !newTemplate.compareStrings(oldTemplate)) {
-            this.cleanTemplate();
-            this.parseTemplate(newTemplate);
+    /**
+     * Merge with another template result.
+     * @param result The template result to merge
+     */
+    merge(result) {
+        let diffs = this.compareValues(result);
+        if (!diffs) {
+            return;
         }
-        else {
-            this.mergeTemplate(oldTemplate, newTemplate);
+        for (let i = 0; i < diffs.length; i++) {
+            let index = diffs[i];
+            this.mergePart(this.parts[index], result.values[index]);
         }
+        this.result = result;
     }
-    mergeTemplate(oldTemplate, newTemplate) {
-        let diffs = newTemplate.compareValues(oldTemplate);
-        if (diffs) {
-            for (let i = 0; i < diffs.length;) {
-                let index = diffs[i];
-                let part = this.parts[index];
-                let partIndex = index;
-                while (!part && partIndex < this.parts.length) {
-                    partIndex++;
-                    part = this.parts[partIndex];
-                }
-                let values = newTemplate.values.slice(partIndex - part.width + 1, partIndex + 1);
-                this.mergePart(part, values);
-                if (part.width > 1) {
-                    while (i < diffs.length - 1 && diffs[i + 1] <= partIndex) {
-                        i++;
-                    }
-                }
-                else {
-                    i++;
-                }
+    /**
+     * Compare value difference and then merge them later.
+     */
+    compareValues(result) {
+        let diff = [];
+        for (let i = 0; i < this.result.values.length; i++) {
+            if (this.result.values[i] !== result.values[i]) {
+                diff.push(i);
             }
         }
+        return diff.length > 0 ? diff : null;
     }
-    parseTemplate(template) {
-        let { fragment, nodesInPlaces, places } = part_parser_1.parse(template.type, template.strings);
-        let values = template.values;
+    /**
+     * Parse template result and returns a fragment
+     */
+    parse() {
+        let { fragment, nodesInPlaces, places } = template_parser_1.parse(this.result.type, this.result.strings);
+        let values = this.result.values;
         let valueIndex = 0;
-        if (nodesInPlaces && places) {
-            for (let i = 0; i < nodesInPlaces.length; i++) {
-                let node = nodesInPlaces[i];
-                let place = places[i];
+        this.comment = fragment.firstChild;
+        if (nodesInPlaces) {
+            this.notInPartsNodes = [...fragment.childNodes].filter(node => node.nodeType !== 8);
+            for (let nodeIndex = 0; nodeIndex < nodesInPlaces.length; nodeIndex++) {
+                let node = nodesInPlaces[nodeIndex];
+                let place = places[nodeIndex];
+                let value = values[valueIndex];
                 let part;
                 switch (place.type) {
                     case types_1.PartType.Child:
-                        let result = values[valueIndex];
-                        if (!(result instanceof template_1.Template)) {
-                            result = template_1.text([String(result)], []);
-                        }
-                        part = new ChildPart(node, result, this.context);
+                        part = new child_1.ChildPart(node, value, this.context);
                         break;
                     case types_1.PartType.MayAttr:
-                        part = new may_attr_1.MayAttrPart(node, place.name, values[valueIndex]);
+                        part = new may_attr_1.MayAttrPart(node, place.name, value);
                         break;
                     case types_1.PartType.Event:
-                        part = new event_1.EventPart(node, place.name, values[valueIndex], this.context);
+                        part = new event_1.EventPart(node, place.name, value, this.context);
                         break;
                     case types_1.PartType.Attr:
-                        part = new attr_1.AttrPart(node, place.name, template_1.join(place.strings, values.slice(valueIndex, valueIndex + place.width)));
+                        part = new attr_1.AttrPart(node, place.name, join(place.strings, value));
+                        part.strings = place.strings;
                         break;
                     case types_1.PartType.Bind:
-                        part = new bind_1.BindPart(node, place.name, template_1.join(place.strings, values.slice(valueIndex, valueIndex + place.width)), this.context);
+                        part = new bind_1.BindPart(node, place.name, join(place.strings, value), this.context);
+                        part.strings = place.strings;
                         break;
                     case types_1.PartType.Property:
-                        part = new property_1.PropertyPart(node, place.name, template_1.join(place.strings, values.slice(valueIndex, valueIndex + place.width)));
+                        part = new property_1.PropertyPart(node, place.name, join(place.strings, value));
+                        part.strings = place.strings;
                         break;
                 }
-                valueIndex += place.width;
-                part.strings = place.strings;
-                //we add null as placeholders to align with values
-                if (place.width > 1) {
-                    part.width = place.width;
-                    for (let i = 1; i < place.width; i++) {
-                        this.parts.push(null);
-                    }
-                }
-                //like `:ref="name"`
-                if (place.width > 0) {
+                if (place.placeable) {
+                    valueIndex += place.placeable ? 1 : 0;
                     this.parts.push(part);
                 }
             }
         }
-        this.renderFragment(fragment);
+        return fragment;
     }
-    mergePart(part, values) {
+    mergePart(part, value) {
         switch (part.type) {
             case types_1.PartType.Child:
             case types_1.PartType.MayAttr:
             case types_1.PartType.Event:
-                part.update(values[0]);
+                part.update(value);
                 break;
             default:
-                part.update(template_1.join(part.strings, values));
+                part.update(join(part.strings, value));
         }
     }
-    cleanTemplate() {
-        this.parts = [];
-    }
-}
-class RootPart extends RootChildShared {
-    constructor(el, value, context) {
-        super(context);
-        this.width = 1;
-        this.type = types_1.PartType.Root;
-        this.strings = null;
-        this.el = el;
-        this.update(value);
-    }
-    renderText(text) {
-        this.el.textContent = text;
-    }
-    renderFragment(fragment) {
-        while (this.el.firstChild) {
-            this.el.firstChild.remove();
+    remove() {
+        if (this.notInPartsNodes) {
+            this.notInPartsNodes.forEach(node => node.remove());
         }
-        this.el.append(fragment);
-    }
-}
-exports.RootPart = RootPart;
-class ChildPart extends RootChildShared {
-    constructor(comment, value, context) {
-        super(context);
-        this.type = types_1.PartType.Child;
-        this.width = 1;
-        this.strings = null;
-        this.els = null;
-        this.comment = comment;
-        this.parentNode = comment.parentNode;
-        this.update(value);
-    }
-    renderText(text) {
-        if (this.els && this.els.length === 1 && this.els[0].nodeType === 3) {
-            this.els[0].textContent = text;
-        }
-        else {
-            let fragment = document.createDocumentFragment();
-            fragment.textContent = text;
-            this.renderFragment(fragment);
-        }
-    }
-    renderFragment(fragment) {
-        let els = [...fragment.childNodes];
-        if (els.length) {
-            if (this.els) {
-                this.parentNode.insertBefore(fragment, this.els[0]);
-                this.els.forEach(el => el.remove());
-            }
-            else {
-                this.comment.replaceWith(fragment);
+        this.comment.remove();
+        for (let part of this.parts) {
+            if (part instanceof child_1.ChildPart) {
+                part.remove();
             }
         }
-        else {
-            this.restoreComment();
-        }
-        this.els = els.length ? els : null;
     }
-    restoreComment() {
-        if (this.els) {
-            this.parentNode.insertBefore(this.comment, this.els[0]);
-            this.els.forEach(el => el.remove());
-        }
+    replaceWithFragment(fragment) {
+        this.comment.before(fragment);
+        this.remove();
     }
 }
-exports.ChildPart = ChildPart;
-},{"../template":23,"./attr":13,"./bind":14,"./event":15,"./may-attr":17,"./part-parser":18,"./property":19,"./types":21}],21:[function(require,module,exports){
+exports.Template = Template;
+function join(strings, ...values) {
+    if (!strings) {
+        return values[0];
+    }
+    let text = strings[0];
+    for (let i = 0; i < strings.length - 1; i++) {
+        let value = values[i];
+        text += value === null || value === undefined ? '' : String(value);
+        text += strings[i + 1];
+    }
+    return text;
+}
+},{"./attr":13,"./bind":14,"./child":15,"./event":16,"./may-attr":18,"./property":19,"./template-parser":21,"./types":23}],23:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var PartType;
@@ -1192,7 +1351,7 @@ var PartType;
     PartType[PartType["Bind"] = 5] = "Bind";
     PartType[PartType["Event"] = 6] = "Event";
 })(PartType = exports.PartType || (exports.PartType = {}));
-},{}],22:[function(require,module,exports){
+},{}],24:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const component_1 = require("./component");
@@ -1225,70 +1384,39 @@ function render(htmlCodes, options, target) {
 }
 exports.render = render;
 function clearWhiteSpaces(htmlCodes) {
-    return htmlCodes.trimLeft().replace(/>[ \t\r\n]+/g, '>');
+    return htmlCodes.trimLeft().replace(/>\s+/g, '>');
 }
-},{"./component":10}],23:[function(require,module,exports){
+},{"./component":10}],25:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 function html(strings, ...values) {
-    return new Template('html', strings, values);
+    return new TemplateResult('html', strings, values);
 }
 exports.html = html;
 function svg(strings, ...values) {
-    return new Template('svg', strings, values);
+    return new TemplateResult('svg', strings, values);
 }
 exports.svg = svg;
 function css(strings, ...values) {
-    return new Template('css', strings, values);
+    return new TemplateResult('css', strings, values);
 }
 exports.css = css;
 function text(strings, ...values) {
-    return new Template('text', strings, values);
+    return new TemplateResult('text', strings, values);
 }
 exports.text = text;
-function join(strings, values) {
-    if (!strings) {
-        return values[0];
-    }
-    let text = strings[0];
-    for (let i = 0; i < strings.length - 1; i++) {
-        let value = values[i];
-        text += value === null || value === undefined ? '' : String(value);
-        text += strings[i + 1];
-    }
-    return text;
-}
-exports.join = join;
-class Template {
+/**
+ * Created from each html`...` or svg`...`.
+ * Every time call `Component.update` will generate a new template result tree.
+ * Then we will check if each result can be merged or need to be replaced recursively.
+ */
+class TemplateResult {
     constructor(type, strings, values) {
         this.type = type;
         this.strings = strings;
         this.values = values;
     }
-    compareType(t) {
-        return this.type === t.type;
-    }
-    compareStrings(t) {
-        if (this.strings.length !== t.strings.length) {
-            return false;
-        }
-        for (let i = 0; i < this.strings.length; i++) {
-            if (this.strings[i] !== t.strings[i]) {
-                return false;
-            }
-        }
-        return true;
-    }
-    compareValues(t) {
-        let diff = [];
-        for (let i = 0; i < this.values.length; i++) {
-            if (this.values[i] !== t.values[i]) {
-                diff.push(i);
-            }
-        }
-        return diff.length > 0 ? diff : null;
-    }
 }
-exports.Template = Template;
+exports.TemplateResult = TemplateResult;
 },{}]},{},[1])
 //# sourceMappingURL=bundle.js.map

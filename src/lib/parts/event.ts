@@ -1,12 +1,14 @@
 import {Component, getComponentAt, onComponentCreatedAt} from '../component'
-import {Part, PartType} from "./types"
+import {NodePart, PartType} from "./types"
 
 
-export class EventPart implements Part {
+/**
+ * <component-name @custom-event="${this.onAny}">
+ * <div @click="${this.onClick}">
+ */
+export class EventPart implements NodePart {
 
 	type: PartType = PartType.Event
-	width: number = 1
-	strings: string[] | null = null
 
 	private el: HTMLElement
 	private name: string

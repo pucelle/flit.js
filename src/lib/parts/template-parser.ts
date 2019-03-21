@@ -1,19 +1,21 @@
-import {TemplateType} from '../template'
+import {TemplateType} from '../template-result'
 import {PartType} from "./types"
 
 
 export interface ParseResult {
 	fragment: DocumentFragment,
-	nodesInPlaces: Node[] | null
 	places: Place[] | null
+	nodesInPlaces: Node[] | null
 }
 
 export interface Place {
 	readonly type: PartType
 	readonly name: string | null
 	readonly strings: string[] | null
-	readonly width: number
 	readonly nodeIndex: number
+	
+	//some binds like `:ref="name"`, it needs to be initialized but take no place
+	readonly placeable: boolean
 }
 
 export interface SharedParseReulst {
@@ -26,24 +28,13 @@ const parseResultMap: Map<string, SharedParseReulst> = new Map()
 
 const VALUE_MARKER = '${flit}'
 
-const SELF_CLOSE_TAGS = {
-	area: true,
-	base: true,
-	br: true,
-	col: true,
-	embed: true,
-	hr: true,
-	img: true,
-	input: true,
-	link: true,
-	meta: true,
-	param: true,
-	source: true,
-	track: true,
-	wbr: true
-}
 
-
+/**
+ * Parse template strings to an fragment and interlations and their related nodes.
+ * Always prepend a comment in the front to mark current template start position.
+ * @param type 
+ * @param strings 
+ */
 export function parse(type: TemplateType, strings: TemplateStringsArray): ParseResult {
 	if (type === 'html' || type === 'svg') {
 		let string = strings.join(VALUE_MARKER)
@@ -53,7 +44,7 @@ export function parse(type: TemplateType, strings: TemplateStringsArray): ParseR
 			parseResultMap.set(string, sharedResult)
 		}
 
-		return generateParseResult(sharedResult)
+		return cloneParseResult(sharedResult)
 	}
 	else {
 		return {
@@ -71,14 +62,13 @@ function createTemplate(html: string) {
 }
 
 
-
 class ElementParser {
 
 	private type: TemplateType
 	private string: string
-	private nodeIndex = 0
+	private nodeIndex = 1
 	private places: Place[] = []
-	private placeNodeIndexs: number[] = []
+	private nodeIndexs: number[] = []
 	
 
 	constructor(type: TemplateType, string: string) {
@@ -86,10 +76,11 @@ class ElementParser {
 		this.string = string
 	}
 
+	//Benchmark: https://jsperf.com/regexp-exec-match-replace-speed
 	parse(): SharedParseReulst {
-		const tagRE = /<!--[\s\S]*?-->|<(\w+)([\s\S]*?)\/?>|<\/\w+>/g
+		const tagRE = /<!--[\s\S]*?-->|<(\w+)([\s\S]*?)>|<\/\w+>/g
 
-		let codes = ''
+		let codes = '<!---->'
 		let lastIndex = 0
 		let isFirstTag = false
 		let svgWrapped = false
@@ -100,39 +91,32 @@ class ElementParser {
 			codes += this.parseText(this.string.slice(lastIndex, tagRE.lastIndex - code.length))
 			lastIndex = tagRE.lastIndex
 			
-			//ignore comment nodes
+			//ignore existed comment nodes
 			if (code[1] === '!') {
 				continue
 			}
-
-			if (code[1] === '/') {
+			else if (code[1] === '/') {
 				codes += code
+				continue
 			}
-			else {
-				let tag = match[1]
-				let attr = match[2]
+			
+			let tag = match[1]
+			let attr = match[2]
 
-				if (!isFirstTag) {
-					if (this.type === 'svg' && tag !== 'svg') {
-						codes = '<svg>' + codes
-						svgWrapped = true
-					}
-					isFirstTag = true
+			if (!isFirstTag) {
+				if (this.type === 'svg' && tag !== 'svg') {
+					codes = '<svg>' + codes
+					svgWrapped = true
 				}
-
-				if (attr.length > 5) {
-					attr = this.parseAttribute(attr)
-				}
-
-				codes += '<' + tag + attr + '>'
-
-				//`<div/>` -> `<div></div>`
-				if (code[code.length - 2] === '/' && !SELF_CLOSE_TAGS.hasOwnProperty(tag)) {
-					codes += '</' + tag + '>'
-				}
-
-				this.nodeIndex++
+				isFirstTag = true
 			}
+
+			if (attr.length > 5) {
+				attr = this.parseAttribute(attr)
+			}
+
+			codes += '<' + tag + attr + '>'
+			this.nodeIndex++
 		}
 
 		codes += this.parseText(this.string.slice(lastIndex))
@@ -169,11 +153,11 @@ class ElementParser {
 					type: PartType.Child,
 					name: null,
 					strings: null,
-					width: 1,
-					nodeIndex: this.nodeIndex
+					nodeIndex: this.nodeIndex,
+					placeable: true,
 				})
 
-				this.placeNodeIndexs.push(this.nodeIndex)
+				this.nodeIndexs.push(this.nodeIndex)
 				this.nodeIndex += 1
 			}
 		}
@@ -186,7 +170,7 @@ class ElementParser {
 
 		return attr.replace(attrRE, (m0, name: string, value: string) => {
 			let type: PartType | undefined = undefined
-			let hasMarker = value.includes(VALUE_MARKER)
+			let markerIndex = value.indexOf(VALUE_MARKER)
 
 			switch (name[0]) {
 				case '.':
@@ -210,8 +194,12 @@ class ElementParser {
 				name = name.slice(1)
 			}
 
-			if (type === undefined && hasMarker) {
+			if (type === undefined && markerIndex > -1) {
 				type = PartType.Attr
+			}
+
+			if (markerIndex > -1 && value.slice(markerIndex + VALUE_MARKER.length).includes(VALUE_MARKER)) {
+				throw new Error(`Only one "\${...}" is allowed in one attribute value`)
 			}
 
 			if (type !== undefined) {
@@ -220,18 +208,18 @@ class ElementParser {
 				}
 
 				let strings = value === VALUE_MARKER || type === PartType.MayAttr || type === PartType.Event ? null
-					: hasMarker ? value.split(VALUE_MARKER)
+					: markerIndex > -1 ? value.split(VALUE_MARKER)
 					: [value]
  
 				this.places.push({
 					type,
 					name,
 					strings,
-					width: strings ? strings.length - 1 : 1,
-					nodeIndex: this.nodeIndex
+					nodeIndex: this.nodeIndex,
+					placeable: markerIndex > -1
 				})
 
-				this.placeNodeIndexs.push(this.nodeIndex)
+				this.nodeIndexs.push(this.nodeIndex)
 
 				if (type === PartType.Attr) {
 					return name + '="" '
@@ -247,11 +235,15 @@ class ElementParser {
 }
 
 
+/**
+ * Clone the result fragment and link it with node indexes from the parsed result.
+ */
 //TreeWalker Benchmark: https://jsperf.com/treewalker-vs-nodeiterator
-function generateParseResult(sharedResult: SharedParseReulst): ParseResult {
+//Clone benchmark: https://jsperf.com/clonenode-vs-importnode
+function cloneParseResult(sharedResult: SharedParseReulst): ParseResult {
 	let {template, valuePlaces} = sharedResult
-	let fragment = document.importNode(template.content, true) as DocumentFragment
-	let nodeIndex = 0	//ignore root fragment
+	let fragment = template.content.cloneNode(true) as DocumentFragment
+	let nodeIndex = 0
 	let nodesInPlaces: Node[] = []
 
 	if (valuePlaces.length > 0) {

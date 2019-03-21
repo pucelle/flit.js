@@ -1,10 +1,12 @@
-import {Part, PartType} from "./types"
+import {MayStringValuePart, PartType} from "./types"
 
 
-export class PropertyPart implements Part {
+/**
+ * .property="${...}", which will be assigned by `element.property = value`.
+ */
+export class PropertyPart implements MayStringValuePart {
 
 	type: PartType = PartType.Property
-	width: number = 1
 	strings: string[] | null = null
 
 	private el: HTMLElement
@@ -20,7 +22,7 @@ export class PropertyPart implements Part {
 		(this.el as any)[this.name] = value
 	}
 
-	update(values: unknown) {
-		this.setValue(values)
+	update(value: unknown) {
+		this.setValue(value)
 	}
 }

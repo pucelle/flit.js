@@ -1,8 +1,11 @@
 import {Emitter} from './emitter'
-import {Template} from './template'
+import {TemplateResult} from './template-result'
 import {RootPart} from "./parts"
 
 
+/**
+ * The constructor type of component class.
+ */
 export type ComponentConstructor = {
     new(el: HTMLElement, options?: object): Component
 }
@@ -10,10 +13,20 @@ export type ComponentConstructor = {
 
 const componentMap: Map<string, ComponentConstructor> = new Map()
 
+/**
+ * Define a component with specified name and class, called by `define()`.
+ * @param name The component name, same with `define()`.
+ * @param Com The component class.
+ */
 export function defineComponent(name: string, Com: ComponentConstructor) {
 	componentMap.set(name, Com)
 }
 
+/**
+ * Get component constructor from name, then we can instantiate it.
+ * @param name The component name, same with `define()`.
+ * @param Com The component class.
+ */
 export function getComponentConstructor(name: string): ComponentConstructor | undefined {
 	return componentMap.get(name)
 }
@@ -23,7 +36,7 @@ const elementComponentMap: WeakMap<HTMLElement, Component> = new WeakMap()
 
 /**
  * Get component instance from root element.
- * @param el The element.
+ * @param el The element to get component instance at.
  */
 export function getComponentAt(el: HTMLElement): Component | undefined {
 	return elementComponentMap.get(el)
@@ -32,6 +45,10 @@ export function getComponentAt(el: HTMLElement): Component | undefined {
 
 const componentCreatedMap: WeakMap<HTMLElement, ((com: Component) => void)[]> = new WeakMap()
 
+/**
+ * Call callback after component instance created.
+ * @param el The element which will create instance at.
+ */
 export function onComponentCreatedAt(el: HTMLElement, callback: (com: Component) => void) {
 	let callbacks = componentCreatedMap.get(el)
 	if (!callbacks) {
@@ -51,6 +68,9 @@ function emitComponentCreated(el: HTMLElement, com: Component) {
 }
 
 
+/**
+ * The abstract component class, you can instantiate it from just create an element, or call `render()` if you want to config it.
+ */
 export abstract class Component<Events = any> extends Emitter<Events> {
 
 	el: HTMLElement
@@ -65,13 +85,21 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 		elementComponentMap.set(el, this)
 		emitComponentCreated(el, this)
 		
+		//TODO
 		Promise.resolve().then(() => {
 			this.update()
 		})
 	}
 
-	abstract render(): string | Template
+	/**
+	 * Child class should implement this method, normally returns html`...` or string.
+	 */
+	abstract render(): string | TemplateResult
 
+	/**
+	 * Call this to check if need to update the rendering and partial update if needed.
+	 * You should not overwrite this method until you know what you are doing.
+	 */
 	protected update() {
 		let value = this.render()
 
@@ -83,7 +111,14 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 		}
 	}
 
+	/**
+	 * Called when root element inserted into document.
+	 */
 	onConnected() {}
 
+	/**
+	 * Called when root element removed from document.
+	 * If you registered global listeners, don't forget to remove it here.
+	 */
 	onDisconnected() {}
 }

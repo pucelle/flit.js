@@ -21,6 +21,6 @@ export function defineBind(name: string, Com: BindConstructor) {
 	defineMap.set(name, Com)
 }
 
-export function getBind(name: string): BindConstructor | undefined {
+export function getBindedClass(name: string): BindConstructor | undefined {
 	return defineMap.get(name)
 }

@@ -1,12 +1,15 @@
-import {Part, PartType} from "./types"
-import {Bind, getBind} from '../binds'
+import {MayStringValuePart, PartType} from "./types"
+import {Bind, getBindedClass} from '../binds'
 import {Component} from '../component'
 
 
-export class BindPart implements Part {
+/**
+ * Transfer arguments to binds module.
+ * :class="${...}", :style="${...}", :props="${...}"
+ */
+export class BindPart implements MayStringValuePart {
 
 	type: PartType = PartType.Bind
-	width: number = 1
 	strings: string[] | null = null
 
 	private bind: Bind
@@ -16,12 +19,12 @@ export class BindPart implements Part {
 		let bindName = dotIndex > -1 ? name.slice(0, dotIndex) : name
 		let bindModifiers = dotIndex > -1 ? name.slice(dotIndex + 1).split('.') : null
 
-		let Cls = getBind(bindName)
-		if (!Cls) {
+		let BindedClass = getBindedClass(bindName)
+		if (!BindedClass) {
 			throw new Error(`"${bindName}" is not a binded class`)
 		}
 
-		this.bind = new Cls(el, value, bindModifiers, context)
+		this.bind = new BindedClass(el, value, bindModifiers, context)
 	}
 
 	update(value: unknown) {

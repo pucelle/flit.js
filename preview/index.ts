@@ -34,7 +34,7 @@ define('test-com', class TestCom extends Component{
 		  this.a.a.map(i => html`<div>a${i}b</div>`)
 		}
 		
-		${this.pie ? html`<lazy-element a="b"></lazy-element>` : html``}
+		${this.pie ? html`<lazy-element a="b"></lazy-element>` : ''}
 	  `
 	}
 })

@@ -1,11 +1,12 @@
-import {Part, PartType} from "./types"
+import {NodePart, PartType} from "./types"
 
 
-export class MayAttrPart implements Part {
+/**
+ * ?checked="${...}", remove the attribute if expression returns false.
+ */
+export class MayAttrPart implements NodePart {
 
 	type: PartType = PartType.MayAttr
-	width: number = 1
-	strings: string[] | null = null
 
 	private el: HTMLElement
 	private name: string

@@ -1,10 +1,12 @@
-import {Part, PartType} from "./types"
+import {MayStringValuePart, PartType} from "./types"
 
 
-export class AttrPart implements Part {
+/**
+ * attr="${...}"
+ */
+export class AttrPart implements MayStringValuePart {
 
 	type: PartType = PartType.Attr
-	width: number = 1
 	strings: string[] | null = null
 
 	private el: HTMLElement
@@ -21,7 +23,7 @@ export class AttrPart implements Part {
 		this.el.setAttribute(this.name, value as string)
 	}
 
-	update(values: unknown) {
-		this.setValue(values)
+	update(value: unknown) {
+		this.setValue(value)
 	}
 }

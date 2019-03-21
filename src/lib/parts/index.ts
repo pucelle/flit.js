@@ -1,1 +1,1 @@
-export {RootPart} from './root-child'
+export {RootPart} from './root'

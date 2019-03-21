@@ -1,4 +1,4 @@
-export {defineBind, getBind, Bind} from './define'
+export {defineBind, getBindedClass, Bind} from './define'
 import './class'
 import './style'
 import './model'
