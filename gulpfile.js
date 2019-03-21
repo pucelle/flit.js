@@ -12,7 +12,7 @@ function bundle(task) {
 	let browser = browserify({
 		basedir: '.',
 		debug: true,
-		entries: task.startsWith('test') ? glob.sync(__dirname + '/test/**/*.test.ts') : ['preview/index.ts']
+		entries: task.startsWith('test') ? glob.sync(__dirname + '/test/**/*.test.ts') : ['demo/index.ts']
 	})
 	browser.plugin(tsify)
 	browser.on('log', gutil.log)
@@ -34,7 +34,7 @@ function bundle(task) {
 		.pipe(gulp.dest(dir))
 }
 
-gulp.task('preview', () => bundle('preview'))
-gulp.task('preview-watch', () => bundle('preview-watch'))
+gulp.task('demo', () => bundle('demo'))
+gulp.task('demo-watch', () => bundle('demo-watch'))
 gulp.task('test', () => bundle('bundle'))
 gulp.task('test-watch', () => bundle('bundle-watch'))
