@@ -66,7 +66,7 @@ class ElementParser {
 
 	private type: TemplateType
 	private string: string
-	private nodeIndex = 1
+	private nodeIndex = 0
 	private places: Place[] = []
 	private nodeIndexs: number[] = []
 	
@@ -80,7 +80,7 @@ class ElementParser {
 	parse(): SharedParseReulst {
 		const tagRE = /<!--[\s\S]*?-->|<(\w+)([\s\S]*?)>|<\/\w+>/g
 
-		let codes = '<!---->'
+		let codes = ''
 		let lastIndex = 0
 		let isFirstTag = false
 		let svgWrapped = false
@@ -146,7 +146,7 @@ class ElementParser {
 
 		if (text.includes(VALUE_MARKER)) {
 			let splitted = text.split(VALUE_MARKER)
-			text = splitted.join('<!--->')
+			text = splitted.join('<!---->')
 
 			for (let i = 1; i < splitted.length; i++) {
 				this.places.push({

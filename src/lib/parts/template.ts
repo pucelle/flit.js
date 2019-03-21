@@ -14,9 +14,8 @@ export class Template {
 
 	private result: TemplateResult
 	private context: Component
-	private comment: Comment | null = null
 	private parts: NodePart[] = []
-	private notInPartsNodes: Node[] | null = null
+	private fixedNodes: Node[] | null = null
 
 	constructor(result: TemplateResult, context: Component) {
 		this.result = result
@@ -85,11 +84,7 @@ export class Template {
 		let values = this.result.values
 		let valueIndex = 0
 
-		this.comment = fragment.firstChild as Comment
-
 		if (nodesInPlaces) {
-			this.notInPartsNodes = [...fragment.childNodes].filter(node => node.nodeType !== 8)
-
 			for (let nodeIndex = 0; nodeIndex < nodesInPlaces.length; nodeIndex++) {
 				let node = nodesInPlaces[nodeIndex]
 				let place = places![nodeIndex]
@@ -132,6 +127,13 @@ export class Template {
 			}
 		}
 
+		this.fixedNodes = [...fragment.childNodes].filter(node => node.nodeType !== 8)
+		if (this.fixedNodes.length === 0) {
+			let comment = new Comment()
+			fragment.prepend(comment)
+			this.fixedNodes.push(comment)
+		}
+
 		return fragment
 	}
 	
@@ -149,11 +151,7 @@ export class Template {
 	}
 
 	remove() {
-		if (this.notInPartsNodes) {
-			this.notInPartsNodes.forEach(node => (node as ChildNode).remove())
-		}
-
-		this.comment!.remove()
+		this.fixedNodes!.forEach(node => (node as ChildNode).remove())
 
 		for (let part of this.parts) {
 			if (part instanceof ChildPart) {
@@ -163,7 +161,7 @@ export class Template {
 	}
 
 	replaceWithFragment(fragment: DocumentFragment) {
-		this.comment!.before(fragment)
+		(this.fixedNodes![0] as ChildNode).before(fragment)
 		this.remove()
 	}
 }
