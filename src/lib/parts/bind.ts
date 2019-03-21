@@ -1,5 +1,5 @@
 import {MayStringValuePart, PartType} from "./types"
-import {Bind, getBindedClass} from '../binds'
+import {Binding, getBindedClass} from '../bindings'
 import {Component} from '../component'
 
 
@@ -7,12 +7,12 @@ import {Component} from '../component'
  * Transfer arguments to binds module.
  * :class="${...}", :style="${...}", :props="${...}"
  */
-export class BindPart implements MayStringValuePart {
+export class BindingPart implements MayStringValuePart {
 
-	type: PartType = PartType.Bind
+	type: PartType = PartType.Binding
 	strings: string[] | null = null
 
-	private bind: Bind
+	private bind: Binding
 
 	constructor(el: HTMLElement, name: string, value: unknown, context: Component) {
 		let dotIndex = name.indexOf('.')

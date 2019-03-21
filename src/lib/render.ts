@@ -1,58 +1,45 @@
-import {getComponentConstructor} from './component'
+import {TemplateResult} from './template-result'
+import {Template} from './parts/template'
 
 
 /**
- * Render html codes to elements. Returns the element.
- * @param htmlCodes The html code piece for one element.
- * @param target If specified, the element will be appended to it after created.
+ * Render html codes or a html`...` template, returns the rendered result as an document fragment.
+ * @param codes The html code piece or html`...` template.
  */
-export function render(htmlCodes: string, target?: HTMLElement): DocumentFragment
+export function render(codes: string | TemplateResult): DocumentFragment
 
 /**
- * Render html codes to an element. Can specify options if it's an component. Returns the element.
- * @param htmlCodes The html code piece for one element.
- * @param options If you need to create comonent, it's the options to instantiate component
- * @param target If specified, the element will be appended to it after created.
+ * Render html codes or a html`...` template, returns the first node of the rendered result.
+ * @param codes The html code piece or html`...` template.
+ * @param target Append the render result to target lement.
  */
-export function render(htmlCodes: string, options: object, target?: HTMLElement): DocumentFragment
+export function render(codes: string | TemplateResult, target: HTMLElement): Node | null
 
-export function render(htmlCodes: string, options?: null | object | HTMLElement, target?: HTMLElement): DocumentFragment {
-	let template = document.createElement('template')
-	template.innerHTML = clearWhiteSpaces(htmlCodes)
 
-	if (options instanceof HTMLElement) {
-		target = options
-		options = null
+export function render(this: any, codes: string | TemplateResult, target?: HTMLElement): DocumentFragment | Node | null {
+	let fragment: DocumentFragment
+
+	if (codes instanceof TemplateResult) {
+		let template = new Template(codes, this)
+		fragment = template.parseMayTrack(false)
 	}
-
-	if (options) {
-		let fragment = template.content
-		if (fragment.children.length > 1) {
-			throw new Error('Only one element is allowed when "render" an component')
-		}
-
-		if (!fragment.firstElementChild) {
-			throw new Error('One element is required when "render" an component')
-		}
-
-		let tagName = fragment.firstElementChild.localName
-		let Com = getComponentConstructor(tagName)
-		
-		if (!Com) {
-			throw new Error(`"${tagName}" is not defined as an component`)
-		}
-
-		new Com(fragment.firstElementChild as HTMLElement, options)
+	else {
+		let template = document.createElement('template')
+		template.innerHTML = clearWhiteSpaces(codes)
+		fragment = template.content
 	}
 
 	if (target) {
-		target.append(template.content)
+		let firstNode = fragment.firstChild
+		target.append(fragment)
+		return firstNode
 	}
-
-	return template.content
+	else {
+		return fragment
+	}
 }
 
 
 function clearWhiteSpaces(htmlCodes: string): string {
-	return htmlCodes.trimLeft().replace(/>\s+/g, '>')
+	return htmlCodes.trim().replace(/>\s+/g, '>')
 }

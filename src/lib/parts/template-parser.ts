@@ -46,16 +46,30 @@ export function parse(type: TemplateType, strings: TemplateStringsArray): ParseR
 
 		return cloneParseResult(sharedResult)
 	}
-	else {
+	else if (type === 'css') {
+		let html = `<style>${strings[0].trim()}</style>`
+		let fragment = createTemplateFromHTML(html).content
+
 		return {
-			fragment: createTemplate(strings[0].trim()).content,
+			fragment,
+			nodesInPlaces: null,
+			places: null
+		}
+	}
+	else {
+		let text = strings[0].trim()
+		let fragment = document.createDocumentFragment()
+		fragment.append(document.createTextNode(text))
+
+		return {
+			fragment,
 			nodesInPlaces: null,
 			places: null
 		}
 	}
 }
 
-function createTemplate(html: string) {
+function createTemplateFromHTML(html: string) {
 	let template = document.createElement('template')
 	template.innerHTML = html
 	return template
@@ -125,7 +139,7 @@ class ElementParser {
 			codes += '</svg>'
 		}
 
-		let template = createTemplate(codes)
+		let template = createTemplateFromHTML(codes)
 		if (svgWrapped) {
 			let svg = template.content.firstElementChild!
 			template.content.append(...svg.childNodes)
@@ -199,7 +213,7 @@ class ElementParser {
 			}
 
 			if (markerIndex > -1 && value.slice(markerIndex + VALUE_MARKER.length).includes(VALUE_MARKER)) {
-				throw new Error(`Only one "\${...}" is allowed in one attribute value`)
+				throw new Error(`"${value}" is not allowed, at most one "\${...}" can be specified in each attribute value`)
 			}
 
 			if (type !== undefined) {

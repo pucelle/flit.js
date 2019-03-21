@@ -19,7 +19,10 @@ export class PropertyPart implements MayStringValuePart {
 	}
 
 	private setValue(value: unknown) {
-		(this.el as any)[this.name] = value
+		//required, set same value for `<input type="text">` may cause cursor position reset.
+		if ((this.el as any)[this.name] !== value) {
+			(this.el as any)[this.name] = value
+		}
 	}
 
 	update(value: unknown) {

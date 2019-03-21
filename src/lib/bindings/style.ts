@@ -1,4 +1,4 @@
-import {Bind, defineBind} from './define'
+import {Binding, defineBinding} from './define'
 
 
 /**
@@ -7,7 +7,7 @@ import {Bind, defineBind} from './define'
  * `:style.style-name="value"`
  * `:style.style-name.px="value"`
  */
-defineBind('style', class StyleBind implements Bind {
+defineBinding('style', class StyleBinding implements Binding {
 
 	private el: HTMLElement
 	private modifiers: string[] | null

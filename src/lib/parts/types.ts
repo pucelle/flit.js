@@ -4,7 +4,7 @@ export enum PartType {
 	Attr,
 	MayAttr,
 	Property,
-	Bind,
+	Binding,
 	Event
 }
 

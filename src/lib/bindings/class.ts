@@ -1,4 +1,4 @@
-import {Bind, defineBind} from './define'
+import {Binding, defineBinding} from './define'
 
 
 /**
@@ -7,7 +7,7 @@ import {Bind, defineBind} from './define'
  * `:class="{class1: value1, class2: value2}"`
  * `:class.class-name="value"`
  */
-defineBind('class', class ClassNameBind implements Bind {
+defineBinding('class', class ClassNameBinding implements Binding {
 
 	private el: HTMLElement
 	private modifiers: string[] | null
@@ -16,7 +16,7 @@ defineBind('class', class ClassNameBind implements Bind {
 	constructor(el: HTMLElement, value: unknown, modifiers: string[] | null) {
 		if (modifiers) {
 			if (modifiers.length > 1) {
-				throw new Error(`Modifier "${modifiers.join('.')}" is not allowed, only one modifier can be specified for ":class"`)
+				throw new Error(`Modifier "${modifiers.join('.')}" is not allowed, at most one modifier can be specified for ":class"`)
 			}
 
 			if (!/^[\w-]+$/.test(modifiers[0])) {

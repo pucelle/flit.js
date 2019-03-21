@@ -3,7 +3,7 @@ import {NodePart, PartType} from "./types"
 
 
 /**
- * <component-name @custom-event="${this.onAny}">
+ * <component-name @com-event="${this.onComEvent}" @@click="${this.onClick}">
  * <div @click="${this.onClick}">
  */
 export class EventPart implements NodePart {
@@ -15,6 +15,7 @@ export class EventPart implements NodePart {
 	private handler!: Function
 	private context: Component
 	private isComEvent: boolean
+	private isUpdated: boolean = false
 
 	constructor(el: HTMLElement, name: string, handler: Function, context: Component) {
 		this.el = el
@@ -35,7 +36,7 @@ export class EventPart implements NodePart {
 				}
 				com.on(this.name, newHandler, this.context)
 			}
-			else if (!oldHandler) {
+			else if (!this.isUpdated) {
 				onComponentCreatedAt(this.el, this.setHandlerLater.bind(this))
 			}
 		}
@@ -57,5 +58,6 @@ export class EventPart implements NodePart {
 
 	update(handler: Function) {
 		this.setHandler(handler)
+		this.isUpdated = true
 	}
 }

@@ -2,3 +2,5 @@ node_modules
 out
 demo
 coverage
+test/*.js
+test/*.js.map

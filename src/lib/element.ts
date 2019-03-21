@@ -9,10 +9,10 @@ import {ComponentConstructor, defineComponent, getComponentAt} from './component
  */
 export function define(name: string, Com: ComponentConstructor) {
 	if (!name.includes('-')) {
-		console.warn('Custom element should contains "-"')
+		throw new Error('Name of custom element must contains "-"')
 	}
 
-	customElements.define(name, class CustomElement extends HTMLElement {
+	customElements.define(name, class CustomLitElement extends HTMLElement {
 		connectedCallback() {
 			let com = getComponentAt(this)
 			if (!com) {

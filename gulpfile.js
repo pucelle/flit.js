@@ -25,7 +25,7 @@ function bundle(task) {
 		})
 	}
 
-	let dir = task.replace('-watch')
+	let dir = task.replace('-watch', '')
 
 	return browser
 		.bundle()
@@ -36,5 +36,5 @@ function bundle(task) {
 
 gulp.task('demo', () => bundle('demo'))
 gulp.task('demo-watch', () => bundle('demo-watch'))
-gulp.task('test', () => bundle('bundle'))
-gulp.task('test-watch', () => bundle('bundle-watch'))
+gulp.task('test', () => bundle('test'))
+gulp.task('test-watch', () => bundle('test-watch'))

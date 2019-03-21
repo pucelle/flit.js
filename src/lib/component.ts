@@ -42,6 +42,27 @@ export function getComponentAt(el: HTMLElement): Component | undefined {
 	return elementComponentMap.get(el)
 }
 
+/**
+ * Get component instance from root element asynchronously.
+ * @param el The element to get component instance at.
+ */
+export function getComponentAtAsync(el: HTMLElement): Promise<Component | undefined> {
+	if (el.localName.includes('-')) {
+		let com = elementComponentMap.get(el)
+		if (com) {
+			return Promise.resolve(com)
+		}
+		else {
+			return new Promise(resolve => {
+				onComponentCreatedAt(el, resolve)
+			})
+		}
+	}
+	else {
+		return Promise.resolve(undefined)
+	}
+}
+
 
 const componentCreatedMap: WeakMap<HTMLElement, ((com: Component) => void)[]> = new WeakMap()
 
@@ -74,15 +95,16 @@ function emitComponentCreated(el: HTMLElement, com: Component) {
 export abstract class Component<Events = any> extends Emitter<Events> {
 
 	el: HTMLElement
+	refs: {[key: string]: Element} = {}
 	private _node: RootPart | null = null
 
-	constructor(el: HTMLElement, options?: object) {
+	constructor(el: HTMLElement) {
 		super()
 
 		this.el = el
-		Object.assign(this, options)
-		
 		elementComponentMap.set(el, this)
+
+		//may assign properties from `:props`, or bind component events from `@com-event`
 		emitComponentCreated(el, this)
 		
 		//TODO
@@ -97,7 +119,7 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 	abstract render(): string | TemplateResult
 
 	/**
-	 * Call this to check if need to update the rendering and partial update if needed.
+	 * Call this to partially or fully update if needed.
 	 * You should not overwrite this method until you know what you are doing.
 	 */
 	protected update() {

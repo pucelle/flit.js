@@ -77,9 +77,10 @@ export class Template {
 	}
 
 	/**
-	 * Parse template result and returns a fragment
+	 * Parse template result and returns a fragment.
+	 * If willTrack and there is no fixed nodes, append a comment node in the front
 	 */
-	parse(): DocumentFragment {
+	parseMayTrack(willTrack: boolean): DocumentFragment {
 		let {fragment, nodesInPlaces, places} = parse(this.result.type, this.result.strings)
 		let values = this.result.values
 		let valueIndex = 0
@@ -128,7 +129,7 @@ export class Template {
 		}
 
 		this.fixedNodes = [...fragment.childNodes].filter(node => node.nodeType !== 8)
-		if (this.fixedNodes.length === 0) {
+		if (this.fixedNodes.length === 0 && willTrack) {
 			let comment = new Comment()
 			fragment.prepend(comment)
 			this.fixedNodes.push(comment)

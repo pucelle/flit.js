@@ -20,12 +20,11 @@ export class ChildPart implements NodePart {
 	}
 
 	update(value: unknown) {
-		if (value instanceof TemplateResult) {
-			value = [value]
-		}
-
 		if (Array.isArray(value)) {
 			this.becomeTemplateResults(value)
+		}
+		else if (value instanceof TemplateResult) {
+			value = [value]	
 		}
 
 		if (this.templates) {
@@ -75,7 +74,7 @@ export class ChildPart implements NodePart {
 				}
 				else {
 					let newTemplate = new Template(result, this.context)
-					template.replaceWithFragment(newTemplate.parse())
+					template.replaceWithFragment(newTemplate.parseMayTrack(true))
 					templates[i] = newTemplate
 				}
 			}
@@ -91,7 +90,7 @@ export class ChildPart implements NodePart {
 		else if (templates.length < results.length) {
 			for (let i = templates.length; i < results.length; i++) {
 				let template = new Template(results[i], this.context)
-				this.renderFragment(template.parse())
+				this.renderFragment(template.parseMayTrack(true))
 				this.templates!.push(template)
 			}
 		}
