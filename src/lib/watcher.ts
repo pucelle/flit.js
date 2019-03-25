@@ -2,21 +2,83 @@ import {startUpdating, endUpdating, clearDependency} from './observer'
 import {enqueueWatcherUpdate} from './queue'
 
 
-export type WatchFn = () => unknown
-export type Callback = (...values: unknown[]) => void
+export type WatchFn = (value: any) => unknown
+export type WatcherCallback = (...args: any[]) => void
 export type WatcherDisconnectFn = () => void
 
 
-/** Watch return values of functions and trigger callback with these values as arguments. */
-export function watch(fn: WatchFn, callback: Callback): WatcherDisconnectFn
-export function watch(fn_1: WatchFn, fn_2: WatchFn, callback: Callback): WatcherDisconnectFn
-export function watch(fn_1: WatchFn, fn_2: WatchFn, fn_3: WatchFn, callback: Callback): WatcherDisconnectFn
-export function watch(fn_1: WatchFn, fn_2: WatchFn, fn_3: WatchFn, fn_4: WatchFn, callback: Callback): WatcherDisconnectFn
-export function watch(fn_1: WatchFn, fn_2: WatchFn, fn_3: WatchFn, fn_4: WatchFn, fn_5: WatchFn, callback: Callback): WatcherDisconnectFn
+/** Watch return value of function and trigger callback with this value as argument. */
+export function watch<FN extends WatchFn>(fn: FN, callback: (value: ReturnType<FN>) => void): WatcherDisconnectFn
 
-export function watch(...fnsAndCallback: Function[]): () => void {
+/** Watch return values of functions and trigger callback with these values as arguments. */
+export function watch<FN1 extends WatchFn, FN2 extends WatchFn>(
+	fn1: FN1,
+	fn2: FN2,
+	callback: (value1: ReturnType<FN1>, value2: ReturnType<FN2>) => void
+): WatcherDisconnectFn
+
+/** Watch return values of functions and trigger callback with these values as arguments. */
+export function watch<FN1 extends WatchFn, FN2 extends WatchFn, FN3 extends WatchFn>(
+	fn1: FN1,
+	fn2: FN2,
+	fn3: FN3,
+	callback: (value1: ReturnType<FN1>, value2: ReturnType<FN2>, value3: ReturnType<FN3>) => void
+): WatcherDisconnectFn
+
+export function watch(...fnsAndCallback: Function[]): WatcherDisconnectFn {
 	let callback = fnsAndCallback.pop()
-	let watcher = new Watcher(fnsAndCallback, callback as Callback)
+	let watcher = new Watcher(fnsAndCallback, callback as WatcherCallback)
+	return watcher.disconnect.bind(watcher)
+}
+
+
+/** Watch return value of function and trigger callback with this value as argument. Run callback for only once. */
+export function watchOnce<FN extends WatchFn>(fn: FN, callback: (value: ReturnType<FN>) => void): WatcherDisconnectFn
+
+/** Watch return values of functions and trigger callback with these values as arguments. Run callback for only once. */
+export function watchOnce<FN1 extends WatchFn, FN2 extends WatchFn>(
+	fn1: FN1,
+	fn2: FN2,
+	callback: (value1: ReturnType<FN1>, value2: ReturnType<FN2>) => void
+): WatcherDisconnectFn
+
+/** Watch return values of functions and trigger callback with these values as arguments. Run callback for only once. */
+export function watchOnce<FN1 extends WatchFn, FN2 extends WatchFn, FN3 extends WatchFn>(
+	fn1: FN1,
+	fn2: FN2,
+	fn3: FN3,
+	callback: (value1: ReturnType<FN1>, value2: ReturnType<FN2>, value3: ReturnType<FN3>) => void
+): WatcherDisconnectFn
+
+export function watchOnce(...fnsAndCallback: Function[]): WatcherDisconnectFn {
+	let callback = fnsAndCallback.pop()!
+
+	let wrappedCallback = (values: any[]) => {
+		callback(...values)
+		watcher.disconnect()
+	}
+
+	let watcher = new Watcher(fnsAndCallback, wrappedCallback as WatcherCallback)
+	return watcher.disconnect.bind(watcher)
+}
+
+
+/** Watch returned values of function and trigger callback if it becomes true. */
+export function watchUntil(fn: () => any, callback: () => void): WatcherDisconnectFn {
+	let wrappedCallback = ([value]: any[]) => {
+		if (value) {
+			callback()
+			watcher.disconnect()
+		}
+	}
+
+	let value = fn()
+	if (value) {
+		callback()
+		return () => {}
+	}
+
+	let watcher = new Watcher([fn], wrappedCallback)
 	return watcher.disconnect.bind(watcher)
 }
 
@@ -25,11 +87,11 @@ export function watch(...fnsAndCallback: Function[]): () => void {
 export class Watcher {
 
 	private fns: Function[]
-	private callback: Callback
+	private callback: WatcherCallback
+	private values: unknown[]
+	private connected: boolean = true
 
-	values: unknown[]
-
-	constructor(fns: Function[], callback: Callback) {
+	constructor(fns: Function[], callback: WatcherCallback) {
 		this.fns = fns
 		this.callback = callback
 
@@ -42,7 +104,7 @@ export class Watcher {
 		let values: unknown[] = []
 
 		for (let fn of this.fns) {
-			this.values.push(fn())
+			values.push(fn())
 		}
 
 		return values
@@ -70,6 +132,10 @@ export class Watcher {
 
 	/** Keep consitant with Component */
 	__updateImmediately() {
+		if (!this.connected) {
+			return
+		}
+
 		startUpdating(this)
 		let newValues = this.run()
 		endUpdating()
@@ -95,7 +161,22 @@ export class Watcher {
 	 * because we added `object -> Component | Watcher` map into dependencies.
 	 * But if it's referred object is no longer in use any more, no need to disconnect it.
 	 */
+
+	// One question: Will the update be triggered after disconnected?
+	//   1. Data changed, cause watcher update been enqueued, and will be updated in next micro task.
+	//   2. later some element was removed in same stack, related watcher was disconnected in next micro task.
+	//   3. Update and then disconnect.
+	//
+	// So this will not happen.
+	// But we still need to avoid it by adding a `connected` property, because once update after disconnect, the watcher will have new dependencies and be reconnected. 
 	disconnect() {
 		clearDependency(this)
+		this.connected = false
+	}
+
+	/** If it's related commponent restore to be connected, connect and activate it's watchers. */
+	connect() {
+		this.connected = true
+		this.update()
 	}
 }

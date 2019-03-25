@@ -4,6 +4,7 @@ import {Watcher} from "./watcher"
 
 let componentSet: Set<Component> = new Set()
 let watchSet: Set<Watcher> = new Set()
+let afterRenderCallbacks: (() => void)[] = []
 
 let updatingWatchers: Watcher[]
 let updateEnqueued = false
@@ -32,6 +33,22 @@ export function enqueueWatcherUpdate(watcher: Watcher) {
 	if (!updateEnqueued) {
 		enqueueUpdate()
 	}
+}
+
+/** Call callback after next rendered all the components in next micro task. */
+export function onRendered(callback: () => void) {
+	afterRenderCallbacks.push(callback)
+	
+	if (!updateEnqueued) {
+		enqueueUpdate()
+	}
+}
+
+/** Returns a promise which will be resolved after rendered all the components in next micro task. */
+export function renderComplete(): Promise<void> {
+	return new Promise(resolve => {
+		onRendered(resolve)
+	})
 }
 
 function enqueueUpdate() {
@@ -86,6 +103,10 @@ function update() {
 		}
 	}
 
+	for (let callback of afterRenderCallbacks) {
+		callback()
+	}
+
 	/**
 	 * If it doest enqueued some watcher or component updating.
 	 * They will be removed here.
@@ -93,6 +114,7 @@ function update() {
 	// Benchmark: https://jsperf.com/map-clear-vs-new-map, It moves the clear time to GC.
 	watchSet = new Set()
 	componentSet = new Set()
+	afterRenderCallbacks = []
 
 	updateEnqueued = false
 	updating = false
