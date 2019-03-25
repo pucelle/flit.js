@@ -60,7 +60,7 @@
 // 				this.eventName = isLazy ? 'change' : 'input'
 // 			}
 
-// 			//div@contendeditable cant trigger change event but not input event
+// 			// div@contendeditable cant trigger change event but not input event
 // 			else {
 // 				this.property = 'innerHTML'
 // 				this.eventName = isLazy ? 'blur' : 'input'
@@ -81,7 +81,7 @@
 // 			}
 // 		}
 // 		else {
-// 			//TO DO
+// 			// TO DO
 // 			this.el.addEventListener(this.eventName, this.onInputOrChange.bind(this))
 // 		}
 // 	}
@@ -104,7 +104,7 @@
 // 		queue.nextTick(() => {
 // 			this.locked = false
 
-// 			//write value back to input
+// 			// Write value back to input
 // 			if (e.type === 'change') {
 // 				this.update(this.watcher.value)
 // 			}

@@ -1,6 +1,9 @@
 import {Binding, defineBinding} from './define'
 
 
+const ALLOWED_MODIFIERS = ['px', 'percent', 'url']
+
+
 /**
  * `:style="'style1: value1; style2: value2'"`
  * `:style="{style1: value1, style2: value2}"`
@@ -12,20 +15,19 @@ defineBinding('style', class StyleBinding implements Binding {
 	private el: HTMLElement
 	private modifiers: string[] | null
 	private value: unknown = null
-	private allowedModifiers = ['px', 'percent', 'url']
 
 	constructor(el: HTMLElement, value: unknown, modifiers: string[] | null) {
 		if (modifiers) {
 			if (modifiers.length > 2) {
-				throw new Error(`Modifier "${modifiers.join('.')}" is not allowed, at most two modifiers can be specified for ":style"`)
+				throw new Error(`Modifier "${modifiers.join('.')}" is not allowed, at most two modifiers (as style name property value modifier) can be specified for ":style"`)
 			}
 
-			if (modifiers.length === 2 && !this.allowedModifiers.includes(modifiers[1])) {
-				throw new Error(`Modifier "${modifiers[1]}" is not allowed, it must be one of ${this.allowedModifiers.map(m => `"${m}"`).join(', ')}`)
+			if (modifiers.length === 2 && !ALLOWED_MODIFIERS.includes(modifiers[1])) {
+				throw new Error(`Modifier "${modifiers[1]}" is not allowed, it must be one of ${ALLOWED_MODIFIERS.join(', ')}`)
 			}
 
-			if (!/^[\w-]+$/.test(modifiers[0]) || this.allowedModifiers.includes(modifiers[0])) {
-				throw new Error(`Modifier "${modifiers[0]}" is not a valid dash case style name`)
+			if (!/^[\w-]+$/.test(modifiers[0]) || ALLOWED_MODIFIERS.includes(modifiers[0])) {
+				throw new Error(`Modifier "${modifiers[0]}" is not a valid style property`)
 			}
 		}
 

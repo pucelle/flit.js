@@ -133,7 +133,7 @@
 // 	},
 
 
-// 	//makesure transition proeprties have been fully updated
+// 	// Makesure transition proeprties have been fully updated
 // 	enterAfterUpdated (fn) {
 // 		queues.pushInnerTask(() => {
 // 			this.enter(fn)
@@ -313,7 +313,7 @@
 // 		dom.setCSS(el, 'transition', 'none')
 // 		dom.addClass(el, enterClass, enterClass + '-from')
 
-// 		//requestAnimationFrame and then create a micro task to make sure relayout completed
+// 		// requestAnimationFrame and then create a micro task to make sure relayout completed
 // 		requestAnimationFrame(() => {
 // 			queues.pushInnerTask(() => {
 // 				if (canceled) {
@@ -532,8 +532,8 @@
 
 // ff.assign(dom, {
 
-// 	//capture current Frame, and later Frame, play transition
-// 	//should behind other "FF.nextTick" which may change style
+// 	// Capture current Frame, and later Frame, play transition
+// 	// Should behind other "FF.nextTick" which may change style
 // 	animateToNextFrame (el, names, duration = dom.defaultAnimationDuration, easing = dom.defaultAnimationEasing) {
 // 		if (!el.animate) {
 // 			return Promise.resolve()

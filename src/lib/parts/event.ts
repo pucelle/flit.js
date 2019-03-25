@@ -1,5 +1,6 @@
-import {Component, getComponentAt, onComponentCreatedAt} from '../component'
-import {NodePart, PartType} from "./types"
+import {NodePart, PartType, Context} from "./types"
+import {Component, getComponentAtElement, onComponentCreatedAt} from '../component'
+import {on, off} from "../dom-event"
 
 
 /**
@@ -13,11 +14,11 @@ export class EventPart implements NodePart {
 	private el: HTMLElement
 	private name: string
 	private handler!: Function
-	private context: Component
+	private context: Context
 	private isComEvent: boolean
 	private isUpdated: boolean = false
 
-	constructor(el: HTMLElement, name: string, handler: Function, context: Component) {
+	constructor(el: HTMLElement, name: string, handler: Function, context: Context) {
 		this.el = el
 		this.name = name[0] === '@' ? name.slice(1) : name
 		this.context = context
@@ -29,7 +30,7 @@ export class EventPart implements NodePart {
 		let oldHandler = this.handler
 
 		if (this.isComEvent) {
-			let com = getComponentAt(this.el)
+			let com = getComponentAtElement(this.el)
 			if (com) {
 				if (oldHandler) {
 					com.off(this.name, oldHandler, this.context)
@@ -37,26 +38,29 @@ export class EventPart implements NodePart {
 				com.on(this.name, newHandler, this.context)
 			}
 			else if (!this.isUpdated) {
-				onComponentCreatedAt(this.el, this.setHandlerLater.bind(this))
+				onComponentCreatedAt(this.el, this.setComHandlerLater.bind(this))
 			}
 		}
 		else {
-			//TO DO
-			// if (oldHandler) {
-			// 	this.el.removeEventListener(this.name, oldHandler as Function)
-			// }
+			if (oldHandler) {
+				off(this.el, this.name, oldHandler as (e: Event) => void, this.context)
+			}
 
-			this.el.addEventListener(this.name, newHandler.bind(this.context))
+			on(this.el, this.name, newHandler as (e: Event) => void, this.context)
 		}
 
 		this.handler = newHandler
 	}
 
-	setHandlerLater(com: Component) {
+	setComHandlerLater(com: Component) {
 		com.on(this.name, this.handler, com)
 	}
 
 	update(handler: Function) {
+		if (typeof handler !== 'function') {
+			throw new Error(`Failed to register listener at "<${this.el.localName} @${this.name}='${handler}'">, the listener is not a function`)
+		}
+
 		this.setHandler(handler)
 		this.isUpdated = true
 	}

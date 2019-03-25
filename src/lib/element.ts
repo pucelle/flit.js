@@ -1,4 +1,4 @@
-import {ComponentConstructor, defineComponent, getComponentAt} from './component'
+import {ComponentConstructor, defineComponent, getComponentAtElement} from './component'
 
 
 /**
@@ -9,22 +9,23 @@ import {ComponentConstructor, defineComponent, getComponentAt} from './component
  */
 export function define(name: string, Com: ComponentConstructor) {
 	if (!name.includes('-')) {
-		throw new Error('Name of custom element must contains "-"')
+		throw new Error(`"${name}" can't be defined as custom element, it must contain "-"`)
 	}
 
 	customElements.define(name, class CustomLitElement extends HTMLElement {
 		connectedCallback() {
-			let com = getComponentAt(this)
+			let com = getComponentAtElement(this)
 			if (!com) {
 				com = new Com(this)
+				com.__emitFirstConnected()
 			}
-			com.onConnected()
+			com.__emitConnected()
 		}
 
 		disconnectedCallback() {
-			let com = getComponentAt(this)
+			let com = getComponentAtElement(this)
 			if (com) {
-				com.onDisconnected()
+				com.__emitDisconnected()
 			}
 		}
 	})

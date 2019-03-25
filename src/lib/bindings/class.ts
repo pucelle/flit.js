@@ -16,7 +16,7 @@ defineBinding('class', class ClassNameBinding implements Binding {
 	constructor(el: HTMLElement, value: unknown, modifiers: string[] | null) {
 		if (modifiers) {
 			if (modifiers.length > 1) {
-				throw new Error(`Modifier "${modifiers.join('.')}" is not allowed, at most one modifier can be specified for ":class"`)
+				throw new Error(`Modifier "${modifiers.join('.')}" is not allowed, at most one modifier as class name can be specified for ":class"`)
 			}
 
 			if (!/^[\w-]+$/.test(modifiers[0])) {

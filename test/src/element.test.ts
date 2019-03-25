@@ -1,5 +1,4 @@
 import * as flit from '../../src'
-import * as helper from './helper'
 const assert = chai.assert
 
 
@@ -14,8 +13,7 @@ describe('Test define', () => {
 			}
 		})
 
-		await helper.sleep(0)
-		assert.ok(flit.getComponentAt(el))
+		assert.ok(await flit.Component.getAsync(el))
 		assert.equal(el.innerHTML, 'text')
 		el.remove()
 	})
@@ -24,8 +22,7 @@ describe('Test define', () => {
 		let el = document.createElement('test-element')
 		document.body.append(el)
 
-		await helper.sleep(0)
-		assert.ok(flit.getComponentAt(el))
+		assert.ok(await flit.Component.getAsync(el))
 		assert.equal(el.innerHTML, 'text')
 		el.remove()
 	})

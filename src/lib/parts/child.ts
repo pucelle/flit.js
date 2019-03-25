@@ -1,6 +1,5 @@
-import {TemplateResult, text} from '../template-result'
-import {Component} from '../component'
-import {NodePart, PartType} from './types'
+import {TemplateResult, text} from './template-result'
+import {NodePart, PartType, Context} from './types'
 import {Template} from './template'
 
 
@@ -9,11 +8,11 @@ export class ChildPart implements NodePart {
 	type: PartType = PartType.Child
 
 	private comment: Comment
-	private context: Component
+	private context: Context
 	private templates: Template[] | null = null
 	private textNode: Text | null = null
 
-	constructor(comment: Comment, value: unknown, context: Component) {
+	constructor(comment: Comment, value: unknown, context: Context) {
 		this.context = context
 		this.comment = comment
 		this.update(value)

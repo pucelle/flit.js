@@ -1,4 +1,4 @@
-import {TemplateType} from '../template-result'
+import {TemplateType} from './template-result'
 import {PartType} from "./types"
 
 
@@ -14,7 +14,7 @@ export interface Place {
 	readonly strings: string[] | null
 	readonly nodeIndex: number
 	
-	//some binds like `:ref="name"`, it needs to be initialized but take no place
+	// Some binds like `:ref="name"`, it needs to be initialized but take no place
 	readonly placeable: boolean
 }
 
@@ -90,7 +90,7 @@ class ElementParser {
 		this.string = string
 	}
 
-	//Benchmark: https://jsperf.com/regexp-exec-match-replace-speed
+	// Benchmark: https://jsperf.com/regexp-exec-match-replace-speed
 	parse(): SharedParseReulst {
 		const tagRE = /<!--[\s\S]*?-->|<(\w+)([\s\S]*?)>|<\/\w+>/g
 
@@ -105,7 +105,7 @@ class ElementParser {
 			codes += this.parseText(this.string.slice(lastIndex, tagRE.lastIndex - code.length))
 			lastIndex = tagRE.lastIndex
 			
-			//ignore existed comment nodes
+			// Ignore existed comment nodes
 			if (code[1] === '!') {
 				continue
 			}
@@ -192,7 +192,7 @@ class ElementParser {
 					break
 
 				case ':':
-					type = PartType.Bind
+					type = PartType.Binding
 					break
 
 				case '?':
@@ -252,8 +252,8 @@ class ElementParser {
 /**
  * Clone the result fragment and link it with node indexes from the parsed result.
  */
-//TreeWalker Benchmark: https://jsperf.com/treewalker-vs-nodeiterator
-//Clone benchmark: https://jsperf.com/clonenode-vs-importnode
+// TreeWalker Benchmark: https://jsperf.com/treewalker-vs-nodeiterator
+// Clone benchmark: https://jsperf.com/clonenode-vs-importnode
 function cloneParseResult(sharedResult: SharedParseReulst): ParseResult {
 	let {template, valuePlaces} = sharedResult
 	let fragment = template.content.cloneNode(true) as DocumentFragment

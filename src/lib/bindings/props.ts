@@ -1,5 +1,5 @@
 import {Binding, defineBinding} from './define'
-import {Component, getComponentAt, onComponentCreatedAt} from '../component'
+import {Component, getComponentAtElement, onComponentCreatedAt} from '../component'
 
 
 /**
@@ -19,11 +19,11 @@ defineBinding('props', class PropsBinding implements Binding {
 
 		if (modifiers) {
 			if (modifiers.length > 1) {
-				throw new Error(`Modifier "${modifiers.join('.')}" is not allowed, at most one modifier can be specified for ":props"`)
+				throw new Error(`Modifier "${modifiers.join('.')}" is not allowed, at most one modifier as property name can be specified for ":props"`)
 			}
 
 			if (!/^[\w]+$/.test(modifiers[0])) {
-				throw new Error(`Modifier "${modifiers[0]}" is not a valid props name`)
+				throw new Error(`Modifier "${modifiers[0]}" is not a valid property name`)
 			}
 		}
 
@@ -33,7 +33,7 @@ defineBinding('props', class PropsBinding implements Binding {
 	}
 
 	update(value: unknown) {
-		let com = getComponentAt(this.el)
+		let com = getComponentAtElement(this.el)
 		if (com) {
 			this.setProps(com, value)
 		}

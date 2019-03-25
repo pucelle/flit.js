@@ -1,6 +1,5 @@
-import {MayStringValuePart, PartType} from "./types"
+import {MayStringValuePart, PartType, Context} from "./types"
 import {Binding, getBindedClass} from '../bindings'
-import {Component} from '../component'
 
 
 /**
@@ -14,17 +13,18 @@ export class BindingPart implements MayStringValuePart {
 
 	private bind: Binding
 
-	constructor(el: HTMLElement, name: string, value: unknown, context: Component) {
+	constructor(el: HTMLElement, name: string, value: unknown, context: Context) {
 		let dotIndex = name.indexOf('.')
-		let bindName = dotIndex > -1 ? name.slice(0, dotIndex) : name
-		let bindModifiers = dotIndex > -1 ? name.slice(dotIndex + 1).split('.') : null
+		let bindingName = dotIndex > -1 ? name.slice(0, dotIndex) : name
+		let bindingModifiers = dotIndex > -1 ? name.slice(dotIndex + 1).split('.') : null
 
-		let BindedClass = getBindedClass(bindName)
-		if (!BindedClass) {
-			throw new Error(`"${bindName}" is not a binded class`)
+		let BindedClass = getBindedClass(bindingName)
+		if (BindedClass) {
+			this.bind = new BindedClass(el, value, bindingModifiers, context as any)
 		}
-
-		this.bind = new BindedClass(el, value, bindModifiers, context)
+		else {
+			throw new Error(`":${bindingName}" is not defined as a binding class`)
+		}
 	}
 
 	update(value: unknown) {

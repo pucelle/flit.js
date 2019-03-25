@@ -1,113 +1,101 @@
-
-// //the watcher used to watch a expression and we can 'get' or 'set' a property on a vm
-// //options include {vm, exp, getter, handler, scope}
-// function Watcher(options) {
-// 	let isDir = !!options.scope
-
-// 	ff.assign(this, options)
-
-// 	this.id = Watcher.seed++
-// 	this.deps = {}
-
-// 	if (isDir) {
-// 		let {name} = this.scope
-
-// 		//see comments on 'if'
-// 		this.updateEvenVMInactive = name === 'transition'
-// 		this.updateForceWhenDigest = name === 'bind' || name === 'model'
-// 	}
-// 	else {
-// 		this.scope = this.vm[proxySymbol]
-// 		this.updateEvenVMInactive = false
-// 		this.updateForceWhenDigest = false
-
-// 		if (!this.getter) {
-// 			this.getter = lexer.compileReader(this.exp)
-// 		}
-// 	}
-
-// 	this.value = this.get()
-// }
-
-// Watcher.seed = 1
-// Watcher.running = null
-
-// Watcher.prototype = {
-
-// 	get () {
-// 		let oldDeps = this.deps
-// 		let newDeps = this.deps = {}
-// 		let value
-
-// 		Watcher.running = this
-
-// 		try {
-// 			value = this.getter.call(this.vm._readScope[proxySymbol])
-// 		}
-// 		catch (err) {
-// 			console.warn(`Failed to run "${this.exp}" - `, err.stack)
-// 			this.deps = oldDeps
-// 			return this.value
-// 		}
-
-// 		Watcher.running = null
-
-// 		for (let key in oldDeps) {
-// 			let oldObserver = oldDeps[key]
-// 			if (!newDeps[key]) {
-// 				let name = key.slice(key.indexOf('_') + 1)
-// 				oldObserver.removeWatcher(name, this)
-// 			}
-// 		}
-
-// 		return value
-// 	},
+import {startUpdating, endUpdating, clearDependency} from './observer'
+import {enqueueWatcherUpdate} from './queue'
 
 
-// 	set (value) {
-// 		let {vm} = this
-// 		let setter = lexer.compileWritter(this.exp)
-
-// 		setter.call(vm[proxySymbol], value)
-// 	},
+export type WatchFn = () => unknown
+export type Callback = (...values: unknown[]) => void
+export type WatcherDisconnectFn = () => void
 
 
-// 	update () {
-// 		queues.addWatcher(this)
-// 	},
+/** Watch return values of functions and trigger callback with these values as arguments. */
+export function watch(fn: WatchFn, callback: Callback): WatcherDisconnectFn
+export function watch(fn_1: WatchFn, fn_2: WatchFn, callback: Callback): WatcherDisconnectFn
+export function watch(fn_1: WatchFn, fn_2: WatchFn, fn_3: WatchFn, callback: Callback): WatcherDisconnectFn
+export function watch(fn_1: WatchFn, fn_2: WatchFn, fn_3: WatchFn, fn_4: WatchFn, callback: Callback): WatcherDisconnectFn
+export function watch(fn_1: WatchFn, fn_2: WatchFn, fn_3: WatchFn, fn_4: WatchFn, fn_5: WatchFn, callback: Callback): WatcherDisconnectFn
+
+export function watch(...fnsAndCallback: Function[]): () => void {
+	let callback = fnsAndCallback.pop()
+	let watcher = new Watcher(fnsAndCallback, callback as Callback)
+	return watcher.disconnect.bind(watcher)
+}
 
 
-// 	//returns needs to update and truly updated
-// 	updateNow (forceDigest) {
-// 		let oldValue = this.value
-// 		let newValue = this.get()
+/** You need to know that the watch doesn't ensure the datas are really changed when calling callback. */
+export class Watcher {
 
-// 		if (newValue !== oldValue || forceDigest && this.updateForceWhenDigest) {
-// 			this.value = newValue
-// 			this.handler.call(this.scope, newValue, oldValue)
-// 		}
-// 	},
+	private fns: Function[]
+	private callback: Callback
 
+	values: unknown[]
 
-// 	addDep (name, observer) {
-// 		let key = observer.id + '_' + name
-// 		this.deps[key] = observer
-// 	},
+	constructor(fns: Function[], callback: Callback) {
+		this.fns = fns
+		this.callback = callback
 
+		startUpdating(this)
+		this.values = this.run()
+		endUpdating()
+	}
 
-// 	removeAllDeps () {
-// 		let {deps} = this
+	private run(): unknown[] {
+		let values: unknown[] = []
 
-// 		for (let key in deps) {
-// 			let observer = deps[key]
-// 			let name = key.slice(key.indexOf('_') + 1)
+		for (let fn of this.fns) {
+			this.values.push(fn())
+		}
 
-// 			observer.removeWatcher(name, this)
-// 		}
-// 	},
+		return values
+	}
 
+	/** When detected relied object changed. trigger this immediately. */
+	update() {
+		enqueueWatcherUpdate(this)
+	}
 
-// 	destroy () {
-// 		this.removeAllDeps()
-// 	},
-// }
+	/** Only returns false when all values and value type and equal */
+	private mayChanged(newValue: unknown[]): boolean {
+		for (let i = 0; i < newValue.length; i++) {
+			if (newValue[i] !== this.values[i]) {
+				return true
+			}
+
+			if (typeof newValue[i] === 'object' && typeof this.values[i] === 'object') {
+				return true
+			}
+		}
+
+		return false
+	}
+
+	/** Keep consitant with Component */
+	__updateImmediately() {
+		startUpdating(this)
+		let newValues = this.run()
+		endUpdating()
+
+		if (this.mayChanged(newValues)) {
+			this.values = newValues
+			this.callback.apply(this, this.values)
+		}
+	}
+
+	/**
+	 * We currently just check the update times, if exceed 3 then warn.
+	 * The better way should be analysising dependency tree:
+	 * Get current watcher referenced objects, then get their referenced watchers.
+	 * Then check if current watcher in it.
+	 */
+	warnMayInfiniteUpdating() {
+		console.warn(`Watcher "${this.fns.map(fn => fn.toString().replace(/\s+/g, ''))}" may have infinite updating`)
+	}
+
+	/**
+	 * Watcher and the Component can't be GC automatically,
+	 * because we added `object -> Component | Watcher` map into dependencies.
+	 * But if it's referred object is no longer in use any more, no need to disconnect it.
+	 */
+	disconnect() {
+		clearDependency(this)
+	}
+}

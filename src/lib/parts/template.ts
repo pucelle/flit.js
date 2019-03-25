@@ -1,23 +1,27 @@
-import {NodePart, PartType, MayStringValuePart} from './types'
-import {TemplateResult} from '../template-result'
+import {NodePart, PartType, MayStringValuePart, Context} from './types'
+import {TemplateResult} from './template-result'
 import {parse} from './template-parser'
 import {ChildPart} from './child'
 import {MayAttrPart} from './may-attr'
 import {EventPart} from './event'
 import {AttrPart} from './attr'
-import {BindPart} from './bind'
+import {BindingPart} from './bind'
 import {PropertyPart} from './property'
-import {Component} from '../component'
 
 
 export class Template {
 
 	private result: TemplateResult
-	private context: Component
+	private context: Context
 	private parts: NodePart[] = []
 	private fixedNodes: Node[] | null = null
 
-	constructor(result: TemplateResult, context: Component) {
+	/**
+	 * Create an template from html`...` like template result and context
+	 * @param result The template result like html`...`.
+	 * @param context The context passed to event handlers.
+	 */
+	constructor(result: TemplateResult, context: Context) {
 		this.result = result
 		this.context = context
 	}
@@ -55,7 +59,7 @@ export class Template {
 
 		for (let i = 0; i < diffs.length; i++) {
 			let index = diffs[i]
-			this.mergePart(this.parts[index], result.values[index] as any)
+			this.mergePart(this.parts[index], result.values[index] as unknown)
 		}
 
 		this.result = result
@@ -110,8 +114,8 @@ export class Template {
 						;(part as MayStringValuePart).strings = place.strings
 						break
 
-					case PartType.Bind:
-						part = new BindPart(node as HTMLElement, place.name!, join(place.strings, value), this.context)
+					case PartType.Binding:
+						part = new BindingPart(node as HTMLElement, place.name!, join(place.strings, value), this.context)
 						;(part as MayStringValuePart).strings = place.strings
 						break
 

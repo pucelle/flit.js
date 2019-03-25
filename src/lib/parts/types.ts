@@ -1,3 +1,8 @@
+/**
+ * Should know less about outer component module.
+ */
+export type Context = object
+
 export enum PartType {
 	Root,
 	Child,

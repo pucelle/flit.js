@@ -1,6 +1,8 @@
 import * as flit from '../../src'
 import * as helper from './helper'
 const assert = chai.assert
+const expect = chai.expect
+const spy = chai.spy
 
 
 describe('Test render', () => {
@@ -15,7 +17,7 @@ describe('Test render', () => {
 		let el = flit.render('<test-render></test-render>', document.body) as HTMLElement
 		assert.ok(el)
 		await helper.sleep(0)
-		assert.ok(flit.getComponentAt(el))
+		assert.ok(flit.Component.get(el))
 		assert.equal(el.innerHTML, 'text')
 		el.remove()
 	})
@@ -41,5 +43,13 @@ describe('Test render', () => {
 		assert.ok(el)
 		assert.equal(el.localName, 'div')
 		assert.equal(el.textContent, 'test')
+	})
+
+	it('should not throw when render html using html template and use function value but not pass context', async () => {
+		let onClick = spy()
+		let el = flit.render(flit.html`<div @click=${onClick}></div>`).firstChild as HTMLElement
+		let e = new MouseEvent('click')
+		el.dispatchEvent(e)
+		expect(onClick).to.have.been.called.once
 	})
 })

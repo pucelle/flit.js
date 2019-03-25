@@ -1,7 +1,6 @@
-import {TemplateResult} from '../template-result'
+import {TemplateResult} from './template-result'
 import {Template} from './template'
-import {Component} from '../component'
-import {NodePart, PartType} from './types'
+import {NodePart, PartType, Context} from './types'
 
 
 export class RootPart implements NodePart {
@@ -9,10 +8,10 @@ export class RootPart implements NodePart {
 	type = PartType.Root
 
 	private el: HTMLElement
-	private context: Component
+	private context: Context
 	private template: Template | null = null
 
-	constructor(el: HTMLElement, value: unknown, context: Component) {
+	constructor(el: HTMLElement, value: unknown, context: Context) {
 		this.el = el
 		this.context = context
 		this.update(value)
