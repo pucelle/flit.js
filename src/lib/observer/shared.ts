@@ -52,25 +52,29 @@ export function observe<T extends object>(obj: T): T {
 		throw new Error(`"${obj}" is not object and must not be observed`)
 	}
 
+	return justObserveIt(obj) as T
+}
+
+
+export function justObserveIt(obj: object): object {
 	let proxy = proxyMap.get(obj)
 	if (proxy) {
-		return proxy as T
+		return proxy
 	}
 
 	let str = originalToString.call(obj)
 
 	if (str === '[object Array]') {
-		return observeArray(obj as unknown[]) as T
+		return observeArray(obj as unknown[])
 	}
 	
 	if (str === '[object Object]') {
-		return observeObject(obj) as T
+		return observeObject(obj)
 	}
 
 	if (str === '[object Set]' || str === '[object Map]') {
-		return observeMapOrSet(obj as any) as T
+		return observeMapOrSet(obj as any)
 	}
 
 	return obj
 }
-

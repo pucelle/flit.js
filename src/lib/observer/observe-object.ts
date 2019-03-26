@@ -1,5 +1,5 @@
-import {addDependency, notifyObjectSet} from './dependencies'
-import {proxyMap, targetMap, observe} from './shared'
+import {mayAddDependency, notifyObjectSet, isUpdating} from './dependencies'
+import {proxyMap, targetMap, justObserveIt} from './shared'
 
 
 export function observeObject(obj: object) {
@@ -14,16 +14,18 @@ const proxyHandler = {
 
 	get(obj: object, prop: keyof typeof obj): unknown {
 		let value: any = obj[prop]
-		let type = typeof value
 
-		if (type === 'function') {
-			return value
-		}
+		if (obj.hasOwnProperty(prop)) {
+			mayAddDependency(obj)
 
-		addDependency(obj)
-
-		if (value && type === 'object') {
-			return observe(value)
+			if (value && typeof value === 'object') {
+				if (proxyMap.has(value)) {
+					return proxyMap.get(value)
+				}
+				else if (isUpdating()) {
+					return justObserveIt(value)
+				}
+			}
 		}
 
 		return value
@@ -36,13 +38,13 @@ const proxyHandler = {
 	},
 
 	has(obj: object, prop: string) {
-		addDependency(obj)
+		mayAddDependency(obj)
 		return prop in obj
 	},
 
 	deleteProperty(obj: object, prop: keyof typeof obj) {
 		if (obj.hasOwnProperty(prop)) {
-			addDependency(obj)
+			mayAddDependency(obj)
 			return delete obj[prop]
 		}
 		else {

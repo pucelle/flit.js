@@ -1,78 +1,10 @@
-import {addDependency, notifyObjectSet} from './dependencies'
+import {notifyObjectSet, mayAddDependency} from './dependencies'
 import {proxyMap, targetMap} from './shared'
 
 
 type MapOrSet = Map<unknown, unknown> | Set<unknown>
 
-const mapOrSetGetTypeMethodsOverwrite = {
-
-	keys(this: MapOrSet) {
-		let target = targetMap.get(this) as MapOrSet
-		let returns = target.keys()
-		addDependency(target)
-		return returns
-	},
-
-	values(this: MapOrSet) {
-		let target = targetMap.get(this) as MapOrSet
-		let returns = target.values()
-		addDependency(target)
-		return returns
-	},
-
-	entries(this: MapOrSet) {
-		let target = targetMap.get(this) as MapOrSet
-		let returns = target.entries()
-		addDependency(target)
-		return returns
-	},
-
-	forEach(this: MapOrSet, callbackFn: () => void, thisArgs?: any) {
-		let target = targetMap.get(this) as MapOrSet
-		let returns = target.forEach(callbackFn, thisArgs)
-		addDependency(target)
-		return returns
-	},
-
-	has(this: MapOrSet, value: unknown) {
-		let target = targetMap.get(this) as MapOrSet
-		let returns = target.has(value)
-		addDependency(target)
-		return returns
-	}
-}
-
-
-const mapOrSetSetTypeMethodsOverwrite = {
-
-	add(this: Set<unknown>, value: unknown) {
-		let target = targetMap.get(this) as Set<unknown>
-		let returns = target.add(value)
-		notifyObjectSet(target)
-		return returns
-	},
-
-	set(this: Map<unknown, unknown>, prop: unknown, value: unknown) {
-		let target = targetMap.get(this) as Map<unknown, unknown>
-		let returns = target.set(prop, value)
-		notifyObjectSet(target)
-		return returns
-	},
-
-	delete(this: MapOrSet, value: unknown) {
-		let target = targetMap.get(this) as MapOrSet
-		let returns = target.delete(value)
-		notifyObjectSet(target)
-		return returns
-	},
-
-	clear(this: MapOrSet) {
-		let target = targetMap.get(this) as MapOrSet
-		let returns = target.clear()
-		notifyObjectSet(target)
-		return returns
-	}
-}
+const MAP_SET_SET_METHODS = ['add', 'set', 'delete', 'clear']
 
 
 export function observeMapOrSet(ms: MapOrSet) {
@@ -86,14 +18,19 @@ export function observeMapOrSet(ms: MapOrSet) {
 const proxyHandler = {
 
 	get(ms: MapOrSet, prop: PropertyKey): unknown {
-		if (mapOrSetGetTypeMethodsOverwrite.hasOwnProperty(prop)) {
-			return mapOrSetGetTypeMethodsOverwrite[prop as keyof typeof mapOrSetGetTypeMethodsOverwrite]
+		let value = (ms as any)[prop]
+		let type = typeof value
+
+		if (!ms.hasOwnProperty(prop) && type === 'function') {
+			// Required, pass proxy to native Set or Map methods will cause error.
+			value = value.bind(ms)
+			mayAddDependency(ms)
+
+			if (MAP_SET_SET_METHODS.includes(prop as string)) {
+				notifyObjectSet(ms)
+			}
 		}
 
-		if (mapOrSetSetTypeMethodsOverwrite.hasOwnProperty(prop)) {
-			return mapOrSetSetTypeMethodsOverwrite[prop as keyof typeof mapOrSetSetTypeMethodsOverwrite]
-		}
-
-		return ms[prop as keyof typeof ms]
+		return value
 	}
 }

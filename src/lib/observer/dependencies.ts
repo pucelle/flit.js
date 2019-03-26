@@ -53,6 +53,11 @@ export function endUpdating() {
 	}
 }
 
+/** Returns if is updating recently. */
+export function isUpdating(): boolean {
+	return !!updating
+}
+
 
 /** Called when start rendering component or running watch functions, or component and watcher disconnected. */
 export function clearDependency(updating: Updatable) {
@@ -77,7 +82,7 @@ export function clearAsDependency(obj: Dependency) {
 // Otherwise, a very high rate the dependencies are no need to update.
 
 /** Called when in object's or array's proxy.get. */
-export function addDependency(dep: Dependency) {
+export function mayAddDependency(dep: Dependency) {
 	if (!updating) {
 		return
 	}
@@ -86,7 +91,7 @@ export function addDependency(dep: Dependency) {
 }
 
 /** Called when in component's proxy.get. */
-export function addComDependency(com: Com, prop: PropertyKey) {
+export function mayAddComDependency(com: Com, prop: PropertyKey) {
 	if (!updating) {
 		return
 	}
