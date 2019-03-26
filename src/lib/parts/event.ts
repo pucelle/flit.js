@@ -28,6 +28,7 @@ export class EventPart implements NodePart {
 
 	private setHandler(newHandler: Function) {
 		let oldHandler = this.handler
+		this.handler = newHandler
 
 		if (this.isComEvent) {
 			let com = getComponentAtElement(this.el)
@@ -35,10 +36,10 @@ export class EventPart implements NodePart {
 				if (oldHandler) {
 					com.off(this.name, oldHandler, this.context)
 				}
-				com.on(this.name, newHandler, this.context)
+				this.setComHandler(com)
 			}
 			else if (!this.isUpdated) {
-				onComponentCreatedAt(this.el, this.setComHandlerLater.bind(this))
+				onComponentCreatedAt(this.el, this.setComHandler.bind(this))
 			}
 		}
 		else {
@@ -48,11 +49,9 @@ export class EventPart implements NodePart {
 
 			on(this.el, this.name, newHandler as (e: Event) => void, this.context)
 		}
-
-		this.handler = newHandler
 	}
 
-	setComHandlerLater(com: Component) {
+	setComHandler(com: Component) {
 		com.on(this.name, this.handler, com)
 	}
 
@@ -64,4 +63,8 @@ export class EventPart implements NodePart {
 		this.setHandler(handler)
 		this.isUpdated = true
 	}
+
+	// If element was removed, it implies that the component was removed too.
+	// No need to off listener.
+	remove() {}
 }

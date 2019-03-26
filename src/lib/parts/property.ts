@@ -28,4 +28,6 @@ export class PropertyPart implements MayStringValuePart {
 	update(value: unknown) {
 		this.setValue(value)
 	}
+
+	remove() {}
 }

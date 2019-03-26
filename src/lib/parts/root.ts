@@ -56,4 +56,10 @@ export class RootPart implements NodePart {
 		let text = value === null || value === undefined ? '' : String(value).trim()
 		this.el.textContent = text
 	}
+
+	remove() {
+		while (this.el.firstChild) {
+			this.el.firstChild.remove()
+		}
+	}
 }

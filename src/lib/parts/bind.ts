@@ -11,7 +11,7 @@ export class BindingPart implements MayStringValuePart {
 	type: PartType = PartType.Binding
 	strings: string[] | null = null
 
-	private bind: Binding
+	private binding: Binding
 
 	constructor(el: HTMLElement, name: string, value: unknown, context: Context) {
 		let dotIndex = name.indexOf('.')
@@ -20,7 +20,7 @@ export class BindingPart implements MayStringValuePart {
 
 		let BindedClass = getBindedClass(bindingName)
 		if (BindedClass) {
-			this.bind = new BindedClass(el, value, bindingModifiers, context as any)
+			this.binding = new BindedClass(el, value, bindingModifiers, context as any)
 		}
 		else {
 			throw new Error(`":${bindingName}" is not defined as a binding class`)
@@ -28,6 +28,10 @@ export class BindingPart implements MayStringValuePart {
 	}
 
 	update(value: unknown) {
-		this.bind.update(value)
+		this.binding.update(value)
+	}
+
+	remove() {
+		this.binding.unbind()
 	}
 }

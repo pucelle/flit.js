@@ -26,4 +26,6 @@ export class AttrPart implements MayStringValuePart {
 	update(value: unknown) {
 		this.setValue(value)
 	}
+
+	remove() {}
 }

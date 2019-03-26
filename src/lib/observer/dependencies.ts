@@ -1,4 +1,4 @@
-import {Updatable, Dependency, Com, targetMap} from './shared'
+import {Updatable, Dependency, Com} from './shared'
 import {Weak2WayMap} from './weak-2way-map'
 import {Weak2WayPropMap} from './weak-2way-prop-map'
 
@@ -37,8 +37,7 @@ let updatingComPropMap: Map<Com, Set<PropertyKey>> = new Map()
  * Called when start rendering component or running watch functions.
  * Note that the argument will be proxy for component type.
  */
-export function startUpdating(uptProxy: Updatable) {
-	let upt = (targetMap.get(uptProxy) as Updatable) || uptProxy
+export function startUpdating(upt: Updatable) {
 	updating = upt
 }
 

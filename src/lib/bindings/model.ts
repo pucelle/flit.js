@@ -1,201 +1,192 @@
-// import {Bind, defineBind} from './index'
-// import {getComponentAt, onComponentCreatedAt, Component} from '../component'
-// import {queue} from '../queue'
+import {Binding, defineBinding} from './define'
+import {Component, getComponentAtElement, onComponentCreatedAt} from '../component'
+import {on} from '../dom-event'
+import {onRendered} from '../queue'
 
 
-// /**
-//  * model bind should only handle fixed value.
-//  */
-// defineBind('model', class ModelBind implements Bind {
-
-// 	private el: HTMLElement
-// 	private modifiers: string[] | null
-// 	private context: Component
-// 	private value: unknown = null
-// 	private allowedModifiers = ['lazy', 'number']
-// 	private isComEvent: boolean
-// 	private isBooleanValue: boolean = false
-// 	private isMultiSelect: boolean = false
-// 	private property: string
-// 	private eventName: string
-// 	private locked: boolean = false
-
-// 	constructor(el: HTMLElement, value: unknown, modifiers: string[] | null, context: Component) {
-// 		if (typeof value !== 'string') {
-// 			throw new Error('The value of ":model" must be string type')
-// 		}
-
-// 		if (modifiers) {
-// 			if (modifiers.length > 1) {
-// 				throw new Error(`Modifier "${modifiers.join('.')}" is not allowed, only one modifier can be specified for ":model"`)
-// 			}
-
-// 			if (!this.allowedModifiers.includes(modifiers[1])) {
-// 				throw new Error(`Modifier "${modifiers[1]}" is not allowed, it must be one of ${this.allowedModifiers.map(m => `"${m}"`).join(', ')}`)
-// 			}
-// 		}
-
-// 		this.el = el
-// 		this.modifiers = modifiers
-// 		this.context = context
-// 		this.isComEvent = el.localName.includes('-')
-
-// 		if (this.isComEvent) {
-// 			this.property = 'value'
-// 			this.eventName = 'change'
-// 		}
-// 		else {
-// 			let isFormField = ['input', 'select', 'textarea'].includes(el.localName)
-// 			let isLazy = modifiers && modifiers[0] === 'lazy'
-
-// 			this.isBooleanValue = el.localName === 'input' && ((el as HTMLInputElement).type === 'checkbox' || (el as HTMLInputElement).type === 'radio')
-// 			this.isMultiSelect = el.localName === 'select' && (el as HTMLSelectElement).multiple
-
-// 			if (this.isBooleanValue) {
-// 				this.property = 'checked'
-// 				this.eventName = 'change'
-// 			}
-// 			else if (isFormField) {
-// 				this.property = 'value'
-// 				this.eventName = isLazy ? 'change' : 'input'
-// 			}
-
-// 			// div@contendeditable cant trigger change event but not input event
-// 			else {
-// 				this.property = 'innerHTML'
-// 				this.eventName = isLazy ? 'blur' : 'input'
-// 			}
-// 		}
-
-// 		this.update(value)
-// 	}
-
-// 	update(modelName: string) {
-// 		if (this.isComEvent) {
-// 			let com = getComponentAt(this.el)
-// 			if (com) {
-// 				com.on(this.eventName, this.onComValueChange, this)
-// 			}
-// 			else {
-// 				onComponentCreatedAt(this.el, this.update.bind(this, modelName))
-// 			}
-// 		}
-// 		else {
-// 			// TO DO
-// 			this.el.addEventListener(this.eventName, this.onInputOrChange.bind(this))
-// 		}
-// 	}
-
-// 	onComValueChange(value: unknown) {
-// 		(this.context as unknown)[this.property] = value
-// 	}
-
-// 	onInputOrChange (e: Event) {
-// 		let value = (this.el as unknown)[this.property]
-
-// 		if (this.isBooleanValue) {
-// 			this.setValue(!!value)
-// 		}
-// 		else {
-// 			this.setInputValue(value)
-// 		}
-
-// 		this.locked = true
-// 		queue.nextTick(() => {
-// 			this.locked = false
-
-// 			// Write value back to input
-// 			if (e.type === 'change') {
-// 				this.update(this.watcher.value)
-// 			}
-// 		})
-// 	}
+const ALLOWED_MODIFIERS = ['lazy', 'number']
 
 
-// 	setBoolValue (inputValue) {
-// 		let {vm, watcher} = this
-// 		let value = this.watcher.value
+/** Model bind should only handle fixed model name. */
+defineBinding('model', class ModelBinding implements Binding {
 
-// 		watcher.set(!!inputValue)
-// 	},
+	private el: HTMLElement
+	private modifiers: string[] | null
+	private context: Component
+	private isComModel: boolean
+	private isBooleanValue: boolean = false
+	private isMultiSelect: boolean = false
+	private property: string
+	private eventName: string
 
+	private modelName: string | null = null
+	private com: Component | null = null
+	private locked: boolean = false
+	private unwatch: (() => void) | null = null
 
-// 	setInputValue (inputValue) {
-// 		let {el, vm, watcher} = this
-// 		let isNumber = this.mods.includes('number')
+	constructor(el: HTMLElement, value: unknown, modifiers: string[] | null, context: Component) {
+		if (typeof value !== 'string') {
+			throw new Error('The value of ":model" must be string type')
+		}
 
-// 		if (this.isMultiSelect) {
-// 			let value = Array.from(el.options).filter(o => o.selected).map(o => o.value)
+		if (modifiers) {
+			if (modifiers.length > 2) {
+				throw new Error(`Modifier "${modifiers.join('.')}" is not allowed, at most two modifiers can be specified for ":model"`)
+			}
 
-// 			if (isNumber) {
-// 				value = value.map(Number)
-// 			}
+			for (let modifier of modifiers) {
+				if (!ALLOWED_MODIFIERS.includes(modifier)) {
+					throw new Error(`Modifier "${modifiers}" is not allowed, it must be one of ${ALLOWED_MODIFIERS.map(m => `"${m}"`).join(', ')}`)
+				}
+			}
+		}
 
-// 			watcher.set(value)
-// 		}
-// 		else {
-// 			if (isNumber) {
-// 				let numValue = Number(inputValue)
-// 				watcher.set(numValue)
-// 			}
-// 			else {
-// 				watcher.set(inputValue)
-// 			}
-// 		}
-// 	},
+		this.el = el
+		this.modifiers = modifiers
+		this.context = context
+		this.isComModel = el.localName.includes('-')
 
+		if (this.isComModel) {
+			this.property = 'value'
+			this.eventName = 'change'
+		}
+		else {
+			let isFormField = ['input', 'select', 'textarea'].includes(el.localName)
+			let isLazy = modifiers && modifiers[0] === 'lazy'
 
-// 	setValue (value) {
-// 		if (this.com) {
-// 			this.updateCom(value)
-// 		}
-// 		else {
-// 			if (this.locked) {
-// 				return
-// 			}
+			this.isBooleanValue = el.localName === 'input' && ((el as HTMLInputElement).type === 'checkbox' || (el as HTMLInputElement).type === 'radio')
+			this.isMultiSelect = el.localName === 'select' && (el as HTMLSelectElement).multiple
 
-// 			if (this.isBooleanValue) {
-// 				this.updateBooleanValue(value)
-// 			}
-// 			else {
-// 				this.updateInputValue(value)
-// 			}
-// 		}
-// 	},
+			if (this.isBooleanValue) {
+				this.property = 'checked'
+				this.eventName = 'change'
+			}
+			else if (isFormField) {
+				this.property = 'value'
+				this.eventName = isLazy ? 'change' : 'input'
+			}
 
+			// div@contendeditable cant trigger change event but not input event
+			else {
+				this.property = 'innerHTML'
+				this.eventName = isLazy ? 'blur' : 'input'
+			}
+		}
 
-// 	updateCom (value) {
-// 		let {prop, com} = this
+		this.update(value)
+	}
 
-// 		if (prop) {
-// 			com[prop] = value
-// 		}
-// 		else if (util.isObject(value)) {
-// 			ff.assign(com, value)
-// 		}
-// 	},
+	update(modelName: string) {
+		if (!modelName) {
+			throw new Error(`"${modelName}" is not a valid model name`)
+		}
 
+		this.modelName = modelName
 
-// 	updateBooleanValue (value) {
-// 		let {el, prop} = this
-// 		el[prop] = !!value
-// 	},
+		if (this.isComModel) {
+			let com = getComponentAtElement(this.el)
+			if (com) {
+				this.bindCom(com)
+			}
+			else {
+				onComponentCreatedAt(this.el, this.bindCom)
+			}
+		}
+		else {
+			on(this.el, this.eventName, this.onEventInputOrChange.bind(this))
+			this.watchContextModelValue()
+		}
 
+		this.setModelValue((this.context as any)[modelName!])
+	}
 
-// 	updateInputValue (value) {
-// 		let {el, prop, isMultiSelect} = this
+	bindCom(com: Component) {
+		// Avoid bind twice when model changed.
+		if (!this.com) {
+			this.com = com
+			com.on(this.eventName, this.writeModelValueToContext, this)
+		}
 
-// 		if (isMultiSelect && !Array.isArray(value)) {
-// 			throw new Error('"model" directive of select[multiple] requires an array as value')
-// 		}
+		this.watchContextModelValue()
+	}
 
-// 		if (isMultiSelect) {
-// 			for (let option of el.options) {
-// 				option.selected = value.includes(option.value)
-// 			}
-// 		}
-// 		else {
-// 			el[prop] = util.isNullOrUndefined(value) ? '' : value
-// 		}
-// 	},
-// })
+	watchContextModelValue() {
+		if (this.unwatch) {
+			this.unwatch()
+		}
+
+		this.unwatch = this.context.watch(this.modelName! as any, this.setModelValue.bind(this))
+	}
+
+	writeModelValueToContext(value: unknown) {
+		(this.context as any)[this.modelName!] = value
+	}
+
+	onEventInputOrChange(_e: Event) {
+		let value: unknown
+		let isNumber = this.modifiers && this.modifiers.includes('number')
+
+		if (this.isMultiSelect) {
+			value = Array.from((this.el as HTMLSelectElement).options).filter(o => o.selected).map(o => o.value)
+
+			if (isNumber) {
+				value = (value as string[]).map(Number)
+			}
+		}
+		else {
+			value = (this.el as any)[this.property]
+
+			if (isNumber) {
+				value = Number(value)
+			}
+		}
+		
+		this.writeModelValueToContext(value)
+		this.locked = true
+
+		onRendered(() => {
+			this.locked = false
+		})
+	}
+
+	setModelValue(value: unknown) {
+		// Here to avoid:
+		//   input value changed ->
+		//   write value to context ->
+		//   trigger watcher ->
+		//   write same to input, which may also cause cursor position lost
+		if (this.locked) {
+			return
+		}
+
+		if (this.isComModel) {
+			if (this.com) {
+				(this.com as any)[this.property] = value
+			}
+		}
+		else {
+			this.setInputValue(value)
+		}
+	}
+
+	setInputValue(value: unknown) {
+		if (this.isMultiSelect && !Array.isArray(value)) {
+			throw new Error(`:model="${this.modelName}" of select[multiple] requires an array as value`)
+		}
+
+		if (this.isMultiSelect) {
+			for (let option of (this.el as HTMLSelectElement).options) {
+				option.selected = (value as string[]).includes(option.value)
+			}
+		}
+		else {
+			(this.el as any)[this.property] = value === null || value === undefined ? '' : value
+		}
+	}
+
+	unbind() {
+		if (this.unwatch) {
+			this.unwatch()
+		}
+	}
+})

@@ -7,6 +7,7 @@ interface BindingConstructor {
 
 export interface Binding {
 	update(value: unknown): void
+	unbind(): void
 }
 
 

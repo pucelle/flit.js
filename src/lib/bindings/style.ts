@@ -110,4 +110,6 @@ defineBinding('style', class StyleBinding implements Binding {
 
 		return obj
 	}
+
+	unbind() {}
 })

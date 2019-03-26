@@ -159,9 +159,7 @@ export class Template {
 		this.fixedNodes!.forEach(node => (node as ChildNode).remove())
 
 		for (let part of this.parts) {
-			if (part instanceof ChildPart) {
-				part.remove()
-			}
+			part.remove()
 		}
 	}
 

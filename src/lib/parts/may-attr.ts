@@ -29,4 +29,6 @@ export class MayAttrPart implements NodePart {
 	update(value: unknown) {
 		this.setValue(value)
 	}
+
+	remove() {}
 }

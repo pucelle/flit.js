@@ -2,9 +2,7 @@ import {Binding, defineBinding} from './define'
 import {Component, getComponentAtElement, onComponentCreatedAt} from '../component'
 
 
-/**
- * 
- */
+/** Binding properties on component. */
 defineBinding('props', class PropsBinding implements Binding {
 
 	private el: HTMLElement
@@ -63,4 +61,6 @@ defineBinding('props', class PropsBinding implements Binding {
 			}
 		}
 	}
+
+	unbind() {}
 })
