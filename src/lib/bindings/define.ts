@@ -7,7 +7,6 @@ interface BindingConstructor {
 
 export interface Binding {
 	update(value: unknown): void
-	unbind(): void
 }
 
 
@@ -22,6 +21,6 @@ export function defineBinding(name: string, Com: BindingConstructor) {
 	defineMap.set(name, Com)
 }
 
-export function getBindedClass(name: string): BindingConstructor | undefined {
+export function getDefinedBinding(name: string): BindingConstructor | undefined {
 	return defineMap.get(name)
 }

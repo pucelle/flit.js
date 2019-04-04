@@ -1,9 +1,9 @@
 import {MayStringValuePart, PartType, Context} from "./types"
-import {Binding, getBindedClass} from '../bindings'
+import {Binding, getDefinedBinding} from '../bindings'
 
 
 /**
- * Transfer arguments to binds module.
+ * Transfer arguments to binding module.
  * :class="${...}", :style="${...}", :props="${...}"
  */
 export class BindingPart implements MayStringValuePart {
@@ -18,7 +18,7 @@ export class BindingPart implements MayStringValuePart {
 		let bindingName = dotIndex > -1 ? name.slice(0, dotIndex) : name
 		let bindingModifiers = dotIndex > -1 ? name.slice(dotIndex + 1).split('.') : null
 
-		let BindedClass = getBindedClass(bindingName)
+		let BindedClass = getDefinedBinding(bindingName)
 		if (BindedClass) {
 			this.binding = new BindedClass(el, value, bindingModifiers, context as any)
 		}
@@ -29,9 +29,5 @@ export class BindingPart implements MayStringValuePart {
 
 	update(value: unknown) {
 		this.binding.update(value)
-	}
-
-	remove() {
-		this.binding.unbind()
 	}
 }

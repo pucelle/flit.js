@@ -9,73 +9,101 @@ export class Weak2WayPropMap<L extends object, R extends object> {
 	private lm: WeakMap<L, Map<R, Set<PropertyKey>>> = new WeakMap()
 	private rm: WeakMap<R, Map<PropertyKey, Set<L>>> = new WeakMap()
 
-	updateFromLeft(l: L, rs: Map<R, Set<PropertyKey>>) {
-		let oldrs = this.lm.get(l)
+	updateFromLeft(l: L, rps: Map<R, Set<PropertyKey>>) {
+		let oldRps = this.lm.get(l)
 
-		if (!oldrs || oldrs.size === 0) {
-			for (let [r, props] of rs) {
+		if (!oldRps || oldRps.size === 0) {
+			for (let [r, props] of rps) {
 				this.addRightLeftMap(r, props, l)
 			}
 		}
 		else {
-			for (let [r, props] of rs) {
-				if (!oldrs.has(r)) {
+			for (let [r, props] of rps) {
+				if (oldRps.has(r)) {
+					this.updateRightLeftMap(r, oldRps.get(r)!, props, l)
+				}
+				else {
 					this.addRightLeftMap(r, props, l)
 				}
 			}
 
-			for (let [r, props] of oldrs) {
-				if (!rs.has(r)) {
+			for (let [r, props] of oldRps) {
+				if (!rps.has(r)) {
 					this.removeRightLeftMap(r, props, l)
 				}
 			}
 		}
 
-		this.lm.set(l, rs)
+		this.lm.set(l, rps)
 	}
 
 	private addRightLeftMap(r: R, props: Set<PropertyKey>, l: L) {
-		let ls = this.rm.get(r)
-		if (!ls) {
-			ls = new Map()
-			this.rm.set(r, ls)
+		let pls = this.rm.get(r)
+		if (!pls) {
+			pls = new Map()
+			this.rm.set(r, pls)
 		}
 
 		for (let prop of props) {
-			let pls = ls.get(prop)
-			if (!pls) {
-				pls = new Set()
-				ls.set(prop, pls)
+			let ls = pls.get(prop)
+			if (!ls) {
+				ls = new Set()
+				pls.set(prop, ls)
 			}
-			pls.add(l)
+			ls.add(l)
+		}
+	}
+
+	private updateRightLeftMap(r: R, oldProps: Set<PropertyKey>, newProps: Set<PropertyKey>, l: L) {
+		let pls = this.rm.get(r)
+		if (pls) {
+			for (let prop of newProps) {
+				if (!oldProps.has(prop)) {
+					let ls = pls.get(prop)
+					if (!ls) {
+						ls = new Set()
+						pls.set(prop, ls)
+					}
+					ls.add(l)
+				}
+			}
+
+			for (let prop of oldProps) {
+				if (!newProps.has(prop)) {
+					let ls = pls.get(prop)
+					if (ls) {
+						ls.delete(l)
+					}
+				}
+			}
 		}
 	}
 
 	private removeRightLeftMap(r: R, props: Set<PropertyKey>, l: L) {
-		let ls = this.rm.get(r)
-		if (ls) {
+		let pls = this.rm.get(r)
+		if (pls) {
 			for (let prop of props) {
-				let pls = ls.get(prop)
-				if (pls) {
-					pls.delete(l)
+				let ls = pls.get(prop)
+				if (ls) {
+					ls.delete(l)
 				}
 			}
 		}
 	}
 
 	getFromRight(r: R, prop: PropertyKey): Set<L> | undefined {
-		let ls = this.rm.get(r)
-		if (ls) {
-			return ls.get(prop)
+		let pls = this.rm.get(r)
+		if (pls) {
+			return pls.get(prop)
 		}
 
 		return undefined
 	}
 
 	clearFromLeft(l: L) {
-		let rs = this.lm.get(l)
-		if (rs) {
-			for (let [r, props] of rs) {
+		let rps = this.lm.get(l)
+		if (rps) {
+			for (let [r, props] of rps) {
 				this.removeRightLeftMap(r, props, l)
 			}
 			this.lm.delete(l)
@@ -83,9 +111,9 @@ export class Weak2WayPropMap<L extends object, R extends object> {
 	}
 
 	clearFromRight(r: R) {
-		let lps = this.rm.get(r)
-		if (lps) {
-			for (let ls of lps.values()) {
+		let pls = this.rm.get(r)
+		if (pls) {
+			for (let ls of pls.values()) {
 				for (let l of ls) {
 					this.removeLeftRightMap(l, r)
 				}

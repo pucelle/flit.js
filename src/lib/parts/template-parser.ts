@@ -36,7 +36,7 @@ const VALUE_MARKER = '${flit}'
  * @param strings 
  */
 export function parse(type: TemplateType, strings: TemplateStringsArray): ParseResult {
-	if (type === 'html' || type === 'svg') {
+	if ((type === 'html' || type === 'svg')) {
 		let string = strings.join(VALUE_MARKER)
 		let sharedResult = parseResultMap.get(string)
 		if (!sharedResult) {

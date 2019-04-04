@@ -61,6 +61,4 @@ defineBinding('props', class PropsBinding implements Binding {
 			}
 		}
 	}
-
-	unbind() {}
 })

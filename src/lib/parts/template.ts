@@ -14,7 +14,9 @@ export class Template {
 	private result: TemplateResult
 	private context: Context
 	private parts: NodePart[] = []
-	private fixedNodes: Node[] | null = null
+
+	startNode: ChildNode | null = null
+	endNode: ChildNode | null = null
 
 	/**
 	 * Create an template from html`...` like template result and context
@@ -49,7 +51,7 @@ export class Template {
 
 	/**
 	 * Merge with another template result.
-	 * @param result The template result to merge
+	 * @param result The template result to merge.
 	 */
 	merge(result: TemplateResult) {
 		let diffs = this.compareValues(result)
@@ -65,9 +67,7 @@ export class Template {
 		this.result = result
 	}
 
-	/**
-	 * Compare value difference and then merge them later.
-	 */
+	/** Compare value difference and then merge them later. */
 	compareValues(result: TemplateResult): number[] | null {
 		let diff: number[] = []
 
@@ -80,11 +80,8 @@ export class Template {
 		return diff.length > 0 ? diff : null
 	}
 
-	/**
-	 * Parse template result and returns a fragment.
-	 * If willTrack and there is no fixed nodes, append a comment node in the front
-	 */
-	parseMayTrack(willTrack: boolean): DocumentFragment {
+	/** Parse template result and returns a fragment. */
+	parseToFragment(): DocumentFragment {
 		let {fragment, nodesInPlaces, places} = parse(this.result.type, this.result.strings)
 		let values = this.result.values
 		let valueIndex = 0
@@ -132,12 +129,20 @@ export class Template {
 			}
 		}
 
-		this.fixedNodes = [...fragment.childNodes].filter(node => node.nodeType !== 8)
-		if (this.fixedNodes.length === 0 && willTrack) {
-			let comment = new Comment()
-			fragment.prepend(comment)
-			this.fixedNodes.push(comment)
+		// Should include at least one node, So it's position can be tracked.
+		// And should always before any other nodes inside,
+		// So we need to prepend a comment node if it starts with a `hole`.
+		let startNode = fragment.firstChild
+		if (!startNode || startNode.nodeType === 8) {
+			startNode = document.createComment('')
+			fragment.prepend(startNode)
 		}
+		this.startNode = startNode
+
+		// The end node will never be moved.
+		// It should be a fixed node, or a comment node of a child part.
+		// It will never be null since the parsed result always include at least one node.
+		this.endNode = fragment.lastChild
 
 		return fragment
 	}
@@ -155,17 +160,41 @@ export class Template {
 		}
 	}
 
-	remove() {
-		this.fixedNodes!.forEach(node => (node as ChildNode).remove())
+	private getNodes(): ChildNode[] {
+		let nodes: ChildNode[] = []
+		let node = this.startNode
 
-		for (let part of this.parts) {
-			part.remove()
+		while (node) {
+			nodes.push(node)
+
+			if (node === this.endNode) {
+				break
+			}
+
+			node = node.nextSibling as ChildNode
+		}
+
+		return nodes
+	}
+
+	beInsertedBefore(hashNode: ChildNode) {
+		if (this.endNode!.nextSibling !== hashNode) {
+			this.getNodes().forEach(node => {
+				hashNode.before(node)
+			})
 		}
 	}
 
-	replaceWithFragment(fragment: DocumentFragment) {
-		(this.fixedNodes![0] as ChildNode).before(fragment)
-		this.remove()
+	beInsertedAfter(hashNode: ChildNode) {
+		if (this.startNode!.previousSibling !== hashNode) {
+			this.getNodes().reverse().forEach(node => {
+				hashNode.after(node)
+			})
+		}
+	}
+
+	remove() {
+		this.getNodes().forEach(node => (node as ChildNode).remove())
 	}
 }
 

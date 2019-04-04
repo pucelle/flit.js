@@ -115,6 +115,9 @@ defineBinding('model', class ModelBinding implements Binding {
 			this.unwatch()
 		}
 
+		// There is a problem here, we do not support destroy parts and templates and bindings as a tree,
+		// So when the `:model` was included in a `if` part, it can't be unwatch after relatated element removed.
+		// `:model` is convient but eval, isn't it?
 		this.unwatch = this.context.watch(this.modelName! as any, this.setModelValue.bind(this))
 	}
 
@@ -181,12 +184,6 @@ defineBinding('model', class ModelBinding implements Binding {
 		}
 		else {
 			(this.el as any)[this.property] = value === null || value === undefined ? '' : value
-		}
-	}
-
-	unbind() {
-		if (this.unwatch) {
-			this.unwatch()
 		}
 	}
 })

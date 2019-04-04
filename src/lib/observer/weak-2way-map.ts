@@ -11,21 +11,23 @@ export class Weak2WayMap<L extends object, R extends object> {
 	private rm: WeakMap<R, Set<L>> = new WeakMap()
 
 	updateFromLeft(l: L, rs: Set<R>) {
-		let oldrs = this.lm.get(l)
+		let oldRs = this.lm.get(l)
 
-		if (!oldrs || oldrs.size === 0) {
+		if (!oldRs || oldRs.size === 0) {
 			for (let r of rs) {
 				this.addRightLeftMap(r, l)
 			}
 		}
 		else {
+			// Very high rate no need to add or remove.
+			// So we test if should add or remove firstly.
 			for (let r of rs) {
-				if (!oldrs.has(r)) {
+				if (!oldRs.has(r)) {
 					this.addRightLeftMap(r, l)
 				}
 			}
 
-			for (let r of oldrs) {
+			for (let r of oldRs) {
 				if (!rs.has(r)) {
 					this.removeRightLeftMap(r, l)
 				}

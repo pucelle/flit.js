@@ -25,6 +25,4 @@ defineBinding('ref', class RefBinding implements Binding {
 			value.call(this.context, this.el)
 		}
 	}
-
-	unbind() {}
 })

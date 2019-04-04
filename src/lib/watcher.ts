@@ -88,16 +88,15 @@ export class Watcher {
 
 	private fns: Function[]
 	private callback: WatcherCallback
-	private values: unknown[]
+	private values: unknown[] | null = null
 	private connected: boolean = true
 
 	constructor(fns: Function[], callback: WatcherCallback) {
 		this.fns = fns
 		this.callback = callback
 
-		startUpdating(this)
-		this.values = this.run()
-		endUpdating()
+		// Must enqueue it, because a component may be updating recently.
+		this.update()
 	}
 
 	private run(): unknown[] {
@@ -118,11 +117,11 @@ export class Watcher {
 	/** Only returns false when all values and value type and equal */
 	private mayChanged(newValue: unknown[]): boolean {
 		for (let i = 0; i < newValue.length; i++) {
-			if (newValue[i] !== this.values[i]) {
+			if (newValue[i] !== this.values![i]) {
 				return true
 			}
 
-			if (typeof newValue[i] === 'object' && typeof this.values[i] === 'object') {
+			if (typeof newValue[i] === 'object' && typeof this.values![i] === 'object') {
 				return true
 			}
 		}
@@ -140,7 +139,10 @@ export class Watcher {
 		let newValues = this.run()
 		endUpdating()
 
-		if (this.mayChanged(newValues)) {
+		if (this.values === null) {
+			this.values = newValues
+		}
+		else if (this.mayChanged(newValues)) {
 			this.values = newValues
 			this.callback.apply(this, this.values)
 		}

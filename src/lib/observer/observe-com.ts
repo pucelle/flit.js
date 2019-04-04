@@ -23,6 +23,10 @@ const proxyHandler = {
 				if (proxyMap.has(value)) {
 					return proxyMap.get(value)
 				}
+				// Here means it will only observe more data when updating.
+				// If we choose to always observe every value, so many proxies will be generated.
+				// Only generate new proxy only when updating still have a little problem.
+				// If we cached some not proxy values, modify them will not cause rerender.
 				else if (isUpdating()) {
 					return justObserveIt(value)
 				}

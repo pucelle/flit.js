@@ -10,7 +10,8 @@ export enum PartType {
 	MayAttr,
 	Property,
 	Binding,
-	Event
+	Event,
+	Directive
 }
 
 /**
@@ -19,7 +20,6 @@ export enum PartType {
 export interface NodePart {
 	type: PartType
 	update(value: unknown): void
-	remove(): void
 }
 
 /**

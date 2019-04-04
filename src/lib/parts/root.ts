@@ -41,7 +41,7 @@ export class RootPart implements NodePart {
 
 	private createTemplateAndRender(result: TemplateResult) {
 		this.template = new Template(result, this.context)
-		this.renderFragment(this.template.parseMayTrack(true))
+		this.renderFragment(this.template.parseToFragment())
 	}
 
 	private renderFragment(fragment: DocumentFragment) {
@@ -55,11 +55,5 @@ export class RootPart implements NodePart {
 	private renderText(value: unknown) {
 		let text = value === null || value === undefined ? '' : String(value).trim()
 		this.el.textContent = text
-	}
-
-	remove() {
-		while (this.el.firstChild) {
-			this.el.firstChild.remove()
-		}
 	}
 }

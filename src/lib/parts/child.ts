@@ -1,52 +1,104 @@
 import {TemplateResult, text} from './template-result'
 import {NodePart, PartType, Context} from './types'
 import {Template} from './template'
+import {DirectiveResult, Directive, getDirectiveConstructor} from '../directives'
 
+
+enum ChildContentType {
+	Templates,
+	Directive,
+	Text
+}
 
 export class ChildPart implements NodePart {
 
 	type: PartType = PartType.Child
 
-	private comment: Comment
+	private endNode: Comment
 	private context: Context
 	private templates: Template[] | null = null
+	private directive: Directive | null = null
 	private textNode: Text | null = null
+	private contentType: ChildContentType | null = null
 
-	constructor(comment: Comment, value: unknown, context: Context) {
+	constructor(endNode: Comment, value: unknown, context: Context) {
 		this.context = context
-		this.comment = comment
+		this.endNode = endNode
 		this.update(value)
 	}
 
 	update(value: unknown) {
-		if (Array.isArray(value)) {
-			this.becomeTemplateResults(value)
-		}
-		else if (value instanceof TemplateResult) {
-			value = [value]	
+		let contentType = this.getContentType(value)
+		if (contentType !== this.contentType) {
+			this.clearContent()
+			this.contentType = contentType
 		}
 
-		if (this.templates) {
-			if (Array.isArray(value)) {
-				this.mergeTemplates(value)
-			}
-			else {
-				for (let template of this.templates) {
-					template.remove()
-				}
-				this.templates = null
-				this.renderText(value)
-			}
+		if (contentType === ChildContentType.Directive) {
+			this.updateDirective(value as DirectiveResult)
+		}
+		else if (Array.isArray(value)) {
+			this.becomeTemplateResults(value)
+			this.updateTemplates(value as TemplateResult[])
+		}
+		else if (contentType === ChildContentType.Templates) {
+			this.updateTemplates([value as TemplateResult])
 		}
 		else {
-			if (Array.isArray(value)) {
-				this.restoreComment()
-				this.templates = []
-				this.mergeTemplates(value)
+			this.updateText(value)
+		}
+	}
+
+	private getContentType(value: unknown): ChildContentType {
+		if (value instanceof DirectiveResult) {
+			return ChildContentType.Directive
+		}
+		else if (value instanceof TemplateResult || Array.isArray(value)) {
+			return ChildContentType.Templates
+		}
+		else {
+			return ChildContentType.Text
+		}
+	}
+
+	private clearContent() {
+		let contentType = this.contentType
+		if (contentType === null) {
+			return
+		}
+
+		if (contentType === ChildContentType.Directive) {
+			this.directive = null
+		}
+		else if (contentType === ChildContentType.Templates) {
+			for (let template of this.templates!) {
+				template.remove()
+			}
+			this.templates = null
+		}
+		else if (contentType === ChildContentType.Text) {
+			if (this.textNode) {
+				this.textNode.remove()
+				this.textNode = null
+			}
+		}
+	}
+
+	private updateDirective(directiveResult: DirectiveResult) {
+		if (this.directive) {
+			if (this.directive.canMergeWith(...directiveResult.args)) {
+				this.directive.merge(...directiveResult.args)
 			}
 			else {
-				this.renderText(value)
+				this.directive = null
 			}
+		}
+		
+		if (!this.directive) {
+			let Dir = getDirectiveConstructor(directiveResult.id)
+			let directive = new Dir(this.endNode, this.context as any)
+			directive.initialize(...directiveResult.args)
+			this.directive = directive
 		}
 	}
 
@@ -58,6 +110,13 @@ export class ChildPart implements NodePart {
 		}
 
 		return array as TemplateResult[]
+	}
+	
+	private updateTemplates(values: TemplateResult[]) {
+		if (!this.templates) {
+			this.templates = []
+		}
+		this.mergeTemplates(values)
 	}
 
 	private mergeTemplates(results: TemplateResult[]) {
@@ -73,7 +132,8 @@ export class ChildPart implements NodePart {
 				}
 				else {
 					let newTemplate = new Template(result, this.context)
-					template.replaceWithFragment(newTemplate.parseMayTrack(true))
+					template.startNode!.before(newTemplate.parseToFragment())
+					template.remove()
 					templates[i] = newTemplate
 				}
 			}
@@ -89,55 +149,30 @@ export class ChildPart implements NodePart {
 		else if (templates.length < results.length) {
 			for (let i = templates.length; i < results.length; i++) {
 				let template = new Template(results[i], this.context)
-				this.renderFragment(template.parseMayTrack(true))
-				this.templates!.push(template)
+				let fragment = template.parseToFragment()
+
+				this.endNode.before(fragment)
+				templates.push(template)
 			}
 		}
 	}
 
-	private renderFragment(fragment: DocumentFragment) {
-		this.comment.before(fragment)
-	}
-
-	private renderText(value: unknown) {
+	private updateText(value: unknown) {
 		let text = value === null || value === undefined ? '' : String(value).trim()
 
 		if (text) {
-			if (!this.textNode) {
-				this.textNode = document.createTextNode(text)
-				this.comment.replaceWith(this.textNode)
+			if (this.textNode) {
+				this.textNode.textContent = text
 			}
 			else {
-				this.textNode.textContent = text
-				if (!this.textNode.parentNode) {
-					this.comment.replaceWith(this.textNode)
-				}
+				this.textNode = document.createTextNode(text)
+				this.endNode.before(this.textNode)
 			}
 		}
 		else {
 			if (this.textNode) {
 				this.textNode.textContent = ''
 			}
-		}
-	}
-
-	private restoreComment() {
-		if (this.textNode && this.textNode.parentNode) {
-			this.textNode.replaceWith(this.comment)
-		}
-	}
-
-	remove() {
-		if (this.templates) {
-			this.templates.forEach(template => template.remove())
-		}
-
-		if (this.comment && this.comment.parentNode) {
-			this.comment.remove()
-		}
-
-		if (this.textNode && this.textNode.parentNode) {
-			this.textNode.remove()
 		}
 	}
 }

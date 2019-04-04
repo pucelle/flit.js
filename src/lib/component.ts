@@ -8,7 +8,6 @@ import {WatchFn, WatcherDisconnectFn, WatcherCallback, Watcher} from './watcher'
 /** Returns the typeof T[P]. */
 type ValueType<T, P extends keyof T> = T extends {[key in P]: infer R} ? R : never
 
-
 /** The constructor type of component class. */
 export type ComponentConstructor = {
     new(el: HTMLElement): Component
@@ -92,6 +91,16 @@ export function getComponentAtElementAsync(el: HTMLElement): Promise<Component |
 }
 
 
+const componentSet: Set<Component> = new Set()
+
+/** Update all components, e.g., when current language changed. */
+export function updateAllComponent() {
+	for (let com of componentSet) {
+		com.update()
+	}
+}
+
+
 /** The abstract component class, you can instantiate it from just create an element, or call `render()` if you want to config it. */
 export abstract class Component<Events = any> extends Emitter<Events> {
 
@@ -101,7 +110,7 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 	el: HTMLElement
 	refs: {[key: string]: Element} = {}
 
-	private __node: RootPart | null = null
+	private __part: RootPart | null = null
 	private __firstRendered: boolean = false
 	private __watchers: Set<Watcher> | null = null
 	private __connected: boolean = true
@@ -120,7 +129,6 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 
 	__emitConnected() {
 		this.__connected = true
-
 		this.update()
 		this.onConnected()
 
@@ -129,9 +137,12 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 				watcher.connect()
 			}
 		}
+
+		componentSet.add(this)
 	}
 
 	__emitDisconnected() {
+		componentSet.delete(this)
 		clearDependency(this)
 		clearAsDependency(this)
 
@@ -149,16 +160,22 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 			return
 		}
 
+		let part = this.__part
+
 		startUpdating(this)
 		let value = this.render()
-		endUpdating()
 
-		if (this.__node) {
-			this.__node.update(value)
+		if (part) {
+			part.update(value)
 		}
 		else {
-			this.__node = new RootPart(this.el, value, this)
+			part = new RootPart(this.el, value, this)
 		}
+
+		endUpdating()
+
+		// Here to avoid observe `__part`.
+		this.__part = part
 
 		if (!this.__firstRendered) {
 			this.__firstRendered = true

@@ -87,6 +87,4 @@ defineBinding('class', class ClassNameBinding implements Binding {
 
 		return names
 	}
-
-	unbind() {}
 })
