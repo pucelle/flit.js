@@ -132,7 +132,7 @@ export class ChildPart implements NodePart {
 				}
 				else {
 					let newTemplate = new Template(result, this.context)
-					template.startNode!.before(newTemplate.parseToFragment())
+					template.startNode!.before(newTemplate.getFragment())
 					template.remove()
 					templates[i] = newTemplate
 				}
@@ -149,7 +149,7 @@ export class ChildPart implements NodePart {
 		else if (templates.length < results.length) {
 			for (let i = templates.length; i < results.length; i++) {
 				let template = new Template(results[i], this.context)
-				let fragment = template.parseToFragment()
+				let fragment = template.getFragment()
 
 				this.endNode.before(fragment)
 				templates.push(template)

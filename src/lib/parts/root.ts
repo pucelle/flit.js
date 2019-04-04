@@ -41,7 +41,7 @@ export class RootPart implements NodePart {
 
 	private createTemplateAndRender(result: TemplateResult) {
 		this.template = new Template(result, this.context)
-		this.renderFragment(this.template.parseToFragment())
+		this.renderFragment(this.template.getFragment())
 	}
 
 	private renderFragment(fragment: DocumentFragment) {

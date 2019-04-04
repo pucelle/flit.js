@@ -8,9 +8,9 @@ type TemplateFn<T> = (item: T, index: number) => TemplateResult | string
 
 export const repeat = defineDirective(class RepeatDirective<T> extends Directive {
 
-	items: T[] = []
-	templates: Template[] = []
-	templateFn: TemplateFn<T> | null = null
+	private items: T[] = []
+	private templates: Template[] = []
+	private templateFn: TemplateFn<T> | null = null
 
 	initialize(items: Iterable<T>, templateFn: TemplateFn<T>) {
 		this.items = items ? [...items] : []
@@ -30,10 +30,10 @@ export const repeat = defineDirective(class RepeatDirective<T> extends Directive
 		}
 
 		let template = new Template(result, this.context)
-		let fragment = template.parseToFragment()
+		let fragment = template.getFragment()
 
 		if (mayNextTemplateIndex >= 0 && mayNextTemplateIndex < this.templates.length && this.templates[mayNextTemplateIndex]) {
-			this.templates[mayNextTemplateIndex].startNode!.before(fragment)
+			this.templates[mayNextTemplateIndex].startNode.before(fragment)
 		}
 		else {
 			this.endNode.before(fragment)
@@ -140,22 +140,22 @@ export const repeat = defineDirective(class RepeatDirective<T> extends Directive
 
 	private moveTemplateBefore(template: Template, mayNextTemplateIndex: number) {
 		if (mayNextTemplateIndex < this.templates.length && this.templates[mayNextTemplateIndex]) {
-			template.beInsertedBefore(this.templates[mayNextTemplateIndex].startNode!)
+			this.templates[mayNextTemplateIndex].startNode.before(template.getFragment())
 		}
 		else {
-			template.beInsertedBefore(this.endNode)
+			this.endNode.before(template.getFragment())
 		}
 	}
 
 	private moveTemplateAfter(template: Template, mapPrevTemplateIndex: number, mayNextTemplateIndex: number) {
 		if (mapPrevTemplateIndex >= 0 && this.templates[mapPrevTemplateIndex]) {
-			template.beInsertedAfter(this.templates[mapPrevTemplateIndex].endNode!)
+			this.templates[mapPrevTemplateIndex].endNode.after(template.getFragment())
 		}
 		else if (mayNextTemplateIndex < this.templates.length && this.templates[mayNextTemplateIndex]) {
-			template.beInsertedBefore(this.templates[mayNextTemplateIndex].startNode!)
+			this.templates[mayNextTemplateIndex].startNode.before(template.getFragment())
 		}
 		else {
-			template.beInsertedBefore(this.endNode)
+			this.endNode.before(template.getFragment())
 		}
 	}
 

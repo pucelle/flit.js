@@ -14,9 +14,10 @@ export class Template {
 	private result: TemplateResult
 	private context: Context
 	private parts: NodePart[] = []
+	private fragment: DocumentFragment | null = null
 
-	startNode: ChildNode | null = null
-	endNode: ChildNode | null = null
+	startNode: ChildNode
+	endNode: ChildNode
 
 	/**
 	 * Create an template from html`...` like template result and context
@@ -26,11 +27,115 @@ export class Template {
 	constructor(result: TemplateResult, context: Context) {
 		this.result = result
 		this.context = context
+		this.fragment = this.parseAsFragment()
+
+		// Should include at least one node, So it's position can be tracked.
+		// And should always before any other nodes inside,
+		// So we need to prepend a comment node if it starts with a `hole`.
+		let startNode = this.fragment.firstChild
+		if (!startNode || startNode.nodeType === 8) {
+			startNode = document.createComment('')
+			this.fragment.prepend(startNode)
+		}
+		this.startNode = startNode
+
+		// The end node will never be moved.
+		// It should be a fixed node, or a comment node of a child part.
+		// It will never be null since the parsed result always include at least one node.
+		this.endNode = this.fragment.lastChild!
 	}
 	
-	/**
-	 * Compare if two template result can be merged.
-	 */
+	/** Parse template result and returns a fragment. */
+	private parseAsFragment(): DocumentFragment {
+		let {fragment, nodesInPlaces, places} = parse(this.result.type, this.result.strings)
+		let values = this.result.values
+		let valueIndex = 0
+
+		if (nodesInPlaces) {
+			for (let nodeIndex = 0; nodeIndex < nodesInPlaces.length; nodeIndex++) {
+				let node = nodesInPlaces[nodeIndex]
+				let place = places![nodeIndex]
+				let value = values[valueIndex]
+				let part: NodePart
+
+				switch (place.type) {
+					case PartType.Child:
+						part = new ChildPart(node as Comment, value, this.context)
+						break
+
+					case PartType.MayAttr:
+						part = new MayAttrPart(node as HTMLElement, place.name!, value)
+						break
+
+					case PartType.Event:
+						part = new EventPart(node as HTMLElement, place.name!, value as Function, this.context)
+						break
+
+					case PartType.Attr:
+						part = new AttrPart(node as HTMLElement, place.name!, join(place.strings, value))
+						;(part as MayStringValuePart).strings = place.strings
+						break
+
+					case PartType.Binding:
+						part = new BindingPart(node as HTMLElement, place.name!, join(place.strings, value), this.context)
+						;(part as MayStringValuePart).strings = place.strings
+						break
+
+					case PartType.Property:
+						part = new PropertyPart(node as HTMLElement, place.name!, join(place.strings, value))
+						;(part as MayStringValuePart).strings = place.strings
+						break
+				}
+
+				if (place.placeable) {
+					valueIndex += place.placeable ? 1 : 0
+					this.parts.push(part!)
+				}
+			}
+		}
+
+		return fragment
+	}
+
+	/** Can be used to get firstly parsed fragment, or reuse template nodes as a fragment. */
+	getFragment(): DocumentFragment {
+		let fragment: DocumentFragment
+
+		if (this.fragment) {
+			fragment = this.fragment
+			this.fragment = null
+		}
+		else {
+			fragment = document.createDocumentFragment()
+			fragment.append(...this.getNodes())
+		}
+
+		return fragment
+	}
+
+	/** Cache nodes in a fragment and use them later. */
+	cacheFragment() {
+		this.fragment = this.getFragment()
+	}
+	
+	private getNodes(): ChildNode[] {
+		let nodes: ChildNode[] = []
+		let node = this.startNode
+
+		while (node) {
+			nodes.push(node)
+
+			if (node === this.endNode) {
+				break
+			}
+
+			node = node.nextSibling as ChildNode
+		}
+
+		return nodes
+	}
+
+	/** Compare if two template result can be merged. */
 	canMergeWith(result: TemplateResult): boolean {
 		if (this.result.type !== result.type) {
 			return false
@@ -80,73 +185,6 @@ export class Template {
 		return diff.length > 0 ? diff : null
 	}
 
-	/** Parse template result and returns a fragment. */
-	parseToFragment(): DocumentFragment {
-		let {fragment, nodesInPlaces, places} = parse(this.result.type, this.result.strings)
-		let values = this.result.values
-		let valueIndex = 0
-
-		if (nodesInPlaces) {
-			for (let nodeIndex = 0; nodeIndex < nodesInPlaces.length; nodeIndex++) {
-				let node = nodesInPlaces[nodeIndex]
-				let place = places![nodeIndex]
-				let value = values[valueIndex]
-				let part: NodePart
-
-				switch (place.type) {
-					case PartType.Child:
-						part = new ChildPart(node as Comment, value, this.context)
-						break
-
-					case PartType.MayAttr:
-						part = new MayAttrPart(node as HTMLElement, place.name!, value)
-						break
-
-					case PartType.Event:
-						part = new EventPart(node as HTMLElement, place.name!, value as Function, this.context)
-						break
-
-					case PartType.Attr:
-						part = new AttrPart(node as HTMLElement, place.name!, join(place.strings, value))
-						;(part as MayStringValuePart).strings = place.strings
-						break
-
-					case PartType.Binding:
-						part = new BindingPart(node as HTMLElement, place.name!, join(place.strings, value), this.context)
-						;(part as MayStringValuePart).strings = place.strings
-						break
-
-					case PartType.Property:
-						part = new PropertyPart(node as HTMLElement, place.name!, join(place.strings, value))
-						;(part as MayStringValuePart).strings = place.strings
-						break
-				}
-
-				if (place.placeable) {
-					valueIndex += place.placeable ? 1 : 0
-					this.parts.push(part!)
-				}
-			}
-		}
-
-		// Should include at least one node, So it's position can be tracked.
-		// And should always before any other nodes inside,
-		// So we need to prepend a comment node if it starts with a `hole`.
-		let startNode = fragment.firstChild
-		if (!startNode || startNode.nodeType === 8) {
-			startNode = document.createComment('')
-			fragment.prepend(startNode)
-		}
-		this.startNode = startNode
-
-		// The end node will never be moved.
-		// It should be a fixed node, or a comment node of a child part.
-		// It will never be null since the parsed result always include at least one node.
-		this.endNode = fragment.lastChild
-
-		return fragment
-	}
-	
 	private mergePart(part: NodePart, value: unknown) {
 		switch (part.type) {
 			case PartType.Child:
@@ -157,39 +195,6 @@ export class Template {
 
 			default:
 				part.update(join((part as MayStringValuePart).strings, value))
-		}
-	}
-
-	private getNodes(): ChildNode[] {
-		let nodes: ChildNode[] = []
-		let node = this.startNode
-
-		while (node) {
-			nodes.push(node)
-
-			if (node === this.endNode) {
-				break
-			}
-
-			node = node.nextSibling as ChildNode
-		}
-
-		return nodes
-	}
-
-	beInsertedBefore(hashNode: ChildNode) {
-		if (this.endNode!.nextSibling !== hashNode) {
-			this.getNodes().forEach(node => {
-				hashNode.before(node)
-			})
-		}
-	}
-
-	beInsertedAfter(hashNode: ChildNode) {
-		if (this.startNode!.previousSibling !== hashNode) {
-			this.getNodes().reverse().forEach(node => {
-				hashNode.after(node)
-			})
 		}
 	}
 

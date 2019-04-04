@@ -26,7 +26,7 @@ export function render(this: unknown, codes: string | TemplateResult, target?: H
 		// 	console.warn(`You may need to call "render.call(context)" to specify a context when there is function type values in the template`)
 		// }
 		let template = new Template(codes, this as any)
-		fragment = template.parseToFragment()
+		fragment = template.getFragment()
 	}
 	else {
 		let template = document.createElement('template')
