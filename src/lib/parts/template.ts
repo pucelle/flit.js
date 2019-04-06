@@ -208,7 +208,8 @@ export class Template {
 }
 
 
-function join(strings: TemplateStringsArray | string[] | null, ...values: unknown[]): unknown {
+/** Join strings and values to string, returns `values[0]` if `strings` is null. */
+export function join(strings: TemplateStringsArray | string[] | null, ...values: unknown[]): unknown {
 	if (!strings) {
 		return values[0]
 	}

@@ -10,7 +10,8 @@ type ValueType<T, P extends keyof T> = T extends {[key in P]: infer R} ? R : nev
 
 /** The constructor type of component class. */
 export type ComponentConstructor = {
-    new(el: HTMLElement): Component
+	new(el: HTMLElement): Component
+	style: TemplateResult | string | null
 }
 
 
@@ -107,6 +108,9 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 	static get = getComponentAtElement
 	static getAsync = getComponentAtElementAsync
 
+	/** The content in `style` property is not scoped. */
+	static style: TemplateResult | string | null = null
+
 	el: HTMLElement
 	refs: {[key: string]: Element} = {}
 
@@ -142,9 +146,9 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 	}
 
 	__emitDisconnected() {
-		componentSet.delete(this)
 		clearDependency(this)
 		clearAsDependency(this)
+		componentSet.delete(this)
 
 		if (this.__watchers) {
 			for (let watcher of this.__watchers) {

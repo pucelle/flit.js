@@ -1,4 +1,8 @@
 import {ComponentConstructor, defineComponent, getComponentAtElement} from './component'
+import {css} from './parts'
+
+
+const componentStyleAppendedSet: Set<ComponentConstructor> = new Set()
 
 
 /**
@@ -18,6 +22,19 @@ export function define(name: string, Com: ComponentConstructor) {
 		connectedCallback() {
 			let com = getComponentAtElement(this)
 			if (!com) {
+				if (Com.style && !componentStyleAppendedSet.has(Com)) {
+					let style = Com.style
+					if (typeof style === 'string') {
+						style = css`${style}`
+					}
+					let styleTag = document.createElement('style')
+					styleTag.type = 'text/css'
+					styleTag.textContent = style.join()
+					document.head.append(styleTag)
+					
+					componentStyleAppendedSet.add(Com)
+				}
+
 				com = new Com(this)
 				com.__emitFirstConnected()
 			}
