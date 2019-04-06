@@ -110,7 +110,7 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 	el: HTMLElement
 	refs: {[key: string]: Element} = {}
 
-	private __part: RootPart | null = null
+	private __rootPart: RootPart | null = null
 	private __firstRendered: boolean = false
 	private __watchers: Set<Watcher> | null = null
 	private __connected: boolean = true
@@ -160,7 +160,7 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 			return
 		}
 
-		let part = this.__part
+		let part = this.__rootPart
 
 		startUpdating(this)
 		let value = this.render()
@@ -175,7 +175,7 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 		endUpdating()
 
 		// Here to avoid observe `__part`.
-		this.__part = part
+		this.__rootPart = part
 
 		if (!this.__firstRendered) {
 			this.__firstRendered = true

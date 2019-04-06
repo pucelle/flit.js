@@ -53,7 +53,13 @@ export function renderComplete(): Promise<void> {
 
 function enqueueUpdate() {
 	updateEnqueued = true
-	Promise.resolve().then(update)
+
+	// Why not using `Promise.resolve().then` to start a micro stask:
+	// When initialize a component from `connectCallback`, it's child nodes is not ready,
+	// even in the following micro task queue.
+	// Very frequently data changing trigger updating,
+	// but then more data changes in micro tasks and trigger new updating.
+	requestAnimationFrame(update)
 }
 
 function update() {

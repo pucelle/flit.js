@@ -9,4 +9,5 @@ export {observe} from './lib/observer'
 export {watch, watchOnce, watchUntil} from './lib/watcher'
 export {onRendered, renderComplete} from './lib/queue'
 export {defineDirective, Directive, DirectiveResult, repeat, cache} from './lib/directives'
+export {defineTransion} from './lib/transition'
 

@@ -10,7 +10,7 @@ export interface Binding {
 }
 
 
-const defineMap: Map<string, BindingConstructor> = new Map()
+const definedMap: Map<string, BindingConstructor> = new Map()
 
 /**
  * Define a bind class on an element to modify attributes or properties.
@@ -18,9 +18,9 @@ const defineMap: Map<string, BindingConstructor> = new Map()
  * @param BindConstructor The class to handle binding and value changing.
  */
 export function defineBinding(name: string, Com: BindingConstructor) {
-	defineMap.set(name, Com)
+	definedMap.set(name, Com)
 }
 
 export function getDefinedBinding(name: string): BindingConstructor | undefined {
-	return defineMap.get(name)
+	return definedMap.get(name)
 }

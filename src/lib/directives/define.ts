@@ -16,7 +16,7 @@ export abstract class Directive<Args extends any[] = any[]> {
 		this.context = context
 	}
 
-	abstract initialize(...args: Args): void
+	abstract init(...args: Args): void
 	abstract canMergeWith(...args: Args): boolean
 	abstract merge(...args: Args): void
 }

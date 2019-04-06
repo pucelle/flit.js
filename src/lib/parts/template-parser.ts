@@ -3,9 +3,10 @@ import {PartType} from "./types"
 
 
 export interface ParseResult {
-	fragment: DocumentFragment,
+	fragment: DocumentFragment
 	places: Place[] | null
 	nodesInPlaces: Node[] | null
+	hasSlots: boolean
 }
 
 export interface Place {
@@ -21,6 +22,7 @@ export interface Place {
 export interface SharedParseReulst {
 	readonly template: HTMLTemplateElement
 	readonly valuePlaces: Place[]
+	readonly hasSlots: boolean
 }
 
 
@@ -53,7 +55,8 @@ export function parse(type: TemplateType, strings: TemplateStringsArray): ParseR
 		return {
 			fragment,
 			nodesInPlaces: null,
-			places: null
+			places: null,
+			hasSlots: false
 		}
 	}
 	else {
@@ -64,7 +67,8 @@ export function parse(type: TemplateType, strings: TemplateStringsArray): ParseR
 		return {
 			fragment,
 			nodesInPlaces: null,
-			places: null
+			places: null,
+			hasSlots: false
 		}
 	}
 }
@@ -98,6 +102,7 @@ class ElementParser {
 		let lastIndex = 0
 		let isFirstTag = false
 		let svgWrapped = false
+		let hasSlots = false
 
 		let match: RegExpExecArray | null
 		while (match = tagRE.exec(this.string)) {
@@ -116,6 +121,10 @@ class ElementParser {
 			
 			let tag = match[1]
 			let attr = match[2]
+
+			if (tag === 'slot') {
+				hasSlots = true
+			}
 
 			if (!isFirstTag) {
 				if (this.type === 'svg' && tag !== 'svg') {
@@ -148,7 +157,8 @@ class ElementParser {
 
 		return {
 			template,
-			valuePlaces: this.places
+			valuePlaces: this.places,
+			hasSlots
 		}
 	}
 
@@ -255,7 +265,7 @@ class ElementParser {
 // TreeWalker Benchmark: https://jsperf.com/treewalker-vs-nodeiterator
 // Clone benchmark: https://jsperf.com/clonenode-vs-importnode
 function cloneParseResult(sharedResult: SharedParseReulst): ParseResult {
-	let {template, valuePlaces} = sharedResult
+	let {template, valuePlaces, hasSlots} = sharedResult
 	let fragment = template.content.cloneNode(true) as DocumentFragment
 	let nodeIndex = 0
 	let nodesInPlaces: Node[] = []
@@ -288,6 +298,7 @@ function cloneParseResult(sharedResult: SharedParseReulst): ParseResult {
 	return {
 		fragment,
 		nodesInPlaces,
-		places: valuePlaces
+		places: valuePlaces,
+		hasSlots
 	}
 }

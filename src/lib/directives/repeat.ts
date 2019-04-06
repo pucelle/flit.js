@@ -1,6 +1,7 @@
 import {defineDirective, Directive, DirectiveResult} from './define'
 import {TemplateResult, Template} from '../parts'
 import {text} from '../parts/template-result'
+import {Transition, TransitionOptions} from '../transition'
 
 
 type TemplateFn<T> = (item: T, index: number) => TemplateResult | string
@@ -11,8 +12,9 @@ export const repeat = defineDirective(class RepeatDirective<T> extends Directive
 	private items: T[] = []
 	private templates: Template[] = []
 	private templateFn: TemplateFn<T> | null = null
+	private transitionOptions: TransitionOptions | null = null
 
-	initialize(items: Iterable<T>, templateFn: TemplateFn<T>) {
+	init(items: Iterable<T>, templateFn: TemplateFn<T>, transitionOptions?: TransitionOptions | string) {
 		this.items = items ? [...items] : []
 		this.templateFn = templateFn
 		
@@ -21,9 +23,21 @@ export const repeat = defineDirective(class RepeatDirective<T> extends Directive
 			let template = this.createTemplate(item, index)
 			this.templates.push(template)
 		}
+
+		// Doesn't play transition for the first time
+		this.initTransitionOptions(transitionOptions)
 	}
 
-	private createTemplate(item: T, index: number, mayNextTemplateIndex: number = -1): Template {
+	private initTransitionOptions(transitionOptions: TransitionOptions | string | undefined) {
+		if (typeof transitionOptions === 'string') {
+			this.transitionOptions = {name: transitionOptions}
+		}
+		else {
+			this.transitionOptions = transitionOptions || null
+		}
+	}
+
+	private createTemplate(item: T, index: number, nextNode: ChildNode = this.endNode): Template {
 		let result = this.templateFn!(item, index++)
 		if (typeof result === 'string') {
 			result = text`${result}`
@@ -32,12 +46,14 @@ export const repeat = defineDirective(class RepeatDirective<T> extends Directive
 		let template = new Template(result, this.context)
 		let fragment = template.getFragment()
 
-		if (mayNextTemplateIndex >= 0 && mayNextTemplateIndex < this.templates.length && this.templates[mayNextTemplateIndex]) {
-			this.templates[mayNextTemplateIndex].startNode.before(fragment)
+		if (this.transitionOptions) {
+			let firstElement = fragment.firstElementChild as HTMLElement
+			if (firstElement) {
+				new Transition(firstElement, this.transitionOptions).enter()
+			}
 		}
-		else {
-			this.endNode.before(fragment)
-		}
+
+		nextNode.before(fragment)
 
 		return template
 	}
@@ -46,117 +62,114 @@ export const repeat = defineDirective(class RepeatDirective<T> extends Directive
 		return templateFn.toString() === this.templateFn!.toString()
 	}
 
-	merge(items: Iterable<T>, _templateFn: TemplateFn<T>) {
-		let oldItems = this.items
-		let oldItemSet: Set<T> = new Set(oldItems)
-		let oldTemplates = this.templates
-		let newItems = items ? [...items] : []
-		let newItemSet: Set<T> = new Set(newItems)
-		let newTemplates: Template[] = new Array(newItems.length)
-		let headIndex = 0
-		let tailIndex = newItems.length - 1
-		let movedOrCreated = false
+	// We want to reduce moving times, the best way is here:
+	// http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.4.6927&rep=rep1&type=pdf
+
+	// Another way in `lit-html` is to check from start and end position,
+	// it's good when only add or remove somes in one position:
+	// https://github.com/Polymer/lit-html/blob/master/src/directives/repeat.ts
+
+	// But here we need to keep the index of template nodes that will be removed,
+	// So we check from start position to end position,
+	// collected templates which will be removed but keep them in their old position.
+	merge(items: Iterable<T>, _templateFn: TemplateFn<T>, transitionOptions: TransitionOptions | string) {
 		
-		this.items = newItems
-		this.templates = newTemplates	// Need to use it when creating and moving templates.
+		// Old
+		let oldItems = this.items
+		let oldItemIndexMap: Map<T, number> = new Map()
+		let oldTemplates = this.templates
+		
 
-		while (headIndex <= tailIndex) {
-			let headItem = newItems[headIndex]
-			let tailItem = newItems[tailIndex]
+		// New
+		let newItems = this.items = items ? [...items] : []
+		let newItemSet: Set<T> = new Set(this.items)
+		let newTemplates: Template[] = this.templates = []
+		this.initTransitionOptions(transitionOptions)
 
-			if (oldItems.length === 0) {
-				newTemplates[headIndex] = this.createTemplate(headItem, headIndex, tailIndex + 1)
-				headIndex++
-				continue
+		
+		// Handle removing and reusing
+		let willRemoveIndexSet: Set<number> = new Set()
+		let reusedIndexSet: Set<number> = new Set()
+
+		for (let i = 0; i < oldItems.length; i++) {
+			let oldItem = oldItems[i]
+			if (!oldItemIndexMap.has(oldItem)) {
+				oldItemIndexMap.set(oldItem, i)
 			}
-
-			// Start position match, no need to move.
-			if (!movedOrCreated && headItem === oldItems[0]) {
-				oldItems.shift()
-				newTemplates[headIndex] = oldTemplates.shift()!
-				headIndex++
-				continue
+			if (!newItemSet.has(oldItem)) {
+				willRemoveIndexSet.add(i)
 			}
+		}
 
-			// End position match, no need to move.
-			if (!movedOrCreated && tailItem === oldItems[oldItems.length - 1]) {
-				oldItems.pop()
-				newTemplates[tailIndex] = oldTemplates.pop()!
-				tailIndex--
-				continue
-			}
+		let oldIndex = 0
+		while (willRemoveIndexSet.has(oldIndex)) {
+			oldIndex++
+		}
 
-			// Can reuse template for head item.
-			if (oldItemSet.has(headItem)) {
-				let index = oldItems.indexOf(headItem)
-				if (index > -1) {
-					oldItems.splice(index, 1)
-					let template = oldTemplates.splice(index, 1)[0]
-					this.moveTemplateAfter(template, headIndex - 1, tailIndex + 1)
-					newTemplates[headIndex] = template
-					headIndex++
-					movedOrCreated = true
+
+		// Loop
+		for (let index = 0, oldIndex = 0; index < newItems.length; index++) {
+			let item = newItems[index]
+
+			if (oldIndex < oldItems.length) {
+				// Make sure next old item is not used or will be removed
+				while (willRemoveIndexSet.has(oldIndex) || reusedIndexSet.has(oldIndex)) {
+					oldIndex++
+				}
+
+				// Old item ust in the right position, nothing need to do
+				if (item === oldItems[oldIndex]) {
+					newTemplates.push(oldTemplates[oldIndex])
+					reusedIndexSet.add(oldIndex)
+					oldIndex++
 					continue
 				}
 			}
 
-			// Can reuse template for tail item.
-			if (oldItemSet.has(tailItem)) {
-				let index = oldItems.indexOf(tailItem)
-				if (index > -1) {
-					oldItems.splice(index, 1)
-					let template = oldTemplates.splice(index, 1)[0]
-					this.moveTemplateBefore(template, tailIndex + 1)
-					newTemplates[tailIndex] = template
-					tailIndex--
-					movedOrCreated = true
+			// May reuse
+			if (oldItemIndexMap.has(item)) {
+				let reusedIndex = oldItemIndexMap.get(item)!
+				if (reusedIndexSet.has(reusedIndex)) {
+					reusedIndex = oldItems.findIndex((t, i) => t === item && !reusedIndexSet.has(i))
+				}
+
+				if (reusedIndex > -1) {
+					let template = oldTemplates[reusedIndex]
+
+					// No need to check if `reusedIndex === oldIndex`, they are not equal
+					this.moveTemplate(template, oldIndex < oldItems.length ? oldTemplates[oldIndex].startNode : undefined)
+					newTemplates.push(template)
+					reusedIndexSet.add(reusedIndex)
 					continue
 				}
 			}
 
-			// Need to reuse template and rerender it.
-			let index = oldItems.findIndex(item => !newItemSet.has(item))
-			if (index > -1) {
-				oldItems.splice(index, 1)
-				let template = oldTemplates.splice(index, 1)[0]
-				this.moveTemplateAfter(template, headIndex - 1, tailIndex + 1)
-				this.reuseTemplate(template, headItem, headIndex)
-				newTemplates[headIndex] = template
-			}
-			else {
-				newTemplates[headIndex] = this.createTemplate(headItem, headIndex, tailIndex + 1)
+			// Reuse template that will be removed and rerender it
+			if (willRemoveIndexSet.size > 0 && !this.transitionOptions) {
+				let reusedIndex = willRemoveIndexSet.keys().next().value
+				let template = oldTemplates[reusedIndex]
+
+				this.moveTemplate(template, oldIndex < oldItems.length ? oldTemplates[oldIndex].startNode : undefined)
+				this.reuseTemplate(template, item, index)
+				newTemplates.push(template)
+				reusedIndexSet.add(reusedIndex)
+				continue
 			}
 
-			headIndex++
-			movedOrCreated = true
+			newTemplates.push(this.createTemplate(item, index, oldIndex < oldItems.length ? oldTemplates[oldIndex].startNode : undefined))
 		}
 
-		if (oldTemplates.length > 0) {
-			for (let template of oldTemplates) {
-				template.remove()
+		if (reusedIndexSet.size < oldItems.length) {
+			for (let i = 0; i < oldItems.length; i++) {
+				if (!reusedIndexSet.has(i)) {
+					this.removeTemplate(oldTemplates[i])
+				}
 			}
 		}
 	}
 
-	private moveTemplateBefore(template: Template, mayNextTemplateIndex: number) {
-		if (mayNextTemplateIndex < this.templates.length && this.templates[mayNextTemplateIndex]) {
-			this.templates[mayNextTemplateIndex].startNode.before(template.getFragment())
-		}
-		else {
-			this.endNode.before(template.getFragment())
-		}
-	}
-
-	private moveTemplateAfter(template: Template, mapPrevTemplateIndex: number, mayNextTemplateIndex: number) {
-		if (mapPrevTemplateIndex >= 0 && this.templates[mapPrevTemplateIndex]) {
-			this.templates[mapPrevTemplateIndex].endNode.after(template.getFragment())
-		}
-		else if (mayNextTemplateIndex < this.templates.length && this.templates[mayNextTemplateIndex]) {
-			this.templates[mayNextTemplateIndex].startNode.before(template.getFragment())
-		}
-		else {
-			this.endNode.before(template.getFragment())
-		}
+	private moveTemplate(template: Template, nextNode: ChildNode = this.endNode) {
+		nextNode.before(template.getFragment())
 	}
 
 	private reuseTemplate(template: Template, item: T, index: number) {
@@ -164,7 +177,23 @@ export const repeat = defineDirective(class RepeatDirective<T> extends Directive
 		if (typeof result === 'string') {
 			result = text`${result}`
 		}
-
 		template.merge(result)
 	}
-}) as <T>(items: Iterable<T>, templateFn: TemplateFn<T>) => DirectiveResult
+
+	private removeTemplate(template: Template) {
+		if (this.transitionOptions) {
+			let firstElement = template.getNodes().find(el => el.nodeType === 1) as HTMLElement | undefined
+			if (firstElement) {
+				new Transition(firstElement, this.transitionOptions).leave(() => {
+					template.remove()
+				})
+			}
+			else {
+				template.remove()
+			}
+		}
+		else {
+			template.remove()
+		}
+	}
+}) as <T>(items: Iterable<T>, templateFn: TemplateFn<T>, transitionOptions?: TransitionOptions | string) => DirectiveResult

@@ -97,7 +97,7 @@ export class ChildPart implements NodePart {
 		if (!this.directive) {
 			let Dir = getDirectiveConstructor(directiveResult.id)
 			let directive = new Dir(this.endNode, this.context as any)
-			directive.initialize(...directiveResult.args)
+			directive.init(...directiveResult.args)
 			this.directive = directive
 		}
 	}

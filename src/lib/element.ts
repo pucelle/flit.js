@@ -13,6 +13,8 @@ export function define(name: string, Com: ComponentConstructor) {
 	}
 
 	customElements.define(name, class CustomLitElement extends HTMLElement {
+		// A potential problem here:
+		// When `connectedCallback` been called, the child nodes of it is not linked yet.
 		connectedCallback() {
 			let com = getComponentAtElement(this)
 			if (!com) {

@@ -18,6 +18,7 @@ export class Template {
 
 	startNode: ChildNode
 	endNode: ChildNode
+	hasSlots: boolean = false
 
 	/**
 	 * Create an template from html`...` like template result and context
@@ -47,9 +48,11 @@ export class Template {
 	
 	/** Parse template result and returns a fragment. */
 	private parseAsFragment(): DocumentFragment {
-		let {fragment, nodesInPlaces, places} = parse(this.result.type, this.result.strings)
+		let {fragment, nodesInPlaces, places, hasSlots} = parse(this.result.type, this.result.strings)
 		let values = this.result.values
 		let valueIndex = 0
+
+		this.hasSlots = hasSlots
 
 		if (nodesInPlaces) {
 			for (let nodeIndex = 0; nodeIndex < nodesInPlaces.length; nodeIndex++) {
@@ -118,7 +121,8 @@ export class Template {
 		this.fragment = this.getFragment()
 	}
 	
-	private getNodes(): ChildNode[] {
+	/** Get nodes belongs to template. */
+	getNodes(): ChildNode[] {
 		let nodes: ChildNode[] = []
 		let node = this.startNode
 

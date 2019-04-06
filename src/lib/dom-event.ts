@@ -230,7 +230,7 @@ export function off(el: Element, name: string, handler: EventHandler, scope?: ob
 		let event = events[i]
 
 		if ((!handler || event.handler === handler) && (!scope || event.scope === scope)) {
-			el.removeEventListener(name, event.handler, event.capture)
+			el.removeEventListener(name, event.wrappedHandler, event.capture)
 			events.splice(i, 1)
 		}
 	}
