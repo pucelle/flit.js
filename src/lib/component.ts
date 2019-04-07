@@ -102,16 +102,34 @@ export function updateAllComponent() {
 }
 
 
-/** The abstract component class, you can instantiate it from just create an element, or call `render()` if you want to config it. */
+/** The abstract component class, you can instantiate it from just creating an element and insert in to document. */
 export abstract class Component<Events = any> extends Emitter<Events> {
 
 	static get = getComponentAtElement
 	static getAsync = getComponentAtElementAsync
 
-	/** The content in `style` property is not scoped. */
+	/**
+	 * The static `style` property contains style text used as styles for current component.
+	 * Styles in it will be partialy scoped, so we have benefits of scoped styles,
+	 * and also avoid the problems in sharing styles.
+	 * 
+	 * symbol `$` in class name will be replaced to current component name:
+	 * `.$title` -> `.title__com-name`
+	 * 
+	 * tag selector will be nested in com-name selector:
+	 * `p` -> `com-name p`
+	 */
 	static style: TemplateResult | string | null = null
 
+
+	/** The root element of component. */
 	el: HTMLElement
+
+	/**
+	 * The reference map object of element inside.
+	 * You can specify `:ref="refName"` on an element,
+	 * or using `:ref=${this.onRef}` to call `this.onRef(refElement)` every time when the reference element updated.
+	 */
 	refs: {[key: string]: Element} = {}
 
 	private __rootPart: RootPart | null = null

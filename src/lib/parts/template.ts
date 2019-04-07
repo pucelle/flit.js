@@ -48,7 +48,7 @@ export class Template {
 	
 	/** Parse template result and returns a fragment. */
 	private parseAsFragment(): DocumentFragment {
-		let {fragment, nodesInPlaces, places, hasSlots} = parse(this.result.type, this.result.strings)
+		let {fragment, nodesInPlaces, places, hasSlots} = parse(this.result.type, this.result.strings, this.context.el.localName)
 		let values = this.result.values
 		let valueIndex = 0
 

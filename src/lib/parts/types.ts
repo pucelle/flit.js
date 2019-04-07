@@ -1,7 +1,9 @@
 /**
  * Should know less about outer component module.
  */
-export type Context = object
+export interface Context {
+	el: HTMLElement
+}
 
 export enum PartType {
 	Root,

@@ -1,18 +1,22 @@
 export type TemplateType = 'html' | 'svg' | 'css' | 'text'
 
 
+/** HTML template literal that can be used to render or update a component. */
 export function html(strings: TemplateStringsArray, ...values: unknown[]): TemplateResult {
 	return new TemplateResult('html', strings, values)
 }
 
+/** SVG template literal that can be used to render or update a component. */
 export function svg(strings: TemplateStringsArray, ...values: unknown[]): TemplateResult {
 	return new TemplateResult('svg', strings, values)
 }
 
+/** CSS template literal that can be used as component's static style property. */
 export function css(strings: TemplateStringsArray, ...values: unknown[]): TemplateResult {
 	return new TemplateResult('css', strings, values)
 }
 
+/** Text template literal that used inside. */
 export function text(strings: TemplateStringsArray, ...values: unknown[]): TemplateResult {
 	return new TemplateResult('text', strings, values)
 }
@@ -23,7 +27,7 @@ export class TemplateResult {
 	type: TemplateType
 	strings: TemplateStringsArray
 	values: unknown[]
-	
+
 	/**
 	 * Created from each html`...` or svg`...`.
 	 * Every time call `Component.update` will generate a new template result tree.

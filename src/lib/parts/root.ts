@@ -16,11 +16,11 @@ export class RootPart implements NodePart {
 	constructor(el: HTMLElement, value: unknown, context: Context) {
 		this.el = el
 		this.context = context
-		this.cacheChildNodes()
+		this.parseSlots()
 		this.update(value)
 	}
 
-	private cacheChildNodes() {
+	private parseSlots() {
 		if (this.el.childNodes.length) {
 			let fragment = document.createDocumentFragment()
 			fragment.append(...this.el.childNodes)
@@ -69,25 +69,7 @@ export class RootPart implements NodePart {
 		let fragment = template.getFragment()
 
 		if (template.hasSlots) {
-			let slots = fragment.querySelectorAll('slot')
-
-			for (let slot of slots) {
-				let slotName = slot.getAttribute('name')
-				if (slotName) {
-					if (this.slotMap && this.slotMap.has(slotName)) {
-						while (slot.firstChild) {
-							slot.firstChild.remove()
-						}
-						slot.append(...this.slotMap.get(slotName)!)
-					}
-				}
-				else if (this.restNodes) {
-					while (slot.firstChild) {
-						slot.firstChild.remove()
-					}
-					slot.append(...this.restNodes)
-				}
-			}
+			this.moveSlots(fragment)
 		}
 
 		while (this.el.firstChild) {
@@ -96,6 +78,28 @@ export class RootPart implements NodePart {
 
 		this.el.append(fragment)
 		this.template = template
+	}
+
+	private moveSlots(fragment: DocumentFragment) {
+		let slots = fragment.querySelectorAll('slot')
+
+		for (let slot of slots) {
+			let slotName = slot.getAttribute('name')
+			if (slotName) {
+				if (this.slotMap && this.slotMap.has(slotName)) {
+					while (slot.firstChild) {
+						slot.firstChild.remove()
+					}
+					slot.append(...this.slotMap.get(slotName)!)
+				}
+			}
+			else if (this.restNodes) {
+				while (slot.firstChild) {
+					slot.firstChild.remove()
+				}
+				slot.append(...this.restNodes)
+			}
+		}
 	}
 
 	private renderText(value: unknown) {

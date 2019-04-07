@@ -26,7 +26,8 @@ export interface SharedParseReulst {
 }
 
 
-const parseResultMap: Map<string, SharedParseReulst> = new Map()
+// context name -> template string -> parse result
+const parseResultMap: Map<string, Map<string, SharedParseReulst>> = new Map()
 
 const VALUE_MARKER = '${flit}'
 
@@ -37,13 +38,18 @@ const VALUE_MARKER = '${flit}'
  * @param type 
  * @param strings 
  */
-export function parse(type: TemplateType, strings: TemplateStringsArray): ParseResult {
+export function parse(type: TemplateType, strings: TemplateStringsArray, contextName: string): ParseResult {
 	if ((type === 'html' || type === 'svg')) {
 		let string = strings.join(VALUE_MARKER)
-		let sharedResult = parseResultMap.get(string)
+		let sharedResultMap = parseResultMap.get(contextName)
+		let sharedResult = sharedResultMap ? sharedResultMap.get(string) : null
 		if (!sharedResult) {
-			sharedResult = new ElementParser(type, string).parse()
-			parseResultMap.set(string, sharedResult)
+			if (!sharedResultMap) {
+				sharedResultMap = new Map()
+				parseResultMap.set(contextName, sharedResultMap)
+			}
+			sharedResult = new ElementParser(type, string, contextName).parse()
+			sharedResultMap.set(string, sharedResult)
 		}
 
 		return cloneParseResult(sharedResult)
@@ -87,11 +93,12 @@ class ElementParser {
 	private nodeIndex = 0
 	private places: Place[] = []
 	private nodeIndexs: number[] = []
-	
+	private contextName: string
 
-	constructor(type: TemplateType, string: string) {
+	constructor(type: TemplateType, string: string, contextName: string) {
 		this.type = type
 		this.string = string
+		this.contextName = contextName
 	}
 
 	// Benchmark: https://jsperf.com/regexp-exec-match-replace-speed
@@ -251,6 +258,9 @@ class ElementParser {
 				else {
 					return ''
 				}
+			}
+			else if (name === 'class') {
+				return m0.replace(/\$(\w+)/g, '$1__' + this.contextName)
 			}
 			
 			return m0

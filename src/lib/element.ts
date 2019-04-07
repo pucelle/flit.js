@@ -29,9 +29,9 @@ export function define(name: string, Com: ComponentConstructor) {
 					}
 					let styleTag = document.createElement('style')
 					styleTag.type = 'text/css'
-					styleTag.textContent = style.join()
+					styleTag.textContent = scopeStyle(style.join(), name)
 					document.head.append(styleTag)
-					
+
 					componentStyleAppendedSet.add(Com)
 				}
 
@@ -50,4 +50,18 @@ export function define(name: string, Com: ComponentConstructor) {
 	})
 
 	defineComponent(name, Com)
+}
+
+
+// Benchmark: https://jsperf.com/is-nesting-selector-slower
+// About 2~4% slower for each nested selector when rendering.
+function scopeStyle(style: string, comName: string) {
+	let re = /[^;}]+\{/g
+
+	return style.replace(re, (m0: string) => {
+		return m0.replace(/\$(\w+)/g, '$1__' + comName)
+				 .replace(/(?:^|,)\s*\w+/g, (m0: string) => {
+					return m0.replace(/\w+/, comName + ' $&')
+				 })
+	})
 }

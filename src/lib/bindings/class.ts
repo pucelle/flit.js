@@ -81,6 +81,7 @@ defineBinding('class', class ClassNameBinding implements Binding {
 
 		for (let name in o) {
 			if (o[name]) {
+				name = name.replace(/^\$(\w+)/g, '$1__' + this.el.localName)
 				names.push(name)
 			}
 		}
