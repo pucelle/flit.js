@@ -11,7 +11,7 @@ const exorcist = require('exorcist')
 function bundle(task) {
 	let browser = browserify({
 		basedir: '.',
-		debug: true,
+		//debug: true,
 		entries: task.startsWith('test') ? glob.sync(__dirname + '/test/**/*.test.ts') : ['demo/index.ts']
 	})
 	browser.plugin(tsify)
@@ -29,7 +29,7 @@ function bundle(task) {
 
 	return browser
 		.bundle()
-		.pipe(exorcist(__dirname + '/' + dir + '/bundle.js.map'))
+		//.pipe(exorcist(__dirname + '/' + dir + '/bundle.js.map'))
 		.pipe(source('bundle.js'))
 		.pipe(gulp.dest(dir))
 }

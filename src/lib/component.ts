@@ -7,11 +7,12 @@ import {WatchFn, WatcherDisconnectFn, WatcherCallback, Watcher} from './watcher'
 
 /** Returns the typeof T[P]. */
 type ValueType<T, P extends keyof T> = T extends {[key in P]: infer R} ? R : never
+type ComponentStyle = TemplateResult | string | (() => TemplateResult | string) | null
 
 /** The constructor type of component class. */
 export type ComponentConstructor = {
 	new(el: HTMLElement): Component
-	style: TemplateResult | string | null
+	style: ComponentStyle
 }
 
 
@@ -99,7 +100,7 @@ export function getComponentAtElementAsync(el: HTMLElement): Promise<Component |
 const componentSet: Set<Component> = new Set()
 
 /** Update all components, e.g., when current language changed. */
-export function updateAllComponent() {
+export function updateAllComponents() {
 	for (let com of componentSet) {
 		com.update()
 	}
@@ -123,8 +124,7 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 	 * tag selector will be nested in com-name selector:
 	 * `p` -> `com-name p`
 	 */
-	static style: TemplateResult | string | null = null
-
+	static style: ComponentStyle = null
 
 	/** The root element of component. */
 	el: HTMLElement
