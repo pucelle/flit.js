@@ -18,6 +18,10 @@ const definedMap: Map<string, BindingConstructor> = new Map()
  * @param BindConstructor The class to handle binding and value changing.
  */
 export function defineBinding(name: string, Com: BindingConstructor) {
+	if (definedMap.has(name)) {
+		console.warn(`You are trying to overwrite binding definition "${name}"`)
+	}
+
 	definedMap.set(name, Com)
 }
 

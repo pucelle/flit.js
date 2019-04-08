@@ -1,7 +1,7 @@
 import {defineDirective, Directive, DirectiveResult} from './define'
 import {TemplateResult, Template} from '../parts'
 import {text} from '../parts/template-result'
-import {Transition, TransitionOptions} from '../transition'
+import {Transition, TransitionOptions, formatShortTransitionOptions, ShortTransitionOptions} from '../transition'
 
 
 type TemplateFn<T> = (item: T, index: number) => TemplateResult | string
@@ -14,7 +14,7 @@ export const repeat = defineDirective(class RepeatDirective<T> extends Directive
 	private templateFn: TemplateFn<T> | null = null
 	private transitionOptions: TransitionOptions | null = null
 
-	init(items: Iterable<T>, templateFn: TemplateFn<T>, transitionOptions?: TransitionOptions | string) {
+	init(items: Iterable<T>, templateFn: TemplateFn<T>, transitionOptions?: ShortTransitionOptions) {
 		this.items = items ? [...items] : []
 		this.templateFn = templateFn
 		
@@ -28,12 +28,12 @@ export const repeat = defineDirective(class RepeatDirective<T> extends Directive
 		this.initTransitionOptions(transitionOptions)
 	}
 
-	private initTransitionOptions(transitionOptions: TransitionOptions | string | undefined) {
-		if (typeof transitionOptions === 'string') {
-			this.transitionOptions = {name: transitionOptions}
+	private initTransitionOptions(transitionOptions: ShortTransitionOptions | undefined) {
+		if (transitionOptions) {
+			this.transitionOptions = formatShortTransitionOptions(transitionOptions)
 		}
 		else {
-			this.transitionOptions = transitionOptions || null
+			this.transitionOptions = null
 		}
 	}
 
@@ -72,7 +72,7 @@ export const repeat = defineDirective(class RepeatDirective<T> extends Directive
 	// But here we need to keep the index of template nodes that will be removed,
 	// So we check from start position to end position,
 	// collected templates which will be removed but keep them in their old position.
-	merge(items: Iterable<T>, _templateFn: TemplateFn<T>, transitionOptions: TransitionOptions | string) {
+	merge(items: Iterable<T>, _templateFn: TemplateFn<T>, transitionOptions: ShortTransitionOptions) {
 		
 		// Old
 		let oldItems = this.items
@@ -196,4 +196,4 @@ export const repeat = defineDirective(class RepeatDirective<T> extends Directive
 			template.remove()
 		}
 	}
-}) as <T>(items: Iterable<T>, templateFn: TemplateFn<T>, transitionOptions?: TransitionOptions | string) => DirectiveResult
+}) as <T>(items: Iterable<T>, templateFn: TemplateFn<T>, transitionOptions?: ShortTransitionOptions) => DirectiveResult

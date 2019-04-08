@@ -1,21 +1,25 @@
 import {once, off} from './dom-event'
 
 
-export type AnimationEasing = keyof typeof CUBIC_BEZIER_EASINGS | 'linear'
+export type TransitionEasing = keyof typeof CUBIC_BEZIER_EASINGS | 'linear'
+export type TransitionProperty = keyof typeof CSS_PROPERTIES
+export type TransitionFrame = {[key in TransitionProperty]?: string}
 export type TransitionCallback = (finish: boolean) => void
 export type TransitionTypedCallback = (type: 'enter' | 'leave', finish: boolean) => void
+export type ShortTransitionOptions = string | TransitionProperty[] | TransitionOptions
 
 export interface TransitionOptions {
-	name: string
+	name?: string
+	properties?: TransitionProperty[],
 	duration?: number
-	easing?: AnimationEasing
+	easing?: TransitionEasing
 	direction?: 'enter' | 'leave' | 'both'
 	callback?: TransitionTypedCallback
 }
 
-interface JSTransitionOptions {
+export interface JSTransitionOptions {
 	duration: number
-	easing: AnimationEasing
+	easing: TransitionEasing
 }
 
 interface JSTransitionConstructor {
@@ -75,18 +79,72 @@ const CUBIC_BEZIER_EASINGS = {
 	'ease-in-out-back'  : [0.680, -0.550, 0.265, 1.550],
 }
 
-function getAnimationEasing(easing: AnimationEasing): string {
+function getAnimationEasing(easing: TransitionEasing): string {
 	return CUBIC_BEZIER_EASINGS.hasOwnProperty(easing)
 		? 'cubic-bezier(' + CUBIC_BEZIER_EASINGS[easing as keyof typeof CUBIC_BEZIER_EASINGS].join(', ') + ')'
 		: ''
 }
+
 
 const elementTransitionMap: WeakMap<HTMLElement, Transition> = new WeakMap()
 const definedTransition: Map<string, JSTransitionConstructor> = new Map()
 
 /** Register a js transiton. */
 export function defineTransion(name: string, TransitionConstructor: JSTransitionConstructor) {
+	if (definedTransition.has(name)) {
+		console.warn(`You are trying to overwrite transition definition "${name}"`)
+	}
+
+	if (CSS_PROPERTIES.hasOwnProperty(name)) {
+		console.warn(`"${name}" is an available CSS property, you may confuse them when using short transition`)
+	}
+
 	definedTransition.set(name, TransitionConstructor)
+}
+
+const CSS_PROPERTIES = {
+	width: true,
+	height: true,
+	opacity: true,
+	margin: true,
+	marginLeft: true,
+	marginRght: true,
+	marginTop: true,
+	marginBottom: true,
+	padding: true,
+	paddingLeft: true,
+	paddingRght: true,
+	paddingTop: true,
+	paddingBottom: true,
+	borderWidth: true,
+	borderLeftWidth: true,
+	borderRightWidth: true,
+	borderTopWidth: true,
+	borderBottomWidth: true,
+	transform: true
+}
+
+export function formatShortTransitionOptions(options: ShortTransitionOptions): TransitionOptions {
+	if (Array.isArray(options)) {
+		return {
+			properties: options
+		}
+	}
+	else if (typeof options === 'string') {
+		if (CSS_PROPERTIES.hasOwnProperty(options)) {
+			return {
+				properties: [options as TransitionProperty]
+			}
+		}
+		else {
+			return {
+				name: options
+			}
+		}
+	}
+	else {
+		return options
+	}
 }
 
 
@@ -130,7 +188,10 @@ export class Transition {
 			elementTransitionMap.delete(this.el)
 		}
 
-		if (definedTransition.has(name)) {
+		if (this.options.properties) {
+			this.cssEnter(onEntered)
+		}
+		else if (definedTransition.has(name)) {
 			this.jsEnter(onEntered)
 		}
 		else {
@@ -165,12 +226,43 @@ export class Transition {
 
 		this.el.style.pointerEvents = 'none'
 
-		if (definedTransition.has(name)) {
+		if (this.options.properties) {
+			this.cssLeave(onLeaved)
+		}
+		else if (definedTransition.has(name)) {
 			this.jsLeave(onLeaved)
 		}
 		else {
 			this.classEnterOrLeave('leave', onLeaved)
 		}
+	}
+
+	private cssEnter(onEntered: TransitionCallback) {
+		let startFrame: TransitionFrame = {}
+		for (let property of this.options.properties!) {
+			startFrame[property] = '0'
+		}
+
+		let {promise, cancel} = animateFrom(this.el, startFrame,
+			this.options.duration || DEFAULT_TRANSITION_OPTIONS.duration,
+			this.options.easing || DEFAULT_TRANSITION_OPTIONS.easing as TransitionEasing
+		)
+		promise.then(onEntered)
+		this.cleaner = cancel
+	}
+
+	private cssLeave(onLeaved: TransitionCallback) {
+		let endFrame: TransitionFrame = {}
+		for (let property of this.options.properties!) {
+			endFrame[property] = '0'
+		}
+
+		let {promise, cancel} = animateTo(this.el, endFrame,
+			this.options.duration || DEFAULT_TRANSITION_OPTIONS.duration,
+			this.options.easing || DEFAULT_TRANSITION_OPTIONS.easing as TransitionEasing
+		)
+		promise.then(onLeaved)
+		this.cleaner = cancel
 	}
 
 	private jsEnter(onEntered: TransitionCallback) {
@@ -198,11 +290,11 @@ export class Transition {
 	}
 
 	private getJSTransitionInstance() {
-		let JsTransition = definedTransition.get(this.options.name)!
+		let JsTransition = definedTransition.get(this.options.name!)!
 		
 		return new JsTransition(this.el, {
 			duration: this.options.duration || DEFAULT_TRANSITION_OPTIONS.duration,
-			easing: this.options.easing || (DEFAULT_TRANSITION_OPTIONS.easing as 'ease-out')
+			easing: this.options.easing || (DEFAULT_TRANSITION_OPTIONS.easing as TransitionEasing)
 		})
 	}
 
@@ -286,4 +378,72 @@ export class Transition {
 			this.cleaner = null
 		}
 	}
+}
+
+
+export function animate(el: HTMLElement, startFrame: TransitionFrame, endFrame: TransitionFrame, duration: number, easing: TransitionEasing) {
+	if (!el.animate) {
+		return {
+			promise: Promise.resolve(false),
+			cancel: () => {}
+		}
+	}
+
+	let cubicEasing = getAnimationEasing(easing)
+
+	let animation = el.animate([startFrame, endFrame], {
+		easing: cubicEasing,
+		duration,
+	})
+
+	let promise = new Promise((resolve) => {
+		animation.addEventListener('finish', () => {
+			resolve(true)
+		}, false)
+
+		animation.addEventListener('cancel', () => {
+			resolve(false)
+		}, false)
+	}) as Promise<boolean>
+
+	function cancel() {
+		animation.cancel()
+	}
+
+	return {
+		promise,
+		cancel
+	}
+}
+
+
+/** The default style of element, which is not 0 */
+const DEFAULT_STYLE: {[key: string]: string} = {
+	transform: 'none'
+}
+
+
+export function animateFrom(el: HTMLElement, startFrame: TransitionFrame, duration: number, easing: TransitionEasing) {
+	let endFrame: TransitionFrame = {}
+	let style = getComputedStyle(el)
+
+	for (let property in startFrame) {
+		endFrame[property as TransitionProperty] = (style as any)[property] || DEFAULT_STYLE[property] || '0'
+	}
+
+	return animate(el, startFrame, endFrame, duration, easing)
+}
+
+
+export function animateTo(el: HTMLElement, endFrame: TransitionFrame, duration: number, easing: TransitionEasing) {
+	let startFrame: TransitionFrame = {}
+	let style = getComputedStyle(el)
+
+	for (let property in endFrame) {
+		startFrame[property as TransitionProperty] = (style as any)[property] || DEFAULT_STYLE[property] || '0'
+	}
+
+	return animate(el, startFrame, endFrame, duration, easing)
+	
+	// el will hide, no need to set style to end frame.
 }

@@ -23,6 +23,10 @@ const componentMap: Map<string, ComponentConstructor> = new Map()
  * @param Com The component class.
  */
 export function defineComponent(name: string, Com: ComponentConstructor) {
+	if (componentMap.has(name)) {
+		console.warn(`You are trying to overwrite component definition "${name}"`)
+	}
+
 	componentMap.set(name, Com)
 }
 

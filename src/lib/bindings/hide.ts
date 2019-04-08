@@ -1,5 +1,5 @@
 import {Binding, defineBinding} from './define'
-import {Transition, TransitionOptions} from '../transition'
+import {Transition, TransitionOptions, ShortTransitionOptions, formatShortTransitionOptions} from '../transition'
 
 
 /**
@@ -17,12 +17,12 @@ defineBinding('hide', class HideBinding implements Binding {
 		this.update(value as any)
 	}
 
-	update(value: boolean | {when: boolean, transition: TransitionOptions | string}) {
+	update(value: boolean | {when: boolean, transition: ShortTransitionOptions}) {
 		let newValue: boolean
 
 		if (value && typeof value === 'object') {
 			newValue = value.when
-			this.transitionOptions = typeof value.transition === "string" ? {name: value.transition} : value.transition || null
+			this.initTransitionOptions(value.transition)
 		}
 		else {
 			newValue = value
@@ -52,6 +52,15 @@ defineBinding('hide', class HideBinding implements Binding {
 					this.el.setAttribute('hidden', '')
 				}
 			}
+		}
+	}
+
+	private initTransitionOptions(transitionOptions: ShortTransitionOptions | undefined) {
+		if (transitionOptions) {
+			this.transitionOptions = formatShortTransitionOptions(transitionOptions)
+		}
+		else {
+			this.transitionOptions = null
 		}
 	}
 })

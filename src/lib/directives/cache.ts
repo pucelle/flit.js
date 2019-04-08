@@ -1,7 +1,7 @@
 import {defineDirective, Directive, DirectiveResult} from './define'
 import {TemplateResult, Template} from '../parts'
 import {text} from '../parts/template-result'
-import {Transition, TransitionOptions} from '../transition'
+import {Transition, TransitionOptions, ShortTransitionOptions, formatShortTransitionOptions} from '../transition'
 
 
 export const cache = defineDirective(class CacheDirective extends Directive {
@@ -10,7 +10,7 @@ export const cache = defineDirective(class CacheDirective extends Directive {
 	private currentTemplate: Template | null = null
 	private transitionOptions: TransitionOptions | null = null
 
-	init(result: TemplateResult | string, transitionOptions?: TransitionOptions | string) {
+	init(result: TemplateResult | string, transitionOptions?: ShortTransitionOptions) {
 		this.initResult(result)
 
 		// Doesn't play transition for the first time
@@ -39,12 +39,12 @@ export const cache = defineDirective(class CacheDirective extends Directive {
 		}
 	}
 
-	private initTransitionOptions(transitionOptions: TransitionOptions | string | undefined) {
-		if (typeof transitionOptions === 'string') {
-			this.transitionOptions = {name: transitionOptions}
+	private initTransitionOptions(transitionOptions: ShortTransitionOptions | undefined) {
+		if (transitionOptions) {
+			this.transitionOptions = formatShortTransitionOptions(transitionOptions)
 		}
 		else {
-			this.transitionOptions = transitionOptions || null
+			this.transitionOptions = null
 		}
 	}
 
@@ -52,7 +52,7 @@ export const cache = defineDirective(class CacheDirective extends Directive {
 		return true
 	}
 
-	merge(result: TemplateResult | string, transitionOptions?: TransitionOptions | string) {
+	merge(result: TemplateResult | string, transitionOptions?: ShortTransitionOptions) {
 		if (typeof result === 'string') {
 			result = text`${result}`
 		}
@@ -96,4 +96,4 @@ export const cache = defineDirective(class CacheDirective extends Directive {
 			template.cacheFragment()
 		}
 	}
-}) as (result: TemplateResult | string, transitionOptions?: TransitionOptions | string) => DirectiveResult
+}) as (result: TemplateResult | string, transitionOptions?: ShortTransitionOptions) => DirectiveResult
