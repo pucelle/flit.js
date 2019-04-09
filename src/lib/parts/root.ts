@@ -10,36 +10,14 @@ export class RootPart implements NodePart {
 	private el: HTMLElement
 	private context: Context
 	private template: Template | null = null
+	private slotParsed: boolean = false
 	private slotMap: Map<string, HTMLElement[]> | null = null
 	private restNodes: Node[] | null = null
 
 	constructor(el: HTMLElement, value: unknown, context: Context) {
 		this.el = el
 		this.context = context
-		this.parseSlots()
 		this.update(value)
-	}
-
-	private parseSlots() {
-		if (this.el.childNodes.length) {
-			let fragment = document.createDocumentFragment()
-			fragment.append(...this.el.childNodes)
-			this.slotMap = new Map()
-
-			for (let el of fragment.querySelectorAll('[slot]')) {
-				let slotName = el.getAttribute('slot')!
-				let els = this.slotMap.get(slotName)
-				if (!els) {
-					this.slotMap.set(slotName, els = [])
-				}
-				els.push(el as HTMLElement)
-				el.remove()
-			}
-
-			if (fragment.childNodes.length > 0) {
-				this.restNodes = [...fragment.childNodes]
-			}
-		}
 	}
 
 	update(value: unknown) {
@@ -52,6 +30,10 @@ export class RootPart implements NodePart {
 					this.template.remove()
 					this.renderTemplate(value)
 				}
+			}
+			else {
+				this.template.remove()
+				this.renderText(value)
 			}
 		}
 		else {
@@ -81,6 +63,10 @@ export class RootPart implements NodePart {
 	}
 
 	private moveSlots(fragment: DocumentFragment) {
+		if (!this.slotParsed) {
+			this.parseSlots()
+		}
+
 		let slots = fragment.querySelectorAll('slot')
 
 		for (let slot of slots) {
@@ -100,6 +86,30 @@ export class RootPart implements NodePart {
 				slot.append(...this.restNodes)
 			}
 		}
+	}
+
+	private parseSlots() {
+		if (this.el.childNodes.length) {
+			let fragment = document.createDocumentFragment()
+			fragment.append(...this.el.childNodes)
+			this.slotMap = new Map()
+
+			for (let el of fragment.querySelectorAll('[slot]')) {
+				let slotName = el.getAttribute('slot')!
+				let els = this.slotMap.get(slotName)
+				if (!els) {
+					this.slotMap.set(slotName, els = [])
+				}
+				els.push(el as HTMLElement)
+				el.remove()
+			}
+
+			if (fragment.childNodes.length > 0) {
+				this.restNodes = [...fragment.childNodes]
+			}
+		}
+
+		this.slotParsed = true
 	}
 
 	private renderText(value: unknown) {
