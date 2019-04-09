@@ -1,4 +1,4 @@
-import * as flit from '../../src'
+import * as flit from '../..'
 const assert = chai.assert
 
 

@@ -2,7 +2,7 @@
 	"name": "ff",
 	"version": "1.0.0",
 	"description": "A small JavaScript web component system",
-	"main": "src/index.ts",
+	"main": "out/index.js",
 	"scripts": {
 		"compile": "tsc -b",
 		"watch": "tsc -b -w",

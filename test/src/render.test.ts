@@ -1,4 +1,4 @@
-import * as flit from '../../src'
+import * as flit from '../..'
 import * as helper from './helper'
 const assert = chai.assert
 const expect = chai.expect
