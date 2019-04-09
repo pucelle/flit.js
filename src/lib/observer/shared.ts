@@ -21,21 +21,21 @@ export const originalToString = Object.prototype.toString
 
 
 /** Finding getter descriptor from object. */
-export function getPropertyDescriptor (obj: object, prop: PropertyKey): PropertyDescriptor | null {
-	let proto = Object.getPrototypeOf(obj)
+// export function getPropertyDescriptor (obj: object, prop: PropertyKey): PropertyDescriptor | null {
+// 	let proto = Object.getPrototypeOf(obj)
 
-	while (proto && proto !== Object.prototype) {
-		let descriptor = Object.getOwnPropertyDescriptor(proto, prop)
-		if (descriptor) {
-			return descriptor
-		}
-		else {
-			proto = Object.getPrototypeOf(proto)
-		}
-	}
+// 	while (proto && proto !== Object.prototype) {
+// 		let descriptor = Object.getOwnPropertyDescriptor(proto, prop)
+// 		if (descriptor) {
+// 			return descriptor
+// 		}
+// 		else {
+// 			proto = Object.getPrototypeOf(proto)
+// 		}
+// 	}
 
-	return null
-}
+// 	return null
+// }
 
 
 /**
