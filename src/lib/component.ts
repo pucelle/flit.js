@@ -100,7 +100,7 @@ export function getComponentAtElementAsync(el: HTMLElement): Promise<Component |
 const componentSet: Set<Component> = new Set()
 
 /** Update all components, e.g., when current language changed. */
-export function updateAllComponents() {
+export function updateComponents() {
 	for (let com of componentSet) {
 		com.update()
 	}
@@ -194,14 +194,16 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 		if (part) {
 			part.update(value)
 		}
-		else {
+		else if (value !== null) {
 			part = new RootPart(this.el, value, this)
 		}
 
 		endUpdating()
 
-		// Here to avoid observe `__part`.
-		this.__rootPart = part
+		// Move it to here to avoid observing `__part`.
+		if (this.__rootPart !== part) {
+			this.__rootPart = part
+		}
 
 		if (!this.__firstRendered) {
 			this.__firstRendered = true
@@ -212,7 +214,9 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 	}
 
 	/** Child class should implement this method, normally returns html`...` or string. */
-	abstract render(): string | TemplateResult
+	render(): TemplateResult | string |  null {
+		return null
+	}
 
 	/**
 	 * Call this to partially or fully update asynchronously if needed.

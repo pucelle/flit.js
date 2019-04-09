@@ -63,22 +63,30 @@ function getStyleContent(Com: ComponentConstructor): string {
 }
 
 
-// Benchmark: https://jsperf.com/is-nesting-selector-slower
+// Benchmark about nested selector: https://jsperf.com/is-nesting-selector-slower
 // About 2~4% slower for each nested selector when rendering.
 function scopeStyle(style: string, comName: string) {
 	let re = /[^;}]+\{/g
 
 	return style.replace(re, (m0: string) => {
-		return m0.replace(/\$(\w+)/g, '$1__' + comName)
-				 .replace(/(?:^|,)\s*\w+/g, (m0: string) => {
-					return m0.replace(/\w+/, comName + ' $&')
-				 })
+			   // Replace `.class` -> `.class__comName`
+		return m0.replace(/\$([\w-]+)/g, '$1__' + comName)
+
+				// Replace `p` -> `comName p`
+				.replace(/((?:^|,)\s*)([\w-]+)/g, (m0: string, before: string, tag: string) => {
+					if (tag === comName || tag === 'html' || tag === 'body') {
+						return m0
+					}
+					else {
+						return before + comName + ' ' + tag
+					}
+				})
 	})
 }
 
 
-/** Update all styles for components, e.g., update styles after theme changed. */
-export function updateAllStyles() {
+/** Update all styles for components, you can update styles after theme changed. */
+export function updateStyles() {
 	for (let [Com, [name, styleTag]] of componentStyleSet) {
 		if (typeof Com.style === 'function') {
 			let newContent = scopeStyle(getStyleContent(Com), name)
