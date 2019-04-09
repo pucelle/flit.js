@@ -1,8 +1,5 @@
-import {ComponentConstructor, defineComponent, getComponentAtElement} from './component'
-import {TemplateResult} from './parts'
-
-
-const componentStyleSet: Map<ComponentConstructor, [string, HTMLStyleElement]> = new Map()
+import {ComponentConstructor, defineComponent, getComponentAtElement, Component} from './component'
+import {ensureComponentStyle, mayRemoveStyle} from './style'
 
 
 /**
@@ -11,9 +8,27 @@ const componentStyleSet: Map<ComponentConstructor, [string, HTMLStyleElement]> =
  * @param name The component name.
  * @param Component The Component class definition.
  */
-export function define(name: string, Com: ComponentConstructor) {
+export function define(name: string): (Com: ComponentConstructor) => void
+
+
+/**
+ * Defines a component with specified name.
+ * Defines a custom element, but just used to start the defined component
+ * @param name The component name.
+ * @param Component The Component class definition.
+ */
+export function define(name: string, Com: ComponentConstructor): void
+
+export function define(name: string, Com?: ComponentConstructor) {
 	if (!name.includes('-')) {
 		throw new Error(`"${name}" can't be defined as custom element, it must contain "-"`)
+	}
+
+	// Used at `@define` decorator.
+	if (!Com) {
+		return function(Com: ComponentConstructor) {
+			define(name, Com)
+		}
 	}
 
 	customElements.define(name, class CustomLitElement extends HTMLElement {
@@ -23,17 +38,15 @@ export function define(name: string, Com: ComponentConstructor) {
 		connectedCallback() {
 			let com = getComponentAtElement(this)
 			if (!com) {
-				if (Com.style && !componentStyleSet.has(Com)) {
-					let styleTag = document.createElement('style')
-					styleTag.textContent = scopeStyle(getStyleContent(Com), name)
-					document.head.append(styleTag)
-					componentStyleSet.set(Com, [name, styleTag])
-				}
-
 				com = new Com(this)
+				if (Com.properties) {
+					assignProperties(com, Com.properties)
+				}
 				com.__emitFirstConnected()
 			}
+
 			com.__emitConnected()
+			ensureComponentStyle(Com, name)
 		}
 
 		disconnectedCallback() {
@@ -41,57 +54,29 @@ export function define(name: string, Com: ComponentConstructor) {
 			if (com) {
 				com.__emitDisconnected()
 			}
+
+			mayRemoveStyle(Com)
 		}
 	})
 
 	defineComponent(name, Com)
+	return undefined
 }
 
 
-function getStyleContent(Com: ComponentConstructor): string {
-	let style = Com.style
-
-	if (typeof style === 'function') {
-		style = style()
-	}
-
-	if (style instanceof TemplateResult) {
-		style = style.join()
-	}
-
-	return style!
-}
-
-
-// Benchmark about nested selector: https://jsperf.com/is-nesting-selector-slower
-// About 2~4% slower for each nested selector when rendering.
-function scopeStyle(style: string, comName: string) {
-	let re = /[^;}]+\{/g
-
-	return style.replace(re, (m0: string) => {
-			   // Replace `.class` -> `.class__comName`
-		return m0.replace(/\$([\w-]+)/g, '$1__' + comName)
-
-				// Replace `p` -> `comName p`
-				.replace(/((?:^|,)\s*)([\w-]+)/g, (m0: string, before: string, tag: string) => {
-					if (tag === comName || tag === 'html' || tag === 'body') {
-						return m0
-					}
-					else {
-						return before + comName + ' ' + tag
-					}
-				})
-	})
-}
-
-
-/** Update all styles for components, you can update styles after theme changed. */
-export function updateStyles() {
-	for (let [Com, [name, styleTag]] of componentStyleSet) {
-		if (typeof Com.style === 'function') {
-			let newContent = scopeStyle(getStyleContent(Com), name)
-			if (newContent !== styleTag.textContent) {
-				styleTag.textContent = newContent
+// Property values from element properties may be overwrited by `:props`.
+function assignProperties(com: Component, properties: string[]) {
+	for (let property of properties) {
+		if (com.el.hasAttribute(property)) {
+			let value = (com as any)[property]
+			if (typeof value === "boolean") {
+				(com as any)[property] = true
+			}
+			else if (typeof value === "number") {
+				(com as any)[property] = Number(com.el.getAttribute(property))
+			}
+			else {
+				(com as any)[property] = com.el.getAttribute(property)
 			}
 		}
 	}

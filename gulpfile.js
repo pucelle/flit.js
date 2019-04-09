@@ -8,33 +8,37 @@ const glob = require('glob')
 const exorcist = require('exorcist')
 
 
-function bundle(task) {
+function task(name) {
 	let browser = browserify({
 		basedir: '.',
 		//debug: true,
-		entries: task.startsWith('test') ? glob.sync(__dirname + '/test/**/*.test.ts') : ['demo/index.ts']
+		entries: name.startsWith('test') ? glob.sync(__dirname + '/test/**/*.test.ts') : ['demo/index.ts']
 	})
 	browser.plugin(tsify)
 	browser.on('log', gutil.log)
 
-	if (task.endsWith('-watch')) {
+	if (name.endsWith('-watch')) {
 		browser.plugin(watchify)
 		browser.on('update', () => {
 			browser.close()
-			bundle(task)
+			bundle()
 		})
 	}
 
-	let dir = task.replace('-watch', '')
+	let dir = name.replace('-watch', '')
 
-	return browser
-		.bundle()
-		//.pipe(exorcist(__dirname + '/' + dir + '/bundle.js.map'))
-		.pipe(source('bundle.js'))
-		.pipe(gulp.dest(dir))
+	function bundle() {
+		return browser
+			.bundle()
+			//.pipe(exorcist(__dirname + '/' + dir + '/bundle.js.map'))
+			.pipe(source('bundle.js'))
+			.pipe(gulp.dest(dir))
+	}
+
+	return bundle()
 }
 
-gulp.task('demo', () => bundle('demo'))
-gulp.task('demo-watch', () => bundle('demo-watch'))
-gulp.task('test', () => bundle('test'))
-gulp.task('test-watch', () => bundle('test-watch'))
+gulp.task('demo', () => task('demo'))
+gulp.task('demo-watch', () => task('demo-watch'))
+gulp.task('test', () => task('test'))
+gulp.task('test-watch', () => task('test-watch'))

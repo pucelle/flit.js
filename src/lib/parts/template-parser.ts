@@ -10,21 +10,21 @@ export interface ParseResult {
 }
 
 export interface Place {
-	readonly type: PartType
-	readonly name: string | null
-	readonly strings: string[] | null
-	readonly nodeIndex: number
+	type: PartType
+	name: string | null
+	strings: string[] | null
+	nodeIndex: number
 	
 	// Some binds like `:ref="name"`, it needs to be initialized but take no place
-	readonly placeable: boolean
+	placeable: boolean
 }
 
 export interface SharedParseReulst {
-	readonly template: HTMLTemplateElement
-	readonly valuePlaces: Place[]
-	readonly hasSlots: boolean
+	template: HTMLTemplateElement
+	places: Place[]
+	hasSlots: boolean
+	attributes: {name: string, value: string}[] | null
 }
-
 
 // context name -> template string -> parse result
 const parseResultMap: Map<string, Map<string, SharedParseReulst>> = new Map()
@@ -42,21 +42,21 @@ const SELF_CLOSE_TAGS = [
  * @param type 
  * @param strings 
  */
-export function parse(type: TemplateType, strings: TemplateStringsArray, contextName: string): ParseResult {
+export function parse(type: TemplateType, strings: TemplateStringsArray, el: HTMLElement): ParseResult {
 	if ((type === 'html' || type === 'svg')) {
 		let string = strings.join(VALUE_MARKER)
-		let sharedResultMap = parseResultMap.get(contextName)
+		let sharedResultMap = parseResultMap.get(el.localName)
 		let sharedResult = sharedResultMap ? sharedResultMap.get(string) : null
 		if (!sharedResult) {
 			if (!sharedResultMap) {
 				sharedResultMap = new Map()
-				parseResultMap.set(contextName, sharedResultMap)
+				parseResultMap.set(el.localName, sharedResultMap)
 			}
-			sharedResult = new ElementParser(type, string, contextName).parse()
+			sharedResult = new ElementParser(type, string, el.localName).parse()
 			sharedResultMap.set(string, sharedResult)
 		}
 
-		return cloneParseResult(sharedResult)
+		return cloneParseResult(sharedResult, el)
 	}
 	else if (type === 'css') {
 		let html = `<style>${strings[0].trim()}</style>`
@@ -111,7 +111,7 @@ class ElementParser {
 
 		let codes = ''
 		let lastIndex = 0
-		let isFirstTag = false
+		let firstTag: string | null = null
 		let svgWrapped = false
 		let hasSlots = false
 
@@ -137,12 +137,13 @@ class ElementParser {
 				hasSlots = true
 			}
 
-			if (!isFirstTag) {
+			if (!firstTag) {
+				firstTag = tag
+
 				if (this.type === 'svg' && tag !== 'svg') {
 					codes = '<svg>' + codes
 					svgWrapped = true
 				}
-				isFirstTag = true
 			}
 
 			if (attr.length > 5) {
@@ -167,16 +168,24 @@ class ElementParser {
 		}
 
 		let template = createTemplateFromHTML(codes)
+		let attributes: {name: string, value: string}[] | null = null
+
 		if (svgWrapped) {
 			let svg = template.content.firstElementChild!
 			template.content.append(...svg.childNodes)
 			svg.remove()
 		}
 
+		if (firstTag === 'template') {
+			attributes = [...template.attributes].map(({name, value}) => ({name, value}))
+			template = template.content.firstChild as HTMLTemplateElement
+		}
+
 		return {
 			template,
-			valuePlaces: this.places,
-			hasSlots
+			places: this.places,
+			hasSlots,
+			attributes
 		}
 	}
 
@@ -285,24 +294,33 @@ class ElementParser {
  */
 // TreeWalker Benchmark: https://jsperf.com/treewalker-vs-nodeiterator
 // Clone benchmark: https://jsperf.com/clonenode-vs-importnode
-function cloneParseResult(sharedResult: SharedParseReulst): ParseResult {
-	let {template, valuePlaces, hasSlots} = sharedResult
+function cloneParseResult(sharedResult: SharedParseReulst, el: HTMLElement): ParseResult {
+	let {template, places, hasSlots, attributes} = sharedResult
 	let fragment = template.content.cloneNode(true) as DocumentFragment
-	let nodeIndex = 0
 	let nodesInPlaces: Node[] = []
 
-	if (valuePlaces.length > 0) {
-		let valueIndex = 0
+	if (places.length > 0) {
+		let nodeIndex = 0
+		let placeIndex = 0
 		let walker = document.createTreeWalker(fragment, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_COMMENT, null)
 		let node: Node | null
 		let end = false
 
-		while (node = walker.nextNode()) {
-			while (valuePlaces[valueIndex].nodeIndex === nodeIndex) {
-				nodesInPlaces.push(node)
-				valueIndex++
+		if (attributes) {
+			while (placeIndex < places.length && places[placeIndex].nodeIndex === 0) {
+				nodesInPlaces.push(el)
+				placeIndex++
+			}
+			nodeIndex = 1
+			cloneAttributes(el, attributes)
+		}
 
-				if (valueIndex === valuePlaces.length) {
+		while (node = walker.nextNode()) {
+			while (places[placeIndex].nodeIndex === nodeIndex) {
+				nodesInPlaces.push(node)
+				placeIndex++
+
+				if (placeIndex === places.length) {
 					end = true
 					break
 				}
@@ -319,7 +337,22 @@ function cloneParseResult(sharedResult: SharedParseReulst): ParseResult {
 	return {
 		fragment,
 		nodesInPlaces,
-		places: valuePlaces,
-		hasSlots
+		places,
+		hasSlots,
+	}
+}
+
+function cloneAttributes(el: HTMLElement, attributes: {name: string, value: string}[]) {
+	for (let {name, value} of attributes) {
+		if ((name === 'class' || name === 'style') && el.hasAttribute(name)) {
+			if (name === 'style') {
+				value = (el.getAttribute(name) as string) + '; ' + value
+			}
+			else if (name === 'class') {
+				value = (el.getAttribute(name) as string) + ' ' + value
+			}
+		}
+
+		el.setAttribute(name, value)
 	}
 }

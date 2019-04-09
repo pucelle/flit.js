@@ -88,6 +88,8 @@ export class RootPart implements NodePart {
 		}
 	}
 
+	// May first rendered as text, then original child nodes was removed.
+	// Then have slots when secondary rendering.
 	private parseSlots() {
 		if (this.el.childNodes.length) {
 			let fragment = document.createDocumentFragment()

@@ -7,12 +7,13 @@ import {WatchFn, WatcherDisconnectFn, WatcherCallback, Watcher} from './watcher'
 
 /** Returns the typeof T[P]. */
 type ValueType<T, P extends keyof T> = T extends {[key in P]: infer R} ? R : never
-type ComponentStyle = TemplateResult | string | (() => TemplateResult | string) | null
+export type ComponentStyle = TemplateResult | string | (() => TemplateResult | string) | null
 
 /** The constructor type of component class. */
 export type ComponentConstructor = {
 	new(el: HTMLElement): Component
 	style: ComponentStyle
+	properties: string[] | null
 }
 
 
@@ -125,6 +126,9 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 	 * `p` -> `com-name p`
 	 */
 	static style: ComponentStyle = null
+
+	/** Used to assign fixed element properties to component. */
+	static properties: string[] | null = null
 
 	/** The root element of component. */
 	el: HTMLElement
@@ -269,17 +273,17 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 	): WatcherDisconnectFn
 
 
-	/** Watch return value of function and trigger callback with this value as argument. */
+	/** Watch return value of function and trigger callback with this value as argument after it changed. */
 	watch<FN extends WatchFn>(fn: FN, callback: (value: ReturnType<FN>) => void): WatcherDisconnectFn
 
-	/** Watch return values of functions and trigger callback with these values as arguments. */
+	/** Watch return values of functions and trigger callback with these values as arguments after they changed. */
 	watch<FN1 extends WatchFn, FN2 extends WatchFn>(
 		fn1: FN1,
 		fn2: FN2,
 		callback: (value1: ReturnType<FN1>, value2: ReturnType<FN2>) => void
 	): WatcherDisconnectFn
 
-	/** Watch return values of functions and trigger callback with these values as arguments. */
+	/** Watch return values of functions and trigger callback with these values as arguments after they changed. */
 	watch<FN1 extends WatchFn, FN2 extends WatchFn, FN3 extends WatchFn>(
 		fn1: FN1,
 		fn2: FN2,
@@ -299,6 +303,69 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 		}
 
 		let watcher = new Watcher(fnOrPropsAndCallback as WatchFn[], callback)
+		
+		this.__watchers = this.__watchers || new Set()
+		this.__watchers.add(watcher)
+
+		return () => {
+			watcher.disconnect()
+
+			if (this.__watchers) {
+				this.__watchers.delete(watcher)
+			}
+		}
+	}
+
+		
+	/** Watch specified property and call callback with the value as argument later and after it changed. */
+	watchImmediately<P extends keyof this>(prop: P, callback: (value: ValueType<this, typeof prop>) => void): WatcherDisconnectFn
+
+	/** Watch specified properties and call callback with these values as arguments later and after they changed. */
+	watchImmediately<P1 extends keyof this, P2 extends keyof this, P3 extends keyof this>(
+		prop1: P1,
+		prop2: P2,
+		callback: (value1: ValueType<this, P1>, value2: ValueType<this, P2>) => void
+	): WatcherDisconnectFn
+
+	/** Watch specified properties and call callback with these values as arguments later and after they changed. */
+	watchImmediately<P1 extends keyof this, P2 extends keyof this, P3 extends keyof this>(
+		prop1: P1,
+		prop2: P2,
+		prop3: P3,
+		callback: (value1: ValueType<this, P1>, value2: ValueType<this, P2>, value3: ValueType<this, P3>) => void
+	): WatcherDisconnectFn
+
+
+	/** Watch return value of function and trigger callback with this value as argument later and after it changed.. */
+	watchImmediately<FN extends WatchFn>(fn: FN, callback: (value: ReturnType<FN>) => void): WatcherDisconnectFn
+
+	/** Watch return values of functions and trigger callback with these values as arguments later and after they changed. */
+	watchImmediately<FN1 extends WatchFn, FN2 extends WatchFn>(
+		fn1: FN1,
+		fn2: FN2,
+		callback: (value1: ReturnType<FN1>, value2: ReturnType<FN2>) => void
+	): WatcherDisconnectFn
+
+	/** Watch return values of functions and trigger callback with these values as arguments later and after they changed. */
+	watchImmediately<FN1 extends WatchFn, FN2 extends WatchFn, FN3 extends WatchFn>(
+		fn1: FN1,
+		fn2: FN2,
+		fn3: FN3,
+		callback: (value1: ReturnType<FN1>, value2: ReturnType<FN2>, value3: ReturnType<FN3>) => void
+	): WatcherDisconnectFn
+
+
+	watchImmediately(...fnOrPropsAndCallback: unknown[]): WatcherDisconnectFn {
+		let callback = fnOrPropsAndCallback.pop() as WatcherCallback
+
+		for (let i = 0; i < fnOrPropsAndCallback.length; i++) {
+			if (typeof fnOrPropsAndCallback[i] === 'string') {
+				let prop = fnOrPropsAndCallback[i]
+				fnOrPropsAndCallback[i] = () => this[prop as keyof this]
+			}
+		}
+
+		let watcher = new Watcher(fnOrPropsAndCallback as WatchFn[], callback, true)
 		
 		this.__watchers = this.__watchers || new Set()
 		this.__watchers.add(watcher)

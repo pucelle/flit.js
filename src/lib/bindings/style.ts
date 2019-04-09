@@ -76,6 +76,10 @@ defineBinding('style', class StyleBinding implements Binding {
 				value = 'url("' + value + '")'
 			}
 
+			if (typeof value === 'number') {
+				value = value + 'px'
+			}
+
 			(this.el.style as any)[name] = value
 		}
 	}

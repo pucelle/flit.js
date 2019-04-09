@@ -32,6 +32,31 @@ export function watch(...fnsAndCallback: Function[]): WatcherDisconnectFn {
 }
 
 
+/** Watch return value of function and trigger callback with this value as argument. */
+export function watchImmediately<FN extends WatchFn>(fn: FN, callback: (value: ReturnType<FN>) => void): WatcherDisconnectFn
+
+/** Watch return values of functions and trigger callback with these values as arguments. */
+export function watchImmediately<FN1 extends WatchFn, FN2 extends WatchFn>(
+	fn1: FN1,
+	fn2: FN2,
+	callback: (value1: ReturnType<FN1>, value2: ReturnType<FN2>) => void
+): WatcherDisconnectFn
+
+/** Watch return values of functions and trigger callback with these values as arguments. */
+export function watchImmediately<FN1 extends WatchFn, FN2 extends WatchFn, FN3 extends WatchFn>(
+	fn1: FN1,
+	fn2: FN2,
+	fn3: FN3,
+	callback: (value1: ReturnType<FN1>, value2: ReturnType<FN2>, value3: ReturnType<FN3>) => void
+): WatcherDisconnectFn
+
+export function watchImmediately(...fnsAndCallback: Function[]): WatcherDisconnectFn {
+	let callback = fnsAndCallback.pop()
+	let watcher = new Watcher(fnsAndCallback, callback as WatcherCallback, true)
+	return watcher.disconnect.bind(watcher)
+}
+
+
 /** Watch return value of function and trigger callback with this value as argument. Run callback for only once. */
 export function watchOnce<FN extends WatchFn>(fn: FN, callback: (value: ReturnType<FN>) => void): WatcherDisconnectFn
 
@@ -88,14 +113,17 @@ export class Watcher {
 
 	private fns: Function[]
 	private callback: WatcherCallback
+	private immediately: boolean
 	private values: unknown[] | null = null
 	private connected: boolean = true
 
-	constructor(fns: Function[], callback: WatcherCallback) {
+	constructor(fns: Function[], callback: WatcherCallback, immediately: boolean = false) {
 		this.fns = fns
 		this.callback = callback
+		this.immediately = immediately
 
-		// Must enqueue it, because a component may be updating recently.
+		// Must enqueue it, because a component may be updating recently,
+		// which will cause `updating` object been reset.
 		this.update()
 	}
 
@@ -141,6 +169,10 @@ export class Watcher {
 
 		if (this.values === null) {
 			this.values = newValues
+
+			if (this.immediately) {
+				this.callback.apply(this, this.values)
+			}
 		}
 		else if (this.mayChanged(newValues)) {
 			this.values = newValues
