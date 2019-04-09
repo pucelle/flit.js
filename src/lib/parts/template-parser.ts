@@ -31,6 +31,10 @@ const parseResultMap: Map<string, Map<string, SharedParseReulst>> = new Map()
 
 const VALUE_MARKER = '${flit}'
 
+const SELF_CLOSE_TAGS = [
+	'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'param', 'source', 'track', 'wbr'
+]
+ 
 
 /**
  * Parse template strings to an fragment and interlations and their related nodes.
@@ -146,6 +150,13 @@ class ElementParser {
 			}
 
 			codes += '<' + tag + attr + '>'
+
+			//`<tag />` -> `<tag></tag>`
+			// Benchmark: https://jsperf.com/array-includes-vs-object-in-vs-set-has
+			if (code[code.length - 2] === '/' && !SELF_CLOSE_TAGS.includes(tag)) {
+				codes += '</' + tag + '>'
+			}
+
 			this.nodeIndex++
 		}
 
