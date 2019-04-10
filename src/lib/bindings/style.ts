@@ -66,6 +66,8 @@ defineBinding('style', class StyleBinding implements Binding {
 			if (value === null || value === undefined) {
 				value = ''
 			}
+
+			// Units like `s`, `deg` is very rare to use.
 			else if (unit === 'px') {
 				value = value + 'px'
 			}

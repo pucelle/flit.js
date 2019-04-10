@@ -315,22 +315,24 @@ function cloneParseResult(sharedResult: SharedParseReulst, el: HTMLElement): Par
 			cloneAttributes(el, attributes)
 		}
 
-		while (node = walker.nextNode()) {
-			while (places[placeIndex].nodeIndex === nodeIndex) {
-				nodesInPlaces.push(node)
-				placeIndex++
+		if (placeIndex < places.length) {
+			while (node = walker.nextNode()) {
+				while (places[placeIndex].nodeIndex === nodeIndex) {
+					nodesInPlaces.push(node)
+					placeIndex++
+					
+					if (placeIndex === places.length) {
+						end = true
+						break
+					}
+				}
 
-				if (placeIndex === places.length) {
-					end = true
+				if (end) {
 					break
 				}
-			}
 
-			if (end) {
-				break
+				nodeIndex++
 			}
-
-			nodeIndex++
 		}
 	}
 
