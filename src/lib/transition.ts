@@ -79,10 +79,14 @@ const CUBIC_BEZIER_EASINGS = {
 	'ease-in-out-back'  : [0.680, -0.550, 0.265, 1.550],
 }
 
-function getAnimationEasing(easing: TransitionEasing): string {
+/**
+ * Get `cubic-bezier(...)` from easing name.
+ * @param easing The extended easing name.
+ */
+export function getEasing(easing: TransitionEasing): string {
 	return CUBIC_BEZIER_EASINGS.hasOwnProperty(easing)
 		? 'cubic-bezier(' + CUBIC_BEZIER_EASINGS[easing as keyof typeof CUBIC_BEZIER_EASINGS].join(', ') + ')'
-		: ''
+		: 'linear'
 }
 
 
@@ -308,8 +312,8 @@ export class Transition {
 			this.el.style.transitionDuration = String(duration / 1000) + 's'
 		}
 
-		if (easing && easing!== 'linear') {
-			this.el.style.transitionTimingFunction = getAnimationEasing(easing)
+		if (easing) {
+			this.el.style.transitionTimingFunction = getEasing(easing)
 		}
 
 		this.el.style.transition = 'none'
@@ -324,7 +328,7 @@ export class Transition {
 				this.el.style.transitionDuration = ''
 			}
 
-			if (easing && easing!== 'linear') {
+			if (easing) {
 				this.el.style.transitionTimingFunction = ''
 			}
 
@@ -381,7 +385,7 @@ export class Transition {
 }
 
 
-export function animate(el: HTMLElement, startFrame: TransitionFrame, endFrame: TransitionFrame, duration: number, easing: TransitionEasing) {
+function animate(el: HTMLElement, startFrame: TransitionFrame, endFrame: TransitionFrame, duration: number, easing: TransitionEasing) {
 	if (!el.animate) {
 		return {
 			promise: Promise.resolve(false),
@@ -389,7 +393,7 @@ export function animate(el: HTMLElement, startFrame: TransitionFrame, endFrame: 
 		}
 	}
 
-	let cubicEasing = getAnimationEasing(easing)
+	let cubicEasing = getEasing(easing)
 
 	let animation = el.animate([startFrame, endFrame], {
 		easing: cubicEasing,
@@ -423,7 +427,7 @@ const DEFAULT_STYLE: {[key: string]: string} = {
 }
 
 
-export function animateFrom(el: HTMLElement, startFrame: TransitionFrame, duration: number, easing: TransitionEasing) {
+function animateFrom(el: HTMLElement, startFrame: TransitionFrame, duration: number, easing: TransitionEasing) {
 	let endFrame: TransitionFrame = {}
 	let style = getComputedStyle(el)
 
@@ -435,7 +439,7 @@ export function animateFrom(el: HTMLElement, startFrame: TransitionFrame, durati
 }
 
 
-export function animateTo(el: HTMLElement, endFrame: TransitionFrame, duration: number, easing: TransitionEasing) {
+function animateTo(el: HTMLElement, endFrame: TransitionFrame, duration: number, easing: TransitionEasing) {
 	let startFrame: TransitionFrame = {}
 	let style = getComputedStyle(el)
 
