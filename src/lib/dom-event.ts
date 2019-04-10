@@ -238,11 +238,13 @@ export function off(el: Element, name: string, handler: EventHandler, scope?: ob
 
 
 function wrapHandler(once: boolean, modifiers: string[] | null, el: Element, name: string, handler: EventHandler, scope?: object): EventHandler {
+	let filterModifiers = modifiers ? modifiers.filter(m => !GLOBAL_EVENT_MODIFIERS.includes(m)) : null
+
 	return function wrappedHandler(e: Event) {
-		if (modifiers) {
+		if (filterModifiers) {
 			let filterFn = EVENT_FILTER_FN[name as keyof typeof EVENT_FILTER_FN]
 			
-			if (!filterFn(e as any, modifiers)) {
+			if (!filterFn(e as any, filterModifiers)) {
 				return
 			}
 		}
