@@ -3,7 +3,7 @@ import {Component, getComponentAtElement, onComponentCreatedAt} from '../compone
 
 
 /** Binding properties on component. */
-defineBinding('props', class PropsBinding implements Binding {
+defineBinding('prop', class PropBinding implements Binding {
 
 	private el: HTMLElement
 	private property: string | null
@@ -12,12 +12,12 @@ defineBinding('props', class PropsBinding implements Binding {
 
 	constructor(el: HTMLElement, value: unknown, modifiers: string[] | null) {
 		if (!el.localName.includes('-')) {
-			throw new Error(`":props${modifiers ? modifiers.map(m => '.' + m) : ''}" can't set on <${el.localName}>, it only works on custom element`)
+			throw new Error(`":prop${modifiers ? modifiers.map(m => '.' + m) : ''}" can't set on <${el.localName}>, it only works on custom element`)
 		}
 
 		if (modifiers) {
 			if (modifiers.length > 1) {
-				throw new Error(`Modifier "${modifiers.join('.')}" is not allowed, at most one modifier as property name can be specified for ":props"`)
+				throw new Error(`Modifier "${modifiers.join('.')}" is not allowed, at most one modifier as property name can be specified for ":prop"`)
 			}
 
 			if (!/^[\w]+$/.test(modifiers[0])) {
@@ -33,25 +33,25 @@ defineBinding('props', class PropsBinding implements Binding {
 	update(value: unknown) {
 		let com = getComponentAtElement(this.el)
 		if (com) {
-			this.setProps(com, value)
+			this.setProp(com, value)
 		}
 		else {
 			this.value = value
 
 			if (!this.isUpdated) {
-				onComponentCreatedAt(this.el, this.setPropsLater.bind(this))
+				onComponentCreatedAt(this.el, this.setPropLater.bind(this))
 			}
 		}
 
 		this.isUpdated = true
 	}
 
-	setPropsLater(com: Component) {
-		this.setProps(com, this.value)
+	setPropLater(com: Component) {
+		this.setProp(com, this.value)
 		this.value = null
 	}
 
-	setProps(com: Component, value: unknown) {
+	setProp(com: Component, value: unknown) {
 		if (this.property) {
 			(com as any)[this.property] = value
 		}

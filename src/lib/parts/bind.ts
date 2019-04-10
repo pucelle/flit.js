@@ -23,7 +23,11 @@ export class BindingPart implements MayStringValuePart {
 			this.binding = new BindedClass(el, value, bindingModifiers, context as any)
 		}
 		else {
-			throw new Error(`":${bindingName}" is not defined as a binding class`)
+			// `:property` eauqls `:prop.property`
+			BindedClass = getDefinedBinding('prop')!
+			bindingModifiers = bindingModifiers || []
+			bindingModifiers.unshift(bindingName)
+			this.binding = new BindedClass(el, value, bindingModifiers, context as any)
 		}
 	}
 
