@@ -280,14 +280,16 @@ class ElementParser {
 				}
 			}
 			else if (name === 'class' && this.scopedClassNameSet) {
-				return m0.replace(/[\w-]+/g, (m0: string) => {
-					if (this.scopedClassNameSet!.has(name)) {
-						return name + '__' + this.scopeName
+				value = value.replace(/[\w-]+/g, (m0: string) => {
+					if (this.scopedClassNameSet!.has(m0)) {
+						return m0 + '__' + this.scopeName
 					}
 					else {
 						return m0
 					}
 				})
+
+				return name + '=' + value
 			}
 			
 			return m0

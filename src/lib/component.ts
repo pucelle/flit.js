@@ -62,7 +62,6 @@ export function emitComponentCreatedCallbacks(el: HTMLElement, com: Component) {
 		}
 		componentCreatedMap.delete(el)
 	}
-	com.onCreated()
 }
 
 

@@ -213,7 +213,7 @@ export class Template {
 
 			let changed = false
 			if (holes === 1) {
-				changed = result.values[valueIndex] === this.result.values[valueIndex]
+				changed = result.values[valueIndex] !== this.result.values[valueIndex]
 			}
 			else {
 				for (let i = valueIndex; i < valueIndex + holes; i++) {
