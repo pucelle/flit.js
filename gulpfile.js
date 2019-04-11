@@ -20,7 +20,6 @@ function task(name) {
 	if (name.endsWith('-watch')) {
 		browser.plugin(watchify)
 		browser.on('update', () => {
-			browser.close()
 			bundle()
 		})
 	}

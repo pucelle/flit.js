@@ -7,12 +7,12 @@ import {WatchFn, WatcherDisconnectFn, WatcherCallback, Watcher} from './watcher'
 
 /** Returns the typeof T[P]. */
 type ValueType<T, P extends keyof T> = T extends {[key in P]: infer R} ? R : never
-export type ComponentStyle = TemplateResult | string | (() => TemplateResult | string) | null
+export type ComponentStyle = TemplateResult | string | (() => TemplateResult | string)
 
 /** The constructor type of component class. */
 export type ComponentConstructor = {
 	new(el: HTMLElement): Component
-	style: ComponentStyle
+	style: ComponentStyle | null
 	properties: string[] | null
 }
 
@@ -125,7 +125,7 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 	 * tag selector will be nested in com-name selector:
 	 * `p` -> `com-name p`
 	 */
-	static style: ComponentStyle = null
+	static style: ComponentStyle | null = null
 
 	/** Used to assign fixed element properties to component. */
 	static properties: string[] | null = null
@@ -138,7 +138,7 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 	 * You can specify `:ref="refName"` on an element,
 	 * or using `:ref=${this.onRef}` to call `this.onRef(refElement)` every time when the reference element updated.
 	 */
-	refs: {[key: string]: Element} = {}
+	refs: {[key: string]: HTMLElement} = {}
 
 	private __rootPart: RootPart | null = null
 	private __firstRendered: boolean = false

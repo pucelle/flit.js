@@ -36,6 +36,8 @@ export function define(name: string, Com?: ComponentConstructor) {
 		// A potential problem here:
 		// When `connectedCallback` been called, the child nodes of it is not linked yet.
 		connectedCallback() {
+			ensureComponentStyle(Com, name)
+			
 			let com = getComponentAtElement(this)
 			if (!com) {
 				com = new Com(this)
@@ -46,7 +48,6 @@ export function define(name: string, Com?: ComponentConstructor) {
 			}
 
 			com.__emitConnected()
-			ensureComponentStyle(Com, name)
 		}
 
 		disconnectedCallback() {

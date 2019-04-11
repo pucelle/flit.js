@@ -1,5 +1,6 @@
 import {TemplateType} from './template-result'
 import {PartType} from "./types"
+import {getScopedClassNameSet} from '../style'
 
 
 export interface ParseResult {
@@ -13,10 +14,11 @@ export interface Place {
 	type: PartType
 	name: string | null
 	strings: string[] | null
-	nodeIndex: number
-	
+
 	// Some binds like `:ref="name"`, it needs to be initialized but take no place
-	placeable: boolean
+	// it's holes is `0`
+	holes: number
+	nodeIndex: number
 }
 
 export interface SharedParseReulst {
@@ -97,12 +99,14 @@ class ElementParser {
 	private nodeIndex = 0
 	private places: Place[] = []
 	private nodeIndexs: number[] = []
-	private contextName: string
+	private scopeName: string
+	private scopedClassNameSet: Set<string> | undefined
 
-	constructor(type: TemplateType, string: string, contextName: string) {
+	constructor(type: TemplateType, string: string, scopeName: string) {
 		this.type = type
 		this.string = string
-		this.contextName = contextName
+		this.scopeName = scopeName
+		this.scopedClassNameSet = getScopedClassNameSet(this.scopeName)
 	}
 
 	// Benchmark: https://jsperf.com/regexp-exec-match-replace-speed
@@ -204,8 +208,8 @@ class ElementParser {
 					type: PartType.Child,
 					name: null,
 					strings: null,
-					nodeIndex: this.nodeIndex,
-					placeable: true,
+					holes: 1,
+					nodeIndex: this.nodeIndex
 				})
 
 				this.nodeIndexs.push(this.nodeIndex)
@@ -249,10 +253,6 @@ class ElementParser {
 				type = PartType.Attr
 			}
 
-			if (markerIndex > -1 && value.slice(markerIndex + VALUE_MARKER.length).includes(VALUE_MARKER)) {
-				throw new Error(`"${value}" is not allowed, at most one "\${...}" can be specified in each attribute value`)
-			}
-
 			if (type !== undefined) {
 				if (value[0] === '\'' || value[0] === '"') {
 					value = value.slice(1, -1)
@@ -266,8 +266,8 @@ class ElementParser {
 					type,
 					name,
 					strings,
-					nodeIndex: this.nodeIndex,
-					placeable: markerIndex > -1
+					holes: strings ? strings.length - 1 : 1,
+					nodeIndex: this.nodeIndex
 				})
 
 				this.nodeIndexs.push(this.nodeIndex)
@@ -279,8 +279,15 @@ class ElementParser {
 					return ''
 				}
 			}
-			else if (name === 'class') {
-				return m0.replace(/\$(\w+)/g, '$1__' + this.contextName)
+			else if (name === 'class' && this.scopedClassNameSet) {
+				return m0.replace(/[\w-]+/g, (m0: string) => {
+					if (this.scopedClassNameSet!.has(name)) {
+						return name + '__' + this.scopeName
+					}
+					else {
+						return m0
+					}
+				})
 			}
 			
 			return m0

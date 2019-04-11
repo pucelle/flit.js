@@ -1,6 +1,6 @@
 import {NodePart, PartType, MayStringValuePart, Context} from './types'
 import {TemplateResult} from './template-result'
-import {parse} from './template-parser'
+import {parse, Place} from './template-parser'
 import {ChildPart} from './child'
 import {MayAttrPart} from './may-attr'
 import {EventPart} from './event'
@@ -15,6 +15,7 @@ export class Template {
 	private context: Context
 	private parts: NodePart[] = []
 	private fragment: DocumentFragment | null = null
+	private hasMultipleHolesPart: boolean = false
 
 	startNode: ChildNode
 	endNode: ChildNode
@@ -28,7 +29,10 @@ export class Template {
 	constructor(result: TemplateResult, context: Context) {
 		this.result = result
 		this.context = context
-		this.fragment = this.parseAsFragment()
+
+		let {fragment, nodesInPlaces, places, hasSlots} = parse(this.result.type, this.result.strings, this.context.el)
+		this.hasSlots = hasSlots
+		this.fragment = this.parseAsFragment(fragment, nodesInPlaces, places)
 
 		// Should include at least one node, So it's position can be tracked.
 		// And should always before any other nodes inside,
@@ -47,17 +51,15 @@ export class Template {
 	}
 	
 	/** Parse template result and returns a fragment. */
-	private parseAsFragment(): DocumentFragment {
-		let {fragment, nodesInPlaces, places, hasSlots} = parse(this.result.type, this.result.strings, this.context.el)
+	private parseAsFragment(fragment: DocumentFragment, nodesInPlaces: Node[] | null, places: Place[] | null): DocumentFragment {
 		let values = this.result.values
 		let valueIndex = 0
 
-		this.hasSlots = hasSlots
-
-		if (nodesInPlaces) {
+		if (nodesInPlaces && places) {
 			for (let nodeIndex = 0; nodeIndex < nodesInPlaces.length; nodeIndex++) {
 				let node = nodesInPlaces[nodeIndex]
-				let place = places![nodeIndex]
+				let place = places[nodeIndex]
+				let holes = place.holes
 				let value = values[valueIndex]
 				let part: NodePart
 
@@ -75,7 +77,13 @@ export class Template {
 						break
 
 					case PartType.Attr:
-						part = new AttrPart(node as HTMLElement, place.name!, join(place.strings, value))
+						let attrValues = [value]
+						if (holes > 1) {
+							this.hasMultipleHolesPart = true
+							attrValues = values.slice(valueIndex, valueIndex + holes)
+						}
+
+						part = new AttrPart(node as HTMLElement, place.name!, join(place.strings, ...attrValues))
 						;(part as MayStringValuePart).strings = place.strings
 						break
 
@@ -90,8 +98,8 @@ export class Template {
 						break
 				}
 
-				if (place.placeable) {
-					valueIndex += place.placeable ? 1 : 0
+				if (holes > 0) {
+					valueIndex += holes
 					this.parts.push(part!)
 				}
 			}
@@ -163,17 +171,70 @@ export class Template {
 	 * @param result The template result to merge.
 	 */
 	merge(result: TemplateResult) {
-		let diffs = this.compareValues(result)
-		if (!diffs) {
-			return
+		if (this.hasMultipleHolesPart) {
+			this.mergeWhenPartHasMultipleHoles(result)
 		}
-
-		for (let i = 0; i < diffs.length; i++) {
-			let index = diffs[i]
-			this.mergePart(this.parts[index], result.values[index] as unknown)
+		else {
+			let diffs = this.compareValues(result)
+			if (!diffs) {
+				return
+			}
+	
+			for (let i = 0; i < diffs.length; i++) {
+				let index = diffs[i]
+				this.mergePartWithValue(this.parts[index], result.values[index] as unknown)
+			}
 		}
 
 		this.result = result
+	}
+
+	private mergePartWithValue(part: NodePart, value: unknown) {
+		switch (part.type) {
+			case PartType.Child:
+			case PartType.MayAttr:
+			case PartType.Event:
+				part.update(value)
+				break
+
+			default:
+				part.update(join((part as MayStringValuePart).strings, value))
+		}
+	}
+
+	private mergeWhenPartHasMultipleHoles(result: TemplateResult) {
+		let valueIndex = 0
+
+		for (let part of this.parts) {
+			let holes = 1
+			if (part instanceof AttrPart && part.strings) {
+				holes = part.strings.length - 1
+			}
+
+			let changed = false
+			if (holes === 1) {
+				changed = result.values[valueIndex] === this.result.values[valueIndex]
+			}
+			else {
+				for (let i = valueIndex; i < valueIndex + holes; i++) {
+					if (result.values[i] !== this.result.values[i]) {
+						changed = true
+						break
+					}
+				}
+			}
+			
+			if (changed) {
+				if (holes > 1) {
+					part.update(join((part as MayStringValuePart).strings, ...result.values.slice(valueIndex, valueIndex + holes)))
+				}
+				else {
+					this.mergePartWithValue(part, result.values[valueIndex])
+				}
+			}
+
+			valueIndex += holes
+		}
 	}
 
 	/** Compare value difference and then merge them later. */
@@ -187,19 +248,6 @@ export class Template {
 		}
 
 		return diff.length > 0 ? diff : null
-	}
-
-	private mergePart(part: NodePart, value: unknown) {
-		switch (part.type) {
-			case PartType.Child:
-			case PartType.MayAttr:
-			case PartType.Event:
-				part.update(value)
-				break
-
-			default:
-				part.update(join((part as MayStringValuePart).strings, value))
-		}
 	}
 
 	remove() {

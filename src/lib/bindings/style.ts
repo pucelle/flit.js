@@ -10,11 +10,13 @@ const ALLOWED_MODIFIERS = ['px', 'percent', 'url']
  * `:style.style-name="value"`
  * `:style.style-name.px="value"`
  */
+type StyleObject = {[key: string]: unknown}
+
 defineBinding('style', class StyleBinding implements Binding {
 
 	private el: HTMLElement
 	private modifiers: string[] | null
-	private value: unknown = null
+	private lastStyle: StyleObject | null = null
 
 	constructor(el: HTMLElement, value: unknown, modifiers: string[] | null) {
 		if (modifiers) {
@@ -36,32 +38,27 @@ defineBinding('style', class StyleBinding implements Binding {
 		this.update(value)
 	}
 
-	update(newValue: unknown) {
-		if (this.value) {
-			this.removeStyle(this.value)
+	update(value: unknown) {
+		if (this.lastStyle) {
+			this.removeStyle(this.lastStyle)
 		}
 
-		if (newValue) {
-			this.addStyle(newValue)
+		if (value !== '' && value !== null && value !== undefined) {
+			this.addStyle(this.lastStyle = this.parseStyle(value))
 		}
-
-		this.value = newValue
 	}
 
-	removeStyle(style: unknown) {
-		let o = this.parseStyle(style)
-		
-		for (let name of Object.keys(o)) {
+	removeStyle(style: StyleObject) {
+		for (let name of Object.keys(style)) {
 			(this.el.style as any)[name] = ''
 		}
 	}
 
-	addStyle(style: unknown) {
-		let o = this.parseStyle(style)
+	addStyle(style: StyleObject) {
 		let unit = this.modifiers ? this.modifiers[1] : ''
 		
-		for (let name of Object.keys(o)) {
-			let value = o[name]
+		for (let name of Object.keys(style)) {
+			let value = style[name]
 
 			if (value === null || value === undefined) {
 				value = ''
@@ -86,34 +83,34 @@ defineBinding('style', class StyleBinding implements Binding {
 		}
 	}
 
-	parseStyle(style: unknown): {[key: string]: unknown} {
-		let obj: {[key: string]: unknown} = {}
+	parseStyle(style: unknown): StyleObject {
+		let o: StyleObject = {}
 
 		if (this.modifiers) {
-			if (style && style !== null && style !== undefined) {
-				obj[this.modifiers[0]] = style
+			if (style !== '' && style !== null && style !== undefined) {
+				o[this.modifiers[0]] = style
 			}
 		}
 		else if (Array.isArray(style)) {
 			for (let item of style.join(';').split(/\s*;\s*/)) {
 				let [name, value] = item.split(/\s*:\s*/)
 				if (name && value) {
-					obj[name] = value
+					o[name] = value
 				}
 			}
 		}
 		else if (style && typeof style === 'object') {
-			obj = style as any
+			o = style as any
 		}
 		else if (style && typeof style === 'string') {
 			for (let item of style.split(/\s*;\s*/)) {
 				let [name, value] = item.split(/\s*:\s*/)
 				if (name && value) {
-					obj[name] = value
+					o[name] = value
 				}
 			}
 		}
 
-		return obj
+		return o
 	}
 })

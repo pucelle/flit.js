@@ -1,4 +1,5 @@
 import {Binding, defineBinding} from './define'
+import {getScopedClassNameSet} from '../style'
 
 
 /**
@@ -11,7 +12,9 @@ defineBinding('class', class ClassNameBinding implements Binding {
 
 	private el: HTMLElement
 	private modifiers: string[] | null
-	private value: unknown = null
+	private lastClassNames: string[] | null = null
+	private scopeName: string
+	private scopedClassNameSet: Set<string> | undefined
 
 	constructor(el: HTMLElement, value: unknown, modifiers: string[] | null) {
 		if (modifiers) {
@@ -26,29 +29,21 @@ defineBinding('class', class ClassNameBinding implements Binding {
 
 		this.el = el
 		this.modifiers = modifiers
+		this.scopeName = el.localName
+		this.scopedClassNameSet = getScopedClassNameSet(this.scopeName)
+
 		this.update(value)
 	}
 
-	update(newValue: unknown) {
-		if (this.value) {
-			this.removeClass(this.value)
+	update(value: unknown) {
+		if (this.lastClassNames) {
+			this.el.classList.remove(...this.lastClassNames)
 		}
 
-		if (newValue) {
-			this.addClass(newValue)
+		if (value) {
+			let classNames = this.lastClassNames = this.parseClass(value)
+			this.el.classList.add(...classNames)
 		}
-
-		this.value = newValue
-	}
-
-	removeClass(value: unknown) {
-		let names = this.parseClass(value)
-		this.el.classList.remove(...names)
-	}
-
-	addClass(value: unknown) {
-		let names = this.parseClass(value)
-		this.el.classList.add(...names)
 	}
 
 	parseClass(value: unknown): string[] {
@@ -81,7 +76,10 @@ defineBinding('class', class ClassNameBinding implements Binding {
 
 		for (let name in o) {
 			if (o[name]) {
-				name = name.replace(/^\$(\w+)/g, '$1__' + this.el.localName)
+				if (this.scopedClassNameSet && this.scopedClassNameSet.has(name)) {
+					name = name + '__' + this.scopeName
+				}
+
 				names.push(name)
 			}
 		}
