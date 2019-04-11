@@ -32,26 +32,27 @@ defineBinding('hide', class HideBinding implements Binding {
 			if (this.value !== undefined && this.transitionOptions) {
 				if (!newValue) {
 					this.el.hidden = false
-					this.el.removeAttribute('hidden')
 					new Transition(this.el, this.transitionOptions).enter()
 				}
 				else {
-					new Transition(this.el, this.transitionOptions).leave(() => {
-						this.el.hidden = true
-						this.el.setAttribute('hidden', '')
+					new Transition(this.el, this.transitionOptions).leave((finish: boolean) => {
+						// If was stopped by a enter transition, we can't hide it.
+						if (finish) {
+							this.el.hidden = true
+						}
 					})
 				}
 			}
 			else {
 				if (!newValue) {
 					this.el.hidden = false
-					this.el.removeAttribute('hidden')
 				}
 				else {
 					this.el.hidden = true
-					this.el.setAttribute('hidden', '')
 				}
 			}
+
+			this.value = newValue
 		}
 	}
 

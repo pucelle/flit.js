@@ -1,7 +1,7 @@
 import {Binding, defineBinding} from './define'
 import {Component, getComponentAtElement, onComponentCreatedAt} from '../component'
 import {on} from '../dom-event'
-import {onRendered} from '../queue'
+import {onRenderComplete} from '../queue'
 
 
 const ALLOWED_MODIFIERS = ['lazy', 'number']
@@ -147,7 +147,7 @@ defineBinding('model', class ModelBinding implements Binding {
 		this.writeModelValueToContext(value)
 		this.locked = true
 
-		onRendered(() => {
+		onRenderComplete(() => {
 			this.locked = false
 		})
 	}

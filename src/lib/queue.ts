@@ -35,19 +35,26 @@ export function enqueueWatcherUpdate(watcher: Watcher) {
 	}
 }
 
-/** Call callback after next rendered all the components in next micro task. */
-export function onRendered(callback: () => void) {
-	afterRenderCallbacks.push(callback)
-	
-	if (!updateEnqueued) {
-		enqueueUpdate()
+/** 
+ * Call callback after next rendered all the components in next micro task.
+ * Note that it will call callback immediately if no updating tasks enqueued.
+ */
+export function onRenderComplete(callback: () => void) {
+	if (updateEnqueued) {
+		afterRenderCallbacks.push(callback)
+	}
+	else {
+		callback()
 	}
 }
 
-/** Returns a promise which will be resolved after rendered all the components in next micro task. */
+/** 
+ * Returns a promise which will be resolved after rendered all the components in next micro task.
+ * Note that it will call callback in the next micro task if no updating tasks enqueued.
+ */
 export function renderComplete(): Promise<void> {
 	return new Promise(resolve => {
-		onRendered(resolve)
+		onRenderComplete(resolve)
 	})
 }
 

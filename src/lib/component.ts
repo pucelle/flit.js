@@ -1,6 +1,6 @@
 import {Emitter} from './emitter'
 import {RootPart, TemplateResult} from './parts'
-import {enqueueComponentUpdate} from './queue'
+import {enqueueComponentUpdate, onRenderComplete} from './queue'
 import {startUpdating, endUpdating, observeCom, clearDependency, clearAsDependency} from './observer'
 import {WatchFn, WatcherDisconnectFn, WatcherCallback, Watcher} from './watcher'
 
@@ -213,7 +213,9 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 			this.onFirstRendered()
 		}
 
-		this.onRendered()
+		onRenderComplete(() => {
+			this.onRendered()
+		})
 	}
 
 	/** Child class should implement this method, normally returns html`...` or string. */
@@ -235,7 +237,7 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 	/** Called when rendered for the first time. */
 	onFirstRendered() {}
 
-	/** Called when rendered for every time. */
+	/** Called when all the enqueued components rendered. */
 	onRendered() {}
 
 	/** 
