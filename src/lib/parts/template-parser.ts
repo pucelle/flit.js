@@ -181,8 +181,8 @@ class ElementParser {
 		}
 
 		if (firstTag === 'template') {
-			attributes = [...template.attributes].map(({name, value}) => ({name, value}))
 			template = template.content.firstChild as HTMLTemplateElement
+			attributes = [...template.attributes].map(({name, value}) => ({name, value}))
 		}
 
 		return {

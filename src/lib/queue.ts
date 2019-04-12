@@ -64,7 +64,9 @@ function enqueueUpdate() {
 	// Why not using `Promise.resolve().then` to start a micro stask:
 	// When initialize a component from `connectCallback`, it's child nodes is not ready,
 	// even in the following micro task queue.
-	// Very frequently data changing trigger updating,
+	// But we need `<slot>` elemnts to be prepared before updating.
+
+	// Otherwise it's very frequently to trigger updating from data changing ,
 	// but then more data changes in micro tasks and trigger new updating.
 	requestAnimationFrame(update)
 }

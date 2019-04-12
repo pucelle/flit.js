@@ -37,7 +37,7 @@ const EVENT_FILTER_FN = {
 
 
 // Full key list: https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/key/Key_Values
-// Capture key at: https://codepen.io/pen/?&editable=true
+// Capture key at: https://keycode.info/
 function keyEventFilter(e: KeyboardEvent, filters: string[]): boolean {
 	let keyOrCodeFilters: string[] = []
 
@@ -212,7 +212,7 @@ function bindEvent(once: boolean, el: Node, rawName: string, handler:　EventHan
 /**
  * Unregister an event handler on element.
  * @param el The element to unregister listener on.
- * @param name The original event name after exclude modifiers.
+ * @param name The event name with or without modifiers.
  * @param handler The event handler.
  * @param scope The event context used to call handler. If specified, it must be match too.
  */
@@ -221,10 +221,14 @@ export function off(el: Node, name: string, handler: EventHandler, scope?: objec
 	if (!eventMap) {
 		return
 	}
+
+	name = name.replace(/\..+/, '')
+
 	let events = eventMap[name]
 	if (!events) {
 		return
 	}
+	
 
 	for (let i = events.length - 1; i >= 0; i--) {
 		let event = events[i]

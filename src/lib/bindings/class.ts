@@ -1,5 +1,6 @@
 import {Binding, defineBinding} from './define'
 import {getScopedClassNameSet} from '../style'
+import {Component} from '../component'
 
 
 /**
@@ -16,7 +17,7 @@ defineBinding('class', class ClassNameBinding implements Binding {
 	private scopeName: string
 	private scopedClassNameSet: Set<string> | undefined
 
-	constructor(el: HTMLElement, value: unknown, modifiers: string[] | null) {
+	constructor(el: HTMLElement, value: unknown, modifiers: string[] | null, context: Component) {
 		if (modifiers) {
 			if (modifiers.length > 1) {
 				throw new Error(`Modifier "${modifiers.join('.')}" is not allowed, at most one modifier as class name can be specified for ":class"`)
@@ -29,7 +30,7 @@ defineBinding('class', class ClassNameBinding implements Binding {
 
 		this.el = el
 		this.modifiers = modifiers
-		this.scopeName = el.localName
+		this.scopeName = context.el.localName
 		this.scopedClassNameSet = getScopedClassNameSet(this.scopeName)
 
 		this.update(value)

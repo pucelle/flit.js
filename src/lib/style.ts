@@ -47,7 +47,7 @@ export function addGlobalStyle(style: ComponentStyle) {
 
 /** Update all styles for components, you can update styles after theme changed. */
 export function updateStyles() {
-	// `updateStyles` always been called along with `update`,
+	// `updateStyles` always been called along with `updateComponents`,
 	// So we may need to makesure update style in the same micro task.
 	for (let [Com, {style: styleTag}] of componentStyleTagMap) {
 		if (typeof Com.style === 'function') {
@@ -132,8 +132,13 @@ namespace StyleParser {
 						codes += '}'
 					}
 
-					current = parseToNames(chars, current, comName, classNameSet)
-					codes += spaces + current.join(', ') + '{'
+					let names = current = parseToNames(chars, current, comName)
+
+					if (comName) {
+						names = current.map(name => scopeClassName(name, comName, classNameSet!))
+					}
+	
+					codes += spaces + names.join(', ') + '{'
 				}
 			}
 
@@ -155,7 +160,7 @@ namespace StyleParser {
 		return codes
 	}
 
-	function parseToNames(selector: string, current: string[] | undefined, comName: string, classNameSet: Set<string> | undefined): string[] {
+	function parseToNames(selector: string, current: string[] | undefined, comName: string): string[] {
 		let re = /((?:\[.*?\]|\(.*?\)|.)+?)(?:,|$)/gs
 		/*
 			(?:
@@ -175,10 +180,6 @@ namespace StyleParser {
 		while (match = re.exec(selector)) {
 			let name = match[1].trim()
 			if (name) {
-				if (comName) {
-					name = scopeClassName(name, comName, classNameSet!)
-				}
-
 				if (!current) {
 					name = scopeTagSelector(name, comName)
 				}
@@ -232,7 +233,11 @@ namespace StyleParser {
 		})
 	}
 
-	/** `p` -> `com-name p` */
+	/**
+	 * `p` -> `com-name p`.
+	 * `:host` -> `com-name`.
+	 * One style may be used in multiple component, `:host` can be replaced to specified `com-name` dynamically.
+	 */
 	function scopeTagSelector(name: string, comName: string): string {
 		return name.replace(/^(?=\w)/g, comName + ' ')
 			.replace(/:host/g, comName)
