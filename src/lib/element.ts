@@ -2,6 +2,12 @@ import {ComponentConstructor, defineComponent, getComponentAtElement, Component}
 import {ensureComponentStyle, mayRemoveStyle} from './style'
 
 
+// When element moved when using APIs like `append`,
+// it will trigger `disconnectedCallback` and then `connectedCallback`.
+// So we using a set to cache will disconnected elements and disconnect them if they still exist in.
+const disconnectLaterSet: Set<HTMLElement> = new Set()
+
+
 /**
  * Defines a component with specified name.
  * Defines a custom element, but just used to start the defined component
@@ -36,27 +42,40 @@ export function define(name: string, Com?: ComponentConstructor) {
 		// A potential problem here:
 		// When `connectedCallback` been called, the child nodes of it is not linked yet.
 		connectedCallback() {
-			ensureComponentStyle(Com, name)
-			
-			let com = getComponentAtElement(this)
-			if (!com) {
-				com = new Com(this)
-				if (Com.properties) {
-					assignProperties(com, Com.properties)
-				}
-				com.__emitFirstConnected()
+			if (disconnectLaterSet.has(this)) {
+				disconnectLaterSet.delete(this)
 			}
+			else {
+				ensureComponentStyle(Com, name)
+				
+				let com = getComponentAtElement(this)
+				if (!com) {
+					com = new Com(this)
+					if (Com.properties) {
+						assignProperties(com, Com.properties)
+					}
+					com.__emitFirstConnected()
+				}
 
-			com.__emitConnected()
+				com.__emitConnected()
+			}
 		}
 
+		// Moving element using like `append` will also trigger this.
 		disconnectedCallback() {
-			let com = getComponentAtElement(this)
-			if (com) {
-				com.__emitDisconnected()
-			}
+			disconnectLaterSet.add(this)
 
-			mayRemoveStyle(Com)
+			Promise.resolve().then(() => {
+				if (disconnectLaterSet.has(this)) {
+					let com = getComponentAtElement(this)
+					if (com) {
+						com.__emitDisconnected()
+					}
+
+					mayRemoveStyle(Com)
+					disconnectLaterSet.delete(this)
+				}
+			})
 		}
 	})
 

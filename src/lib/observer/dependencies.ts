@@ -28,26 +28,30 @@ const comPropMap = new Weak2WayPropMap<Updatable, Com>()
 
 
 /** Currently rendering component or running watcher, and their dependencies. */
-let updating: Updatable | null = null
+let updating: Updatable | undefined
 let updatingDeps: Set<Dependency> = new Set()
 let updatingComPropMap: Map<Com, Set<PropertyKey>> = new Map()
 
+// a stack is required, `watchImmediately` need to be update immediately,
+// but an component may be updating recently.
+const updatingStack: Updatable[] = []
 
-/** 
- * Called when start rendering component or running watch functions.
- * Note that the argument will be proxy for component type.
- */
+
+/** Called when start rendering proxied component or running watch functions. */
 export function startUpdating(upt: Updatable) {
+	if (updating) {
+		updatingStack.push(updating)
+	}
 	updating = upt
 }
 
 /** Called when complete rendering component or complete running watch functions. */
-export function endUpdating() {
+export function endUpdating(_upt: Updatable) {
 	if (updating) {
 		depMap.updateFromLeft(updating, updatingDeps)
 		comPropMap.updateFromLeft(updating, updatingComPropMap)
 
-		updating = null
+		updating = updatingStack.pop()
 		updatingDeps = new Set()
 		updatingComPropMap = new Map()
 	}

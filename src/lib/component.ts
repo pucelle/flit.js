@@ -139,10 +139,13 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 	 */
 	refs: {[key: string]: HTMLElement} = {}
 
+	private __slotMap: Map<string, HTMLElement[]> | null = null
+	private __restNodes: Node[] | null = null
 	private __rootPart: RootPart | null = null
 	private __firstRendered: boolean = false
 	private __watchers: Set<Watcher> | null = null
 	private __connected: boolean = true
+
 
 	constructor(el: HTMLElement) {
 		super()
@@ -154,6 +157,54 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 		elementComponentMap.set(this.el, this)
 		emitComponentCreatedCallbacks(this.el, this)
 		this.onCreated()
+	}
+
+	// May first rendered as text, then original child nodes was removed.
+	// Then have slots when secondary rendering.
+	private __parseSlots() {
+		if (this.el.children.length > 0) {
+			let slots = this.el.querySelectorAll('[slot]')
+			if (slots.length > 0) {
+				this.__slotMap = new Map()
+
+				for (let el of slots) {
+					let slotName = el.getAttribute('slot')!
+					let els = this.__slotMap.get(slotName)
+					if (!els) {
+						this.__slotMap.set(slotName, els = [])
+					}
+					els.push(el as HTMLElement)
+					el.removeAttribute('slot')	// Avoid been treated as slot element again after moved into a component
+					el.remove()
+				}
+			}
+		}
+
+		if (this.el.childNodes.length > 0) {
+			this.__restNodes = [...this.el.childNodes]
+		}
+	}
+
+	__moveSlotsInto(fragment: DocumentFragment) {
+		let slots = fragment.querySelectorAll('slot')
+
+		for (let slot of slots) {
+			let slotName = slot.getAttribute('name')
+			if (slotName) {
+				if (this.__slotMap && this.__slotMap.has(slotName)) {
+					while (slot.firstChild) {
+						slot.firstChild.remove()
+					}
+					slot.append(...this.__slotMap.get(slotName)!)
+				}
+			}
+			else if (this.__restNodes) {
+				while (slot.firstChild) {
+					slot.firstChild.remove()
+				}
+				slot.append(...this.__restNodes)
+			}
+		}
 	}
 
 	__emitConnected() {
@@ -189,6 +240,12 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 			return
 		}
 
+		let firstRendered = this.__firstRendered
+		if (!firstRendered) {
+			this.__firstRendered = true
+			this.__parseSlots()
+		}
+
 		let part = this.__rootPart
 
 		startUpdating(this)
@@ -201,19 +258,18 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 			part = new RootPart(this.el, value, this)
 		}
 
-		endUpdating()
+		endUpdating(this)
 
 		// Move it to here to avoid observing `__part`.
 		if (this.__rootPart !== part) {
 			this.__rootPart = part
 		}
 
-		if (!this.__firstRendered) {
-			this.__firstRendered = true
-			this.onFirstRendered()
-		}
-
 		onRenderComplete(() => {
+			if (!firstRendered) {
+				this.onFirstRendered()
+			}
+			
 			this.onRendered()
 		})
 	}
@@ -231,10 +287,16 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 		enqueueComponentUpdate(this)
 	}
 
-	/** Called when component instance was just created and all properties assigned. */
+	/**
+	 * Called when component instance was just created and all properties assigned.
+	 * Slots and child nodes are not prepared right now.
+	 */
 	onCreated() {}
 
-	/** Called when rendered for the first time. */
+	/**
+	 * Called when rendered for the first time.
+	 * Slots and and child nodes are prepared right now..
+	 */
 	onFirstRendered() {}
 
 	/** Called when all the enqueued components rendered. */
@@ -243,7 +305,6 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 	/** 
 	 * Called when root element inserted into document.
 	 * This will be called for each time you insert the element into document.
-	 * The first time to trigger this would be earlier than onFirstRendered.
 	 */
 	onConnected() {}
 

@@ -30,7 +30,7 @@ export class Template {
 		this.result = result
 		this.context = context
 
-		let {fragment, nodesInPlaces, places, hasSlots} = parse(this.result.type, this.result.strings, this.context.el)
+		let {fragment, nodesInPlaces, places, hasSlots} = parse(this.result.type, this.result.strings, this.context ? this.context.el : null)
 		this.hasSlots = hasSlots
 		this.fragment = this.parseAsFragment(fragment, nodesInPlaces, places)
 

@@ -14,11 +14,15 @@ export class EventPart implements NodePart {
 	private el: HTMLElement
 	private name: string
 	private handler!: Function
-	private context: Context
+	private context: NonNullable<Context>
 	private isComEvent: boolean
 	private isUpdated: boolean = false
 
 	constructor(el: HTMLElement, name: string, handler: Function, context: Context) {
+		if (!context) {
+			throw new Error(`A context must be provided when registering event "${name}"`)
+		}
+
 		this.el = el
 		this.name = name[0] === '@' ? name.slice(1) : name
 		this.context = context

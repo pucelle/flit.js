@@ -44,17 +44,19 @@ const SELF_CLOSE_TAGS = [
  * @param type 
  * @param strings 
  */
-export function parse(type: TemplateType, strings: TemplateStringsArray, el: HTMLElement): ParseResult {
+export function parse(type: TemplateType, strings: TemplateStringsArray, el: HTMLElement | null): ParseResult {
+	let scopeName = el ? el.localName : 'global'
+
 	if ((type === 'html' || type === 'svg')) {
 		let string = strings.join(VALUE_MARKER)
-		let sharedResultMap = parseResultMap.get(el.localName)
+		let sharedResultMap = parseResultMap.get(scopeName)
 		let sharedResult = sharedResultMap ? sharedResultMap.get(string) : null
 		if (!sharedResult) {
 			if (!sharedResultMap) {
 				sharedResultMap = new Map()
-				parseResultMap.set(el.localName, sharedResultMap)
+				parseResultMap.set(scopeName, sharedResultMap)
 			}
-			sharedResult = new ElementParser(type, string, el.localName).parse()
+			sharedResult = new ElementParser(type, string, scopeName).parse()
 			sharedResultMap.set(string, sharedResult)
 		}
 
@@ -303,7 +305,7 @@ class ElementParser {
  */
 // TreeWalker Benchmark: https://jsperf.com/treewalker-vs-nodeiterator
 // Clone benchmark: https://jsperf.com/clonenode-vs-importnode
-function cloneParseResult(sharedResult: SharedParseReulst, el: HTMLElement): ParseResult {
+function cloneParseResult(sharedResult: SharedParseReulst, el: HTMLElement | null): ParseResult {
 	let {template, places, hasSlots, attributes} = sharedResult
 	let fragment = template.content.cloneNode(true) as DocumentFragment
 	let nodesInPlaces: Node[] = []
@@ -316,6 +318,10 @@ function cloneParseResult(sharedResult: SharedParseReulst, el: HTMLElement): Par
 		let end = false
 
 		if (attributes) {
+			if (!el) {
+				throw new Error('A context must be provided when rendering `<template>...`')
+			}
+
 			while (placeIndex < places.length && places[placeIndex].nodeIndex === 0) {
 				nodesInPlaces.push(el)
 				placeIndex++

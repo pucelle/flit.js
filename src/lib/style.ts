@@ -31,6 +31,7 @@ export function mayRemoveStyle(Com: ComponentConstructor) {
 		o.count--
 
 		if (o.count === 0) {
+			o.style.remove()
 			componentStyleTagMap.delete(Com)
 		}
 	}
@@ -112,8 +113,12 @@ namespace StyleParser {
 		let classNameSet: Set<string> | undefined
 
 		if (comName) {
-			classNameSet = new Set()
-			scopedClassNameSetMap.set(comName, classNameSet)
+			// May add more scoped class name when using `render` or `renderAndUpdate`.
+			classNameSet = scopedClassNameSetMap.get(comName)
+			if (!classNameSet) {
+				classNameSet = new Set()
+				scopedClassNameSetMap.set(comName, classNameSet)
+			}
 		}
 
 		while (match = re.exec(text)) {
@@ -150,8 +155,9 @@ namespace StyleParser {
 				}
 			}
 			else {
-				let startTwoChars = match[0].slice(spaces.length, spaces.length + 2)
-				if (startTwoChars !== '//' && startTwoChars !== '/*') {
+				// Skip `/*...*/` and `//...`
+				let startChar = match[0][spaces.length]
+				if (startChar !== '/') {
 					codes += match[0]
 				}
 			}

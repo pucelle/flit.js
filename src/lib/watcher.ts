@@ -113,18 +113,20 @@ export class Watcher {
 
 	private fns: Function[]
 	private callback: WatcherCallback
-	private immediately: boolean
 	private values: unknown[] | null = null
 	private connected: boolean = true
 
 	constructor(fns: Function[], callback: WatcherCallback, immediately: boolean = false) {
 		this.fns = fns
 		this.callback = callback
-		this.immediately = immediately
-
-		// Must enqueue it, because a component may be updating recently,
-		// which will cause `updating` object been reset.
-		this.update()
+		
+		if (immediately) {
+			this.__updateImmediately()
+			this.callback(...this.values as unknown[])
+		}
+		else {
+			this.update()
+		}
 	}
 
 	private run(): unknown[] {
@@ -165,18 +167,14 @@ export class Watcher {
 
 		startUpdating(this)
 		let newValues = this.run()
-		endUpdating()
+		endUpdating(this)
 
 		if (this.values === null) {
 			this.values = newValues
-
-			if (this.immediately) {
-				this.callback.apply(this, this.values)
-			}
 		}
 		else if (this.mayChanged(newValues)) {
 			this.values = newValues
-			this.callback.apply(this, this.values)
+			this.callback(...this.values)
 		}
 	}
 

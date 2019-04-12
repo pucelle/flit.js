@@ -1,6 +1,7 @@
 import {TemplateResult} from './template-result'
 import {Template} from './template'
-import {NodePart, PartType, Context} from './types'
+import {NodePart, PartType} from './types'
+import {Component} from '../component'
 
 
 export class RootPart implements NodePart {
@@ -8,13 +9,10 @@ export class RootPart implements NodePart {
 	type = PartType.Root
 
 	private el: HTMLElement
-	private context: Context
+	private context: Component
 	private template: Template | null = null
-	private slotParsed: boolean = false
-	private slotMap: Map<string, HTMLElement[]> | null = null
-	private restNodes: Node[] | null = null
 
-	constructor(el: HTMLElement, value: unknown, context: Context) {
+	constructor(el: HTMLElement, value: unknown, context: Component) {
 		this.el = el
 		this.context = context
 		this.update(value)
@@ -50,8 +48,11 @@ export class RootPart implements NodePart {
 		let template = new Template(result, this.context)
 		let fragment = template.getFragment()
 
+		// If there are slot elements inside the root node,
+		// the first rendering result must returns `TemplateResult`,
+		// Or they will be dropped and can't restore.
 		if (template.hasSlots) {
-			this.moveSlots(fragment)
+			this.context.__moveSlotsInto(fragment)
 		}
 
 		while (this.el.firstChild) {
@@ -60,58 +61,6 @@ export class RootPart implements NodePart {
 
 		this.el.append(fragment)
 		this.template = template
-	}
-
-	private moveSlots(fragment: DocumentFragment) {
-		if (!this.slotParsed) {
-			this.parseSlots()
-		}
-
-		let slots = fragment.querySelectorAll('slot')
-
-		for (let slot of slots) {
-			let slotName = slot.getAttribute('name')
-			if (slotName) {
-				if (this.slotMap && this.slotMap.has(slotName)) {
-					while (slot.firstChild) {
-						slot.firstChild.remove()
-					}
-					slot.append(...this.slotMap.get(slotName)!)
-				}
-			}
-			else if (this.restNodes) {
-				while (slot.firstChild) {
-					slot.firstChild.remove()
-				}
-				slot.append(...this.restNodes)
-			}
-		}
-	}
-
-	// May first rendered as text, then original child nodes was removed.
-	// Then have slots when secondary rendering.
-	private parseSlots() {
-		if (this.el.childNodes.length) {
-			let fragment = document.createDocumentFragment()
-			fragment.append(...this.el.childNodes)
-			this.slotMap = new Map()
-
-			for (let el of fragment.querySelectorAll('[slot]')) {
-				let slotName = el.getAttribute('slot')!
-				let els = this.slotMap.get(slotName)
-				if (!els) {
-					this.slotMap.set(slotName, els = [])
-				}
-				els.push(el as HTMLElement)
-				el.remove()
-			}
-
-			if (fragment.childNodes.length > 0) {
-				this.restNodes = [...fragment.childNodes]
-			}
-		}
-
-		this.slotParsed = true
 	}
 
 	private renderText(value: unknown) {
