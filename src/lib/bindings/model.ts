@@ -1,7 +1,6 @@
 import {Binding, defineBinding} from './define'
 import {Component, getComponentAtElement, onComponentCreatedAt} from '../component'
 import {on} from '../dom-event'
-import {onRenderComplete} from '../queue'
 
 
 const ALLOWED_MODIFIERS = ['lazy', 'number']
@@ -21,7 +20,6 @@ defineBinding('model', class ModelBinding implements Binding {
 
 	private modelName: string | null = null
 	private com: Component | null = null
-	private locked: boolean = false
 	private unwatch: (() => void) | null = null
 
 	constructor(el: HTMLElement, value: unknown, modifiers: string[] | null, context: Component) {
@@ -66,7 +64,7 @@ defineBinding('model', class ModelBinding implements Binding {
 				this.eventName = isLazy ? 'change' : 'input'
 			}
 
-			// div@contendeditable cant trigger change event but not input event
+			// `div@contendeditable` cant trigger change event but not input event
 			else {
 				this.property = 'innerHTML'
 				this.eventName = isLazy ? 'blur' : 'input'
@@ -104,7 +102,7 @@ defineBinding('model', class ModelBinding implements Binding {
 		// Avoid bind twice when model changed.
 		if (!this.com) {
 			this.com = com
-			com.on(this.eventName, this.writeModelValueToContext, this)
+			com.on(this.eventName as any, this.writeModelValueBackToContext, this)
 		}
 
 		this.watchContextModelValue()
@@ -121,7 +119,7 @@ defineBinding('model', class ModelBinding implements Binding {
 		this.unwatch = this.context.watch(this.modelName! as any, this.setModelValue.bind(this))
 	}
 
-	writeModelValueToContext(value: unknown) {
+	writeModelValueBackToContext(value: unknown) {
 		(this.context as any)[this.modelName!] = value
 	}
 
@@ -144,31 +142,22 @@ defineBinding('model', class ModelBinding implements Binding {
 			}
 		}
 		
-		this.writeModelValueToContext(value)
-		this.locked = true
-
-		onRenderComplete(() => {
-			this.locked = false
-		})
+		this.writeModelValueBackToContext(value)
 	}
 
 	setModelValue(value: unknown) {
-		// Here to avoid:
-		//   input value changed ->
-		//   write value to context ->
-		//   trigger watcher ->
-		//   write same to input, which may also cause cursor position lost
-		if (this.locked) {
-			return
-		}
-
 		if (this.isComModel) {
-			if (this.com) {
-				(this.com as any)[this.property] = value
-			}
+			this.setComValue(value)
 		}
 		else {
 			this.setInputValue(value)
+		}
+	}
+
+	setComValue(value: unknown) {
+		let com = this.com as any
+		if (com && com[this.property] !== value) {
+			com[this.property] = value
 		}
 	}
 
@@ -183,7 +172,19 @@ defineBinding('model', class ModelBinding implements Binding {
 			}
 		}
 		else {
-			(this.el as any)[this.property] = value === null || value === undefined ? '' : value
+			let el = this.el as any
+			value = value === null || value === undefined ? '' : value
+
+		// Here need to avoid:
+		//   input value changed ->
+		//   write value to context ->
+		//   trigger watcher ->
+		//   write same value to input, which may cause cursor position lost.
+		// So we must compare the value firstly.
+
+		if (el[this.property] !== value) {
+				el[this.property] = value
+			}
 		}
 	}
 })
