@@ -19,7 +19,6 @@ export class Template {
 
 	startNode: ChildNode
 	endNode: ChildNode
-	hasSlots: boolean = false
 
 	/**
 	 * Create an template from html`...` like template result and context
@@ -31,8 +30,11 @@ export class Template {
 		this.context = context
 
 		let {fragment, nodesInPlaces, places, hasSlots} = parse(this.result.type, this.result.strings, this.context ? this.context.el : null)
-		this.hasSlots = hasSlots
 		this.fragment = this.parseAsFragment(fragment, nodesInPlaces, places)
+
+		if (hasSlots && this.context) {
+			this.context.__moveSlotsInto(fragment)
+		}
 
 		// Should include at least one node, So it's position can be tracked.
 		// And should always before any other nodes inside,

@@ -48,13 +48,6 @@ export class RootPart implements NodePart {
 		let template = new Template(result, this.context)
 		let fragment = template.getFragment()
 
-		// If there are slot elements inside the root node,
-		// the first rendering result must returns `TemplateResult`,
-		// Or they will be dropped and can't restore.
-		if (template.hasSlots) {
-			this.context.__moveSlotsInto(fragment)
-		}
-
 		while (this.el.firstChild) {
 			this.el.firstChild.remove()
 		}
