@@ -29,6 +29,12 @@ export function defineComponent(name: string, Com: ComponentConstructor) {
 		console.warn(`You are trying to overwrite component definition "${name}"`)
 	}
 
+	if (Com.properties && Com.properties.some(p => /A-Z/.test(p))) {
+		let prop = Com.properties.find(p => /A-Z/.test(p))!
+		let dashProp = prop.replace(/A-Z/g, (m0: string) => '-' + m0.toLowerCase())
+		throw new Error(`Static properties "${prop}" are used in HTML element and should not be camel case type, you may use "${dashProp}" instead.`)
+	}
+
 	componentMap.set(name, Com)
 }
 
@@ -107,8 +113,16 @@ export function updateComponents() {
 }
 
 
+interface ComponentEvents {
+	created: () => void
+	firstRendered: () => void
+	rendered: () => void
+	connedted: () => void
+	disconnected: () => void
+}
+
 /** The abstract component class, you can instantiate it from just creating an element and insert in to document. */
-export abstract class Component<Events = any> extends Emitter<Events> {
+export abstract class Component<Events = {}> extends Emitter<Events & ComponentEvents> {
 
 	static get = getComponentAtElement
 	static getAsync = getComponentAtElementAsync
@@ -126,7 +140,10 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 	 */
 	static style: ComponentStyle | null = null
 
-	/** Used to assign fixed element properties to component. */
+	/**
+	 * Used to assign very important value type properties,
+	 * Normally used to set the properties that will never changed.
+	 */
 	static properties: string[] | null = null
 
 	/** The root element of component. */
@@ -138,14 +155,13 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 	 * or using `:ref=${this.onRef}` to call `this.onRef(refElement)` every time when the reference element updated.
 	 */
 	refs: {[key: string]: HTMLElement} = {}
+	slots: {[key: string]: HTMLElement[]} = {}
 
-	private __slotMap: Map<string, HTMLElement[]> | null = null
 	private __restNodes: Node[] | null = null
 	private __rootPart: RootPart | null = null
-	private __firstRendered: boolean = false
+	private __firstUpdated: boolean = false
 	private __watchers: Set<Watcher> | null = null
 	private __connected: boolean = true
-
 
 	constructor(el: HTMLElement) {
 		super()
@@ -157,24 +173,116 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 		elementComponentMap.set(this.el, this)
 		emitComponentCreatedCallbacks(this.el, this)
 		this.onCreated()
+
+		// A typescript issue here:
+		// We accept an `Events` and union it with type `ComponentEvents`,
+		// the returned type for `rendered` property will become `Events['rendered'] & () => void`,
+		// `Parmaters<...>` of it will return the arguments of `Events['rendered']`.
+		// So here show the issue that passed arguments `[]` can't be assigned to it.
+
+		// This can't be fixed right now since we can't implement a type function like `interface extends`
+		// And the type function below not work as expected:
+		// `type Extends<B, O> = {[key in keyof (B & O)]: key extends keyof O ? O[key] : key extends keyof B ? B[key] : never}`
+		;(this as any).emit('created')
+	}
+
+	__emitConnected() {
+		this.__connected = true
+		this.update()
+
+		this.onConnected()
+		;(this as any).emit('connected')
+
+		if (this.__watchers) {
+			for (let watcher of this.__watchers) {
+				watcher.connect()
+			}
+		}
+
+		componentSet.add(this)
+	}
+
+	__emitDisconnected() {
+		clearDependency(this)
+		clearAsDependency(this)
+		componentSet.delete(this)
+
+		this.onDisconnected()
+		;(this as any).emit('disconnected')
+
+		if (this.__watchers) {
+			for (let watcher of this.__watchers) {
+				watcher.disconnect()
+			}
+		}
+
+		this.__connected = false
+	}
+
+	__updateImmediately() {
+		if (!this.__connected) {
+			return
+		}
+
+		let firstUpdated = this.__firstUpdated
+		if (!firstUpdated) {
+			//this.onChildNodesReady()
+			this.__parseSlots()
+			//this.onSlotsReady()
+			this.__firstUpdated = true
+		}
+
+		let part = this.__rootPart
+
+		startUpdating(this)
+		let value = this.render()
+
+		if (part) {
+			part.update(value)
+		}
+		// Not overwrite `render()` to keep it returns `null` when you to do nothing in child nodes.
+		// But note that if it should not return `null` when updating, and you may need `<slot />` instead.
+		else if (value !== null) {
+			part = new RootPart(this.el, value, this)
+		}
+
+		endUpdating(this)
+
+		// Move it to here to avoid observing `__part`.
+		if (this.__rootPart !== part) {
+			this.__rootPart = part
+		}
+
+		onRenderComplete(() => {
+			if (!firstUpdated) {
+				this.onFirstRendered()
+				;(this as any).emit('firstRendered')
+			}
+			
+			this.onRendered()
+			;(this as any).emit('rendered')
+		})
 	}
 
 	// May first rendered as text, then original child nodes was removed.
 	// Then have slots when secondary rendering.
 	private __parseSlots() {
 		if (this.el.children.length > 0) {
-			let slots = this.el.querySelectorAll('[slot]')
-			if (slots.length > 0) {
-				this.__slotMap = new Map()
-
-				for (let el of slots) {
-					let slotName = el.getAttribute('slot')!
-					let els = this.__slotMap.get(slotName)
+			// We only check `[slot]` in the children, or:
+			// <com1><com2><el slot="for com2"></com2></com1>
+			// it will cause `slot` for `com2` was captured by `com1`.
+			for (let el of this.el.children) {
+				let slotName = el.getAttribute('slot')!
+				if (slotName) {
+					let els = this.slots[slotName]
 					if (!els) {
-						this.__slotMap.set(slotName, els = [])
+						els = this.slots[slotName] = []
 					}
 					els.push(el as HTMLElement)
-					el.removeAttribute('slot')	// Avoid been treated as slot element again after moved into a component
+
+					// Avoid been treated as slot element again after moved into a component
+					el.removeAttribute('slot')
+
 					el.remove()
 				}
 			}
@@ -191,11 +299,11 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 		for (let slot of slots) {
 			let slotName = slot.getAttribute('name')
 			if (slotName) {
-				if (this.__slotMap && this.__slotMap.has(slotName)) {
+				if (this.slots && this.slots[slotName]) {
 					while (slot.firstChild) {
 						slot.firstChild.remove()
 					}
-					slot.append(...this.__slotMap.get(slotName)!)
+					slot.append(...this.slots[slotName]!)
 				}
 			}
 			else if (this.__restNodes) {
@@ -205,73 +313,6 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 				slot.append(...this.__restNodes)
 			}
 		}
-	}
-
-	__emitConnected() {
-		this.__connected = true
-		this.update()
-		this.onConnected()
-
-		if (this.__watchers) {
-			for (let watcher of this.__watchers) {
-				watcher.connect()
-			}
-		}
-
-		componentSet.add(this)
-	}
-
-	__emitDisconnected() {
-		clearDependency(this)
-		clearAsDependency(this)
-		componentSet.delete(this)
-
-		if (this.__watchers) {
-			for (let watcher of this.__watchers) {
-				watcher.disconnect()
-			}
-		}
-
-		this.__connected = false
-	}
-
-	__updateImmediately() {
-		if (!this.__connected) {
-			return
-		}
-
-		let firstRendered = this.__firstRendered
-		if (!firstRendered) {
-			this.__firstRendered = true
-			this.__parseSlots()
-		}
-
-		let part = this.__rootPart
-
-		startUpdating(this)
-		let value = this.render()
-
-		if (part) {
-			part.update(value)
-		}
-		else if (value !== null) {
-			part = new RootPart(this.el, value, this)
-		}
-
-		endUpdating(this)
-
-		// Move it to here to avoid observing `__part`.
-		if (this.__rootPart !== part) {
-			this.__rootPart = part
-		}
-
-		onRenderComplete(() => {
-			if (!firstRendered) {
-				this.onFirstRendered()
-			}
-			
-			this.onRendered()
-		})
 	}
 
 	/** Child class should implement this method, normally returns html`...` or string. */
@@ -293,9 +334,17 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 	 */
 	onCreated() {}
 
+	/** Called after child nodes and sibling nodes prepared, before slot nodes parsed and first rendering. */
+	// Recently we want to reduce the directly operating on elements, but move them to the template and data management.
+	// So this interface and `onSlotsReady` is not available.
+	//onChildNodesReady() {}
+
+	/** Called just after `onChildNodesReady` and slots parsed */
+	//onSlotsReady()
+
 	/**
 	 * Called when rendered for the first time.
-	 * Slots and and child nodes are prepared right now..
+	 * Slots and and child nodes are prepared right now.
 	 */
 	onFirstRendered() {}
 

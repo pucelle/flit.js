@@ -51,7 +51,7 @@ export function define(name: string, Com?: ComponentConstructor) {
 				let com = getComponentAtElement(this)
 				if (!com) {
 					com = new Com(this)
-					if (Com.properties) {
+					if (Com.properties && this.attributes.length > 0) {
 						assignProperties(com, Com.properties)
 					}
 					com.__emitFirstConnected()
@@ -86,17 +86,21 @@ export function define(name: string, Com?: ComponentConstructor) {
 
 // Property values from element properties may be overwrited by `:props`.
 function assignProperties(com: Component, properties: string[]) {
+	let el = com.el
+
 	for (let property of properties) {
-		if (com.el.hasAttribute(property)) {
+		if (el.hasAttribute(property)) {
+			let camelProperty = property.includes('-') ? property.replace(/-[a-z]/g, (m0: string) => m0[1].toUpperCase()) : property
 			let value = (com as any)[property]
+
 			if (typeof value === "boolean") {
-				(com as any)[property] = true
+				(com as any)[camelProperty] = true
 			}
 			else if (typeof value === "number") {
-				(com as any)[property] = Number(com.el.getAttribute(property))
+				(com as any)[camelProperty] = Number(el.getAttribute(property))
 			}
 			else {
-				(com as any)[property] = com.el.getAttribute(property)
+				(com as any)[camelProperty] = el.getAttribute(property)
 			}
 		}
 	}
