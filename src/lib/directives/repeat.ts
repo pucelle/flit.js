@@ -196,4 +196,10 @@ export const repeat = defineDirective(class RepeatDirective<T> extends Directive
 			template.remove()
 		}
 	}
+
+	remove() {
+		for (let template of this.templates) {
+			template.remove()
+		}
+	}
 }) as <T>(items: Iterable<T>, templateFn: TemplateFn<T>, transitionOptions?: ShortTransitionOptions) => DirectiveResult

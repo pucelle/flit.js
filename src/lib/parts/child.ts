@@ -68,6 +68,7 @@ export class ChildPart implements NodePart {
 		}
 
 		if (contentType === ChildContentType.Directive) {
+			this.directive!.remove()
 			this.directive = null
 		}
 		else if (contentType === ChildContentType.Templates) {
@@ -90,7 +91,7 @@ export class ChildPart implements NodePart {
 				this.directive.merge(...directiveResult.args)
 			}
 			else {
-				this.directive = null
+				this.directive.remove()
 			}
 		}
 		
@@ -112,28 +113,26 @@ export class ChildPart implements NodePart {
 		return array as TemplateResult[]
 	}
 	
-	private updateTemplates(values: TemplateResult[]) {
-		if (!this.templates) {
-			this.templates = []
-		}
-		this.mergeTemplates(values)
-	}
-
-	private mergeTemplates(results: TemplateResult[]) {
+	private updateTemplates(results: TemplateResult[]) {
 		let templates = this.templates!
+		if (!templates) {
+			templates = this.templates = []
+		}
 
 		if (templates.length > 0 && results.length > 0) {
 			for (let i = 0; i < templates.length && i < results.length; i++) {
-				let template = templates[i]
+				let oldTemplate = templates[i]
 				let result = results[i]
 
-				if (template.canMergeWith(result)) {
-					template.merge(result)
+				if (oldTemplate.canMergeWith(result)) {
+					oldTemplate.merge(result)
 				}
 				else {
 					let newTemplate = new Template(result, this.context)
-					template.startNode!.before(newTemplate.getFragment())
-					template.remove()
+					let fragment = newTemplate.getFragment()
+
+					oldTemplate.startNode!.before(fragment)
+					oldTemplate.remove()
 					templates[i] = newTemplate
 				}
 			}
@@ -144,6 +143,7 @@ export class ChildPart implements NodePart {
 				let template = templates[i]
 				template.remove()
 			}
+			this.templates = templates.slice(0, results.length)
 		}
 
 		else if (templates.length < results.length) {

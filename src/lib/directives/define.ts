@@ -19,6 +19,7 @@ export abstract class Directive<Args extends any[] = any[]> {
 	abstract init(...args: Args): void
 	abstract canMergeWith(...args: Args): boolean
 	abstract merge(...args: Args): void
+	abstract remove(): void
 }
 
 
