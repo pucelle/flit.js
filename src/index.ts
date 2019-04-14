@@ -1,7 +1,7 @@
 export {Emitter} from './lib/emitter'
 export {define} from './lib/element'
 export {addGlobalStyle, updateStyles} from './lib/style'
-export {render, renderAndUpdate} from './lib/render'
+export {render, renderAndFollow} from './lib/render'
 export {html, css, svg, text, TemplateResult, Template} from './lib/parts'
 export {Component, updateComponents} from './lib/component'
 export {defineBinding} from './lib/bindings'

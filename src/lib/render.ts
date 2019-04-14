@@ -39,7 +39,7 @@ function clearWhiteSpaces(htmlCodes: string): string {
  * @param renderFn Returns template like html`...`
  * @param onUpdate Called when update after referenced data changed. if new result can't merge with old, will pass a new fragment as argument.
  */
-export function renderAndUpdate(this: unknown, renderFn: () => TemplateResult, onUpdate?: (fragment: DocumentFragment | null) => void): DocumentFragment {
+export function renderAndFollow(this: unknown, renderFn: () => TemplateResult, onUpdate?: (fragment: DocumentFragment | null) => void): DocumentFragment {
 	let template: Template | undefined
 
 	let onResultChanged = (result: TemplateResult) => {
