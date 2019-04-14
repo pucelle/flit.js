@@ -11,7 +11,9 @@ export const cache = defineDirective(class CacheDirective extends Directive {
 	private transitionOptions: TransitionOptions | null = null
 
 	init(result: TemplateResult | string, transitionOptions?: ShortTransitionOptions) {
-		this.initResult(result)
+		if (result) {
+			this.initResult(result)
+		}
 
 		// Doesn't play transition for the first time
 		this.initTransitionOptions(transitionOptions)
@@ -21,7 +23,7 @@ export const cache = defineDirective(class CacheDirective extends Directive {
 		if (typeof result === 'string') {
 			result = text`${result}`
 		}
-
+		
 		let template = new Template(result, this.context)
 		let fragment = template.getFragment()
 		this.endNode.before(fragment)
@@ -53,27 +55,36 @@ export const cache = defineDirective(class CacheDirective extends Directive {
 	}
 
 	merge(result: TemplateResult | string, transitionOptions?: ShortTransitionOptions) {
-		if (typeof result === 'string') {
-			result = text`${result}`
-		}
+		if (result) {
+			if (typeof result === 'string') {
+				result = text`${result}`
+			}
 
-		this.initTransitionOptions(transitionOptions)
+			this.initTransitionOptions(transitionOptions)
 
-		if (this.currentTemplate!.canMergeWith(result)) {
-			this.currentTemplate!.merge(result)
-		}
-		else {
-			this.cacheCurrentTemplate()
-
-			let template = this.templates.find(t => t.canMergeWith(result as TemplateResult))
-			if (template) {
-				template.merge(result)
-				this.endNode.before(template.getFragment())
-				this.mayPlayEnterTransition(template)
-				this.currentTemplate = template
+			if (this.currentTemplate && this.currentTemplate.canMergeWith(result)) {
+				this.currentTemplate.merge(result)
 			}
 			else {
-				this.initResult(result)
+				if (this.currentTemplate) {
+					this.cacheCurrentTemplate()
+				}
+
+				let template = this.templates.find(t => t.canMergeWith(result as TemplateResult))
+				if (template) {
+					template.merge(result)
+					this.endNode.before(template.getFragment())
+					this.mayPlayEnterTransition(template)
+					this.currentTemplate = template
+				}
+				else {
+					this.initResult(result)
+				}
+			}
+		}
+		else {
+			if (this.currentTemplate) {
+				this.cacheCurrentTemplate()
 			}
 		}
 	}
@@ -84,8 +95,10 @@ export const cache = defineDirective(class CacheDirective extends Directive {
 		if (this.transitionOptions) {
 			let firstElement = template.getNodes().find(el => el.nodeType === 1) as HTMLElement | undefined
 			if (firstElement) {
-				new Transition(firstElement, this.transitionOptions).leave(() => {
-					template.cacheFragment()
+				new Transition(firstElement, this.transitionOptions).leave((finish: boolean) => {
+					if (finish) {
+						template.cacheFragment()
+					}
 				})
 			}
 			else {
@@ -94,6 +107,14 @@ export const cache = defineDirective(class CacheDirective extends Directive {
 		}
 		else {
 			template.cacheFragment()
+		}
+
+		this.currentTemplate = null
+	}
+
+	remove() {
+		if (this.currentTemplate) {
+			this.currentTemplate.remove()
 		}
 	}
 }) as (result: TemplateResult | string, transitionOptions?: ShortTransitionOptions) => DirectiveResult
