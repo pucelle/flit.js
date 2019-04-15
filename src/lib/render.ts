@@ -1,5 +1,5 @@
 import {TemplateResult, Template} from './parts'
-import {Component} from './component';
+import {Component, Context} from './component'
 import {watchImmediately} from './watcher'
 
 
@@ -22,7 +22,7 @@ export function renderInContext(context: Component, codes: TemplateResult | stri
 	return renderMayInContext(context, codes)
 }
 
-function renderMayInContext(context: Component | null, codes: TemplateResult | string): DocumentFragment {
+function renderMayInContext(context: Context, codes: TemplateResult | string): DocumentFragment {
 	let fragment: DocumentFragment
 
 	if (codes instanceof TemplateResult) {
@@ -49,7 +49,7 @@ function clearWhiteSpaces(htmlCodes: string): string {
  * @param renderFn Returns template like html`...`
  * @param onUpdate Called when update after referenced data changed. if new result can't merge with old, will pass a new fragment as argument.
  */
-export function renderAndFollow(renderFn: () => TemplateResult, onUpdate?: (fragment: DocumentFragment | null) => void): DocumentFragment {
+export function renderAndFollow(renderFn: () => TemplateResult, onUpdate?: (fragment: DocumentFragment | null) => void) {
 	return renderAndFollowMayInContext(null, renderFn, onUpdate)
 }
 	
@@ -60,11 +60,11 @@ export function renderAndFollow(renderFn: () => TemplateResult, onUpdate?: (frag
  * @param renderFn Returns template like html`...`
  * @param onUpdate Called when update after referenced data changed. if new result can't merge with old, will pass a new fragment as argument.
  */
-export function renderAndFollowInContext(context: Component, renderFn: () => TemplateResult, onUpdate?: (fragment: DocumentFragment | null) => void): DocumentFragment {
+export function renderAndFollowInContext(context: Component, renderFn: () => TemplateResult, onUpdate?: (fragment: DocumentFragment | null) => void) {
 	return renderAndFollowMayInContext(context, renderFn, onUpdate)
 }
 
-function renderAndFollowMayInContext(context: Component | null, renderFn: () => TemplateResult, onUpdate?: (fragment: DocumentFragment | null) => void): DocumentFragment {
+function renderAndFollowMayInContext(context: Context, renderFn: () => TemplateResult, onUpdate?: (fragment: DocumentFragment | null) => void) {
 	let template: Template | undefined
 
 	let onResultChanged = (result: TemplateResult) => {
@@ -89,12 +89,19 @@ function renderAndFollowMayInContext(context: Component | null, renderFn: () => 
 		}
 	}
 
+	let unwatch: () => void
+
 	if (context) {
-		context.watchImmediately(renderFn, onResultChanged)
+		unwatch = context.watchImmediately(renderFn, onResultChanged)
 	}
 	else {
-		watchImmediately(renderFn, onResultChanged)
+		unwatch = watchImmediately(renderFn, onResultChanged)
 	}
 	
-	return template!.getFragment()
+	let fragment = template!.getFragment()
+
+	return {
+		fragment,
+		unwatch
+	}
 }

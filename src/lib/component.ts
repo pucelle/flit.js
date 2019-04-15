@@ -2,7 +2,7 @@ import {Emitter} from './emitter'
 import {NodePart, AnchorNode, TemplateResult} from './parts'
 import {enqueueComponentUpdate, onRenderComplete} from './queue'
 import {startUpdating, endUpdating, observeCom, clearDependencies, clearAsDependency} from './observer'
-import {WatchFn, WatcherDisconnectFn, WatcherCallback, Watcher} from './watcher'
+import {Watcher} from './watcher'
 import {targetMap} from './observer/shared'
 
 
@@ -16,6 +16,9 @@ export type ComponentConstructor = {
 	style: ComponentStyle | null
 	properties: string[] | null
 }
+
+/** Context may be `null` when using `render` or `renderAndUpdate` */
+export type Context = Component | null
 
 
 const componentMap: Map<string, ComponentConstructor> = new Map()
@@ -367,227 +370,133 @@ export abstract class Component<Events = {}> extends Emitter<Events> {
 
 
 	/** Watch specified property and call callback with the value as argument after it changed. */
-	watch<P extends keyof this>(prop: P, callback: (value: ValueType<this, typeof prop>) => void): WatcherDisconnectFn
-
-	/** Watch specified properties and call callback with these values as arguments after they changed. */
-	watch<P1 extends keyof this, P2 extends keyof this, P3 extends keyof this>(
-		prop1: P1,
-		prop2: P2,
-		callback: (value1: ValueType<this, P1>, value2: ValueType<this, P2>) => void
-	): WatcherDisconnectFn
-
-	/** Watch specified properties and call callback with these values as arguments after they changed. */
-	watch<P1 extends keyof this, P2 extends keyof this, P3 extends keyof this>(
-		prop1: P1,
-		prop2: P2,
-		prop3: P3,
-		callback: (value1: ValueType<this, P1>, value2: ValueType<this, P2>, value3: ValueType<this, P3>) => void
-	): WatcherDisconnectFn
-
+	watch<P extends keyof this>(prop: P, callback: (value: ValueType<this, typeof prop>) => void): () => void
 
 	/** Watch return value of function and trigger callback with this value as argument after it changed. */
-	watch<FN extends WatchFn>(fn: FN, callback: (value: ReturnType<FN>) => void): WatcherDisconnectFn
+	watch<T>(fn: () => T, callback: (value: T) => void): () => void
 
-	/** Watch return values of functions and trigger callback with these values as arguments after they changed. */
-	watch<FN1 extends WatchFn, FN2 extends WatchFn>(
-		fn1: FN1,
-		fn2: FN2,
-		callback: (value1: ReturnType<FN1>, value2: ReturnType<FN2>) => void
-	): WatcherDisconnectFn
-
-	/** Watch return values of functions and trigger callback with these values as arguments after they changed. */
-	watch<FN1 extends WatchFn, FN2 extends WatchFn, FN3 extends WatchFn>(
-		fn1: FN1,
-		fn2: FN2,
-		fn3: FN3,
-		callback: (value1: ReturnType<FN1>, value2: ReturnType<FN2>, value3: ReturnType<FN3>) => void
-	): WatcherDisconnectFn
-
-
-	watch(...fnOrPropsAndCallback: unknown[]): WatcherDisconnectFn {
-		let callback = fnOrPropsAndCallback.pop() as WatcherCallback
-
-		for (let i = 0; i < fnOrPropsAndCallback.length; i++) {
-			if (typeof fnOrPropsAndCallback[i] === 'string') {
-				let prop = fnOrPropsAndCallback[i]
-				fnOrPropsAndCallback[i] = () => this[prop as keyof this]
-			}
+	watch(propOrFn: unknown, callback: (value: any) => void): () => void {
+		let fn: () => unknown
+		if (typeof propOrFn === 'string') {
+			fn = () => this[propOrFn as keyof this]
+		}
+		else {
+			fn = propOrFn as () => unknown
 		}
 
-		let watcher = new Watcher(fnOrPropsAndCallback as WatchFn[], callback)
+		let watcher = new Watcher(fn, callback)
 		
 		this.__watchers = this.__watchers || new Set()
 		this.__watchers.add(watcher)
 
 		return () => {
 			watcher.disconnect()
-
-			if (this.__watchers) {
-				this.__watchers.delete(watcher)
-			}
+			this.__watchers!.delete(watcher)
 		}
 	}
 
 		
 	/** Watch specified property and call callback with the value as argument later and after it changed. */
-	watchImmediately<P extends keyof this>(prop: P, callback: (value: ValueType<this, typeof prop>) => void): WatcherDisconnectFn
-
-	/** Watch specified properties and call callback with these values as arguments later and after they changed. */
-	watchImmediately<P1 extends keyof this, P2 extends keyof this, P3 extends keyof this>(
-		prop1: P1,
-		prop2: P2,
-		callback: (value1: ValueType<this, P1>, value2: ValueType<this, P2>) => void
-	): WatcherDisconnectFn
-
-	/** Watch specified properties and call callback with these values as arguments later and after they changed. */
-	watchImmediately<P1 extends keyof this, P2 extends keyof this, P3 extends keyof this>(
-		prop1: P1,
-		prop2: P2,
-		prop3: P3,
-		callback: (value1: ValueType<this, P1>, value2: ValueType<this, P2>, value3: ValueType<this, P3>) => void
-	): WatcherDisconnectFn
-
+	watchImmediately<P extends keyof this>(prop: P, callback: (value: ValueType<this, typeof prop>) => void): () => void
 
 	/** Watch return value of function and trigger callback with this value as argument later and after it changed.. */
-	watchImmediately<FN extends WatchFn>(fn: FN, callback: (value: ReturnType<FN>) => void): WatcherDisconnectFn
+	watchImmediately<T>(fn: () => T, callback: (value: T) => void): () => void
 
-	/** Watch return values of functions and trigger callback with these values as arguments later and after they changed. */
-	watchImmediately<FN1 extends WatchFn, FN2 extends WatchFn>(
-		fn1: FN1,
-		fn2: FN2,
-		callback: (value1: ReturnType<FN1>, value2: ReturnType<FN2>) => void
-	): WatcherDisconnectFn
-
-	/** Watch return values of functions and trigger callback with these values as arguments later and after they changed. */
-	watchImmediately<FN1 extends WatchFn, FN2 extends WatchFn, FN3 extends WatchFn>(
-		fn1: FN1,
-		fn2: FN2,
-		fn3: FN3,
-		callback: (value1: ReturnType<FN1>, value2: ReturnType<FN2>, value3: ReturnType<FN3>) => void
-	): WatcherDisconnectFn
-
-
-	watchImmediately(...fnOrPropsAndCallback: unknown[]): WatcherDisconnectFn {
-		let callback = fnOrPropsAndCallback.pop() as WatcherCallback
-
-		for (let i = 0; i < fnOrPropsAndCallback.length; i++) {
-			if (typeof fnOrPropsAndCallback[i] === 'string') {
-				let prop = fnOrPropsAndCallback[i]
-				fnOrPropsAndCallback[i] = () => this[prop as keyof this]
-			}
+	watchImmediately(propOrFn: unknown, callback: (value: any) => void): () => void {
+		let fn: () => unknown
+		if (typeof propOrFn === 'string') {
+			fn = () => this[propOrFn as keyof this]
+		}
+		else {
+			fn = propOrFn as () => unknown
 		}
 
-		let watcher = new Watcher(fnOrPropsAndCallback as WatchFn[], callback, true)
-		
+		let watcher = new Watcher(fn, callback)
 		this.__watchers = this.__watchers || new Set()
 		this.__watchers.add(watcher)
 
+		callback(watcher.value)
+
 		return () => {
 			watcher.disconnect()
-
-			if (this.__watchers) {
-				this.__watchers.delete(watcher)
-			}
+			this.__watchers!.delete(watcher)
 		}
 	}
 
 	
 	/** Watch specified property and call callback with the value as argument after it changed. Trigger callback for only once. */
-	watchOnce<P extends keyof this>(prop: P, callback: (value: ValueType<this, typeof prop>) => void): WatcherDisconnectFn
-
-	/** Watch specified properties and call callback with these values as arguments after they changed. Trigger callback for only once. */
-	watchOnce<P1 extends keyof this, P2 extends keyof this, P3 extends keyof this>(
-		prop1: P1,
-		prop2: P2,
-		callback: (value1: ValueType<this, P1>, value2: ValueType<this, P2>) => void
-	): WatcherDisconnectFn
-
-	/** Watch specified properties and call callback with these values as arguments after they changed. Trigger callback for only once. */
-	watchOnce<P1 extends keyof this, P2 extends keyof this, P3 extends keyof this>(
-		prop1: P1,
-		prop2: P2,
-		prop3: P3,
-		callback: (value1: ValueType<this, P1>, value2: ValueType<this, P2>, value3: ValueType<this, P3>) => void
-	): WatcherDisconnectFn
-
+	watchOnce<P extends keyof this>(prop: P, callback: (value: ValueType<this, typeof prop>) => void): () => void
 
 	/** Watch return value of function and trigger callback with this value as argument. Trigger callback for only once. */
-	watchOnce<FN extends WatchFn>(fn: FN, callback: (value: ReturnType<FN>) => void): WatcherDisconnectFn
+	watchOnce<T>(fn: () => T, callback: (value: T) => void): () => void
 
-	/** Watch return values of functions and trigger callback with these values as arguments. */
-	watchOnce<FN1 extends WatchFn, FN2 extends WatchFn>(
-		fn1: FN1,
-		fn2: FN2,
-		callback: (value1: ReturnType<FN1>, value2: ReturnType<FN2>) => void
-	): WatcherDisconnectFn
+	watchOnce(propOrFn: unknown, callback: (value: any) => void): () => void {
+		let fn: () => unknown
+		if (typeof propOrFn === 'string') {
+			fn = () => this[propOrFn as keyof this]
+		}
+		else {
+			fn = propOrFn as () => unknown
+		}
 
-	/** Watch return values of functions and trigger callback with these values as arguments. Trigger callback for only once. */
-	watchOnce<FN1 extends WatchFn, FN2 extends WatchFn, FN3 extends WatchFn>(
-		fn1: FN1,
-		fn2: FN2,
-		fn3: FN3,
-		callback: (value1: ReturnType<FN1>, value2: ReturnType<FN2>, value3: ReturnType<FN3>) => void
-	): WatcherDisconnectFn
-
-
-	watchOnce(...fnOrPropsAndCallback: unknown[]): WatcherDisconnectFn {
-		let callback = fnOrPropsAndCallback.pop() as WatcherCallback
-
-		let wrappedCallback = (values: any[]) => {
-			callback(...values)
+		let wrappedCallback = (value: unknown) => {
+			callback(value)
 			disconnect()
 		}
 
-		for (let i = 0; i < fnOrPropsAndCallback.length; i++) {
-			if (typeof fnOrPropsAndCallback[i] === 'string') {
-				let prop = fnOrPropsAndCallback[i]
-				fnOrPropsAndCallback[i] = () => this[prop as keyof this]
-			}
-		}
-
-		let watcher = new Watcher(fnOrPropsAndCallback as WatchFn[], wrappedCallback)
+		let watcher = new Watcher(fn, wrappedCallback)
 
 		this.__watchers = this.__watchers || new Set()
 		this.__watchers.add(watcher)
 
 		let disconnect = () => {
 			watcher.disconnect()
-
-			if (this.__watchers) {
-				this.__watchers.delete(watcher)
-			}
+			this.__watchers!.delete(watcher)
 		}
 
 		return disconnect
 	}
 
 
+	/** Watch specified property and call callback with the value as argument after it changed. Trigger callback for only once. */
+	watchUntil<P extends keyof this>(prop: P, callback: () => void): () => void
+
+	/** Watch return value of function and trigger callback with this value as argument. Trigger callback for only once. */
+	watchUntil<T>(fn: () => T, callback: () => void): () => void
+
+
 	/** Watch returned values of function and trigger callback if it becomes true. */
-	watchUntil(prop: keyof this, callback: () => void): WatcherDisconnectFn {
-		if (this[prop]) {
-			callback()
-			return () => {}
+	watchUntil(propOrFn: unknown, callback: () => void): () => void {
+		let fn: () => unknown
+		if (typeof propOrFn === 'string') {
+			fn = () => this[propOrFn as keyof this]
+		}
+		else {
+			fn = propOrFn as () => unknown
 		}
 
-		let fn = () => this[prop]
-
-		let wrappedCallback = ([value]: any[]) => {
+		let wrappedCallback = (value: unknown) => {
 			if (value) {
 				callback()
 				disconnect()
 			}
 		}
 
-		let watcher = new Watcher([fn], wrappedCallback)
+		let disconnect: () => void
 
-		this.__watchers = this.__watchers || new Set()
-		this.__watchers.add(watcher)
-
-		let disconnect = () => {
+		let watcher = new Watcher(fn, wrappedCallback)
+		if (watcher.value) {
 			watcher.disconnect()
+			callback()
+			disconnect = () => {}
+		}
+		else {
+			this.__watchers = this.__watchers || new Set()
+			this.__watchers.add(watcher)
 
-			if (this.__watchers) {
-				this.__watchers.delete(watcher)
+			disconnect = () => {
+				watcher.disconnect()
+				this.__watchers!.delete(watcher)
 			}
 		}
 
