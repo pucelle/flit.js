@@ -1,5 +1,5 @@
 import {TemplateResult, text} from './template-result'
-import {NodePart, PartType, Context} from './types'
+import {Part, PartType, Context, AnchorNode} from './shared'
 import {Template} from './template'
 import {DirectiveResult, Directive, getDirectiveConstructor} from '../directives'
 
@@ -10,20 +10,20 @@ enum ChildContentType {
 	Text
 }
 
-export class ChildPart implements NodePart {
+export class NodePart implements Part {
 
-	type: PartType = PartType.Child
+	type: PartType = PartType.Node
 
-	private endNode: Comment
+	private anchorNode: AnchorNode
 	private context: Context
 	private templates: Template[] | null = null
 	private directive: Directive | null = null
 	private textNode: Text | null = null
 	private contentType: ChildContentType | null = null
 
-	constructor(endNode: Comment, value: unknown, context: Context) {
+	constructor(anchorNode: AnchorNode, value: unknown, context: Context) {
+		this.anchorNode = anchorNode
 		this.context = context
-		this.endNode = endNode
 		this.update(value)
 	}
 
@@ -89,18 +89,17 @@ export class ChildPart implements NodePart {
 		if (this.directive) {
 			if (this.directive.canMergeWith(...directiveResult.args)) {
 				this.directive.merge(...directiveResult.args)
+				return
 			}
 			else {
 				this.directive.remove()
 			}
 		}
 		
-		if (!this.directive) {
-			let Dir = getDirectiveConstructor(directiveResult.id)
-			let directive = new Dir(this.endNode, this.context as any)
-			directive.init(...directiveResult.args)
-			this.directive = directive
-		}
+		let Dir = getDirectiveConstructor(directiveResult.id)
+		let directive = new Dir(this.anchorNode, this.context as any)
+		directive.init(...directiveResult.args)
+		this.directive = directive
 	}
 
 	private becomeTemplateResults(array: unknown[]): TemplateResult[] {
@@ -151,7 +150,7 @@ export class ChildPart implements NodePart {
 				let template = new Template(results[i], this.context)
 				let fragment = template.getFragment()
 
-				this.endNode.before(fragment)
+				this.anchorNode.before(fragment)
 				templates.push(template)
 			}
 		}
@@ -166,7 +165,7 @@ export class ChildPart implements NodePart {
 			}
 			else {
 				this.textNode = document.createTextNode(text)
-				this.endNode.before(this.textNode)
+				this.anchorNode.before(this.textNode)
 			}
 		}
 		else {

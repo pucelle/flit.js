@@ -1,4 +1,4 @@
-import {NodePart, PartType, Context} from "./types"
+import {Part, PartType, Context} from "./shared"
 import {Component, getComponentAtElement, onComponentCreatedAt} from '../component'
 import {on, off} from "../dom-event"
 
@@ -7,7 +7,7 @@ import {on, off} from "../dom-event"
  * <component-name @com-event="${this.onComEvent}" @@click="${this.onClick}">
  * <div @click="${this.onClick}">
  */
-export class EventPart implements NodePart {
+export class EventPart implements Part {
 
 	type: PartType = PartType.Event
 
@@ -38,7 +38,7 @@ export class EventPart implements NodePart {
 			let com = getComponentAtElement(this.el)
 			if (com) {
 				if (oldHandler) {
-					com.off(this.name as any, oldHandler, this.context)
+					(com as any).off(this.name, oldHandler, this.context)
 				}
 				this.setComHandler(com)
 			}
@@ -56,7 +56,7 @@ export class EventPart implements NodePart {
 	}
 
 	setComHandler(com: Component) {
-		com.on(this.name as any, this.handler, this.context)
+		(com as any).on(this.name, this.handler, this.context)
 	}
 
 	update(handler: Function) {

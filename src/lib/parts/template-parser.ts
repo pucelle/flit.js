@@ -1,5 +1,5 @@
 import {TemplateType} from './template-result'
-import {PartType} from "./types"
+import {PartType} from "./shared"
 import {getScopedClassNameSet} from '../style'
 
 
@@ -207,7 +207,7 @@ class ElementParser {
 
 			for (let i = 1; i < splitted.length; i++) {
 				this.places.push({
-					type: PartType.Child,
+					type: PartType.Node,
 					name: null,
 					strings: null,
 					holes: 1,

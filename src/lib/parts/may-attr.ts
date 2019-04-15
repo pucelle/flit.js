@@ -1,10 +1,10 @@
-import {NodePart, PartType} from "./types"
+import {Part, PartType} from "./shared"
 
 
 /**
  * ?checked="${...}", remove the attribute if expression returns false.
  */
-export class MayAttrPart implements NodePart {
+export class MayAttrPart implements Part {
 
 	type: PartType = PartType.MayAttr
 

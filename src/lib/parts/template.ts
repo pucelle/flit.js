@@ -1,7 +1,7 @@
-import {NodePart, PartType, MayStringValuePart, Context} from './types'
+import {Part, PartType, MayStringValuePart, Context, AnchorNode} from './shared'
 import {TemplateResult} from './template-result'
 import {parse, Place} from './template-parser'
-import {ChildPart} from './child'
+import {NodePart} from './node'
 import {MayAttrPart} from './may-attr'
 import {EventPart} from './event'
 import {AttrPart} from './attr'
@@ -13,7 +13,7 @@ export class Template {
 
 	private result: TemplateResult
 	private context: Context
-	private parts: NodePart[] = []
+	private parts: Part[] = []
 	private fragment: DocumentFragment | null = null
 	private hasMultipleHolesPart: boolean = false
 
@@ -63,11 +63,11 @@ export class Template {
 				let place = places[nodeIndex]
 				let holes = place.holes
 				let value = values[valueIndex]
-				let part: NodePart
+				let part: Part
 
 				switch (place.type) {
-					case PartType.Child:
-						part = new ChildPart(node as Comment, value, this.context)
+					case PartType.Node:
+						part = new NodePart(new AnchorNode(node as Comment), value, this.context)
 						break
 
 					case PartType.MayAttr:
@@ -191,9 +191,9 @@ export class Template {
 		this.result = result
 	}
 
-	private mergePartWithValue(part: NodePart, value: unknown) {
+	private mergePartWithValue(part: Part, value: unknown) {
 		switch (part.type) {
-			case PartType.Child:
+			case PartType.Node:
 			case PartType.MayAttr:
 			case PartType.Event:
 				part.update(value)

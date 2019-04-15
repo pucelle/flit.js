@@ -1,8 +1,9 @@
 import {Emitter} from './emitter'
-import {RootPart, TemplateResult} from './parts'
+import {NodePart, AnchorNode, TemplateResult} from './parts'
 import {enqueueComponentUpdate, onRenderComplete} from './queue'
-import {startUpdating, endUpdating, observeCom, clearDependency, clearAsDependency} from './observer'
+import {startUpdating, endUpdating, observeCom, clearDependencies, clearAsDependency} from './observer'
 import {WatchFn, WatcherDisconnectFn, WatcherCallback, Watcher} from './watcher'
+import {targetMap} from './observer/shared'
 
 
 /** Returns the typeof T[P]. */
@@ -113,16 +114,27 @@ export function updateComponents() {
 }
 
 
-interface ComponentEvents {
-	created: () => void
-	firstRendered: () => void
-	rendered: () => void
-	connedted: () => void
-	disconnected: () => void
-}
+// Why not provide event interfaces to listen to:
+// There are event functions like `onCreated` to overwrite,
+// you should implement the logic in them,
+// it's easier to manage since they are inside component's codes.
+
+// You can easily know when these events are triggered.
+//   created: just get component and do something.
+//   firstRendered: get component using `onRenderComplete`.
+//   rendered: watch properties using in `render` and using `onRenderComplete`.
+//   connedted: in where element was inserted into document.
+//   connedted: in where element was removed.
+
+// What about `rendered` event?
+// `rendered` is not semantic enough, you know it's updated, but not what is truly updated.
+// You may need to do something like adjusting outer component's position,
+// the best way to do so is to know when it should be updated.
+// E.g., The component updating because the data flow into it from the outer component,
+// according to the `:prop...` in outer `render()` function, then you should do it in outer `onRendered`.
 
 /** The abstract component class, you can instantiate it from just creating an element and insert in to document. */
-export abstract class Component<Events = {}> extends Emitter<Events & ComponentEvents> {
+export abstract class Component<Events = {}> extends Emitter<Events> {
 
 	static get = getComponentAtElement
 	static getAsync = getComponentAtElementAsync
@@ -158,7 +170,7 @@ export abstract class Component<Events = {}> extends Emitter<Events & ComponentE
 	slots: {[key: string]: HTMLElement[]} = {}
 
 	private __restNodes: Node[] | null = null
-	private __rootPart: RootPart | null = null
+	private __rootPart: NodePart | null = null
 	private __firstUpdated: boolean = false
 	private __watchers: Set<Watcher> | null = null
 	private __connected: boolean = true
@@ -183,15 +195,13 @@ export abstract class Component<Events = {}> extends Emitter<Events & ComponentE
 		// This can't be fixed right now since we can't implement a type function like `interface extends`
 		// And the type function below not work as expected:
 		// `type Extends<B, O> = {[key in keyof (B & O)]: key extends keyof O ? O[key] : key extends keyof B ? B[key] : never}`
-		;(this as any).emit('created')
+		// this.emit('created')
 	}
 
 	__emitConnected() {
 		this.__connected = true
 		this.update()
-
 		this.onConnected()
-		;(this as any).emit('connected')
 
 		if (this.__watchers) {
 			for (let watcher of this.__watchers) {
@@ -203,12 +213,13 @@ export abstract class Component<Events = {}> extends Emitter<Events & ComponentE
 	}
 
 	__emitDisconnected() {
-		clearDependency(this)
-		clearAsDependency(this)
-		componentSet.delete(this)
+		clearDependencies(this)
 
+		// We generated `updatable proxy -> dependency target` maps in dependency module,
+		// So here need to pass component target to clear dependencies.
+		clearAsDependency(targetMap.get(this)!)
+		componentSet.delete(this)
 		this.onDisconnected()
-		;(this as any).emit('disconnected')
 
 		if (this.__watchers) {
 			for (let watcher of this.__watchers) {
@@ -232,35 +243,24 @@ export abstract class Component<Events = {}> extends Emitter<Events & ComponentE
 			this.__firstUpdated = true
 		}
 
-		let part = this.__rootPart
-
 		startUpdating(this)
-		let value = this.render()
+		let result = this.render()
+		endUpdating(this)
 
-		if (part) {
-			part.update(value)
+		if (this.__rootPart) {
+			this.__rootPart.update(result)
 		}
 		// Not overwrite `render()` to keep it returns `null` when you to do nothing in child nodes.
 		// But note that if it should not return `null` when updating, and you may need `<slot />` instead.
-		else if (value !== null) {
-			part = new RootPart(this.el, value, this)
-		}
-
-		endUpdating(this)
-
-		// Move it to here to avoid observing `__part`.
-		if (this.__rootPart !== part) {
-			this.__rootPart = part
+		else if (result !== null) {
+			this.__rootPart = new NodePart(new AnchorNode(this.el), result, this)
 		}
 
 		onRenderComplete(() => {
 			if (!firstUpdated) {
 				this.onFirstRendered()
-				;(this as any).emit('firstRendered')
 			}
-			
 			this.onRendered()
-			;(this as any).emit('rendered')
 		})
 	}
 
@@ -288,6 +288,7 @@ export abstract class Component<Events = {}> extends Emitter<Events & ComponentE
 			}
 		}
 
+		// `restNodes` are keeped, so if `render()` returns null, nothing need to do.
 		if (this.el.childNodes.length > 0) {
 			this.__restNodes = [...this.el.childNodes]
 		}
