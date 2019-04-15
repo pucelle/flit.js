@@ -1,18 +1,18 @@
-import {Component} from '../component'
+import {Context} from '../component'
 import {AnchorNode} from '../parts'
 
 
 interface DirectiveConstructor<Args extends any[]> {
-	new(anchorNode: AnchorNode, context: Component): Directive<Args>
+	new(anchorNode: AnchorNode, context: Context): Directive<Args>
 }
 
 
 export abstract class Directive<Args extends any[] = any[]> {
 
 	protected anchorNode: AnchorNode
-	protected context: Component
+	context: Context
 
-	constructor(anchorNode: AnchorNode, context: Component) {
+	constructor(anchorNode: AnchorNode, context: Context) {
 		this.anchorNode = anchorNode
 		this.context = context
 	}
