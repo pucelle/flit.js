@@ -73,6 +73,40 @@ function update() {
 	let updatedTimesMap: Map<Watcher | Component, number> = new Map()
 
 	do {
+		// At beginning, we update watchers firstly and then components,
+		// because we want to reduce the sencories that data changing in watchers cause components to updated.
+		
+		// But later we relaized the watchers were updated most possible because the components updated and applied `:prop` or `:props`,
+		// And updating watchers later can ensure components which requires the watched properties are rendered.
+
+		// Another influenced place is the `repeat` directive.
+		// The `repeat` directive watched the iterating datas and update indenpently when they changed.
+		// So if data changed from outer components and then items in old data changed,
+		// It would update items in old data, and then whole data,
+		// This cause it updated for twice.
+		for (let i = 0; i < updatingComponents.length; i++) {
+			let com = updatingComponents[i]
+			componentSet.delete(com)
+
+			let updatedTimes = updatedTimesMap!.get(com) || 0
+			updatedTimesMap.set(com, updatedTimes + 1)
+			
+			if (updatedTimes > 3) {
+				console.warn(`Component with element "${com.el.outerHTML}" may have infinite updating`)
+			}
+			else {
+				try {
+					com.__updateImmediately()
+				}
+				catch (err) {
+					console.error(err)
+				}
+			}
+		}
+
+		updatingComponents = []
+
+
 		// When updating watch or component, data may changed and enqueu more watcher and component.
 		// if enqueued more watch, we will run it in the same update function.
 
@@ -100,33 +134,10 @@ function update() {
 				}
 			}
 		}
-		updatingWatchers = []
-		
-		// We update components afte watchers because we want to reduce the sencories that
-		// data changing cause components needs to be updated.
-		// In fact component updating will also trigger watcher updating from `:prop`.
-		for (let i = 0; i < updatingComponents.length; i++) {
-			let com = updatingComponents[i]
-			componentSet.delete(com)
 
-			let updatedTimes = updatedTimesMap!.get(com) || 0
-			updatedTimesMap.set(com, updatedTimes + 1)
-			
-			if (updatedTimes > 3) {
-				console.warn(`Component with element "${com.el.outerHTML}" may have infinite updating`)
-			}
-			else {
-				try {
-					com.__updateImmediately()
-				}
-				catch (err) {
-					console.error(err)
-				}
-			}
-		}
-		updatingComponents = []
+		updatingWatchers = []
 	}
-	while (updatingWatchers.length > 0)
+	while (updatingComponents.length > 0)
 
 	updateEnqueued = false
 
