@@ -5,14 +5,17 @@ import {Watcher} from "./watcher"
 let componentSet: Set<Component> = new Set()
 let watchSet: Set<Watcher> = new Set()
 let afterRenderCallbacks: (() => void)[] = []
-
-let updatingWatchers: Watcher[]
 let updateEnqueued = false
-let updating = false
+let updatingWatchers: Watcher[] = []
+let updatingComponents: Component[] = []
 
 
 export function enqueueComponentUpdate(com: Component) {
-	componentSet.add(com)
+	// If updating component trigger another watcher or component, we should update it in the same update function.
+	if (!componentSet.has(com)) {
+		componentSet.add(com)
+		updatingComponents.push(com)
+	}
 
 	if (!updateEnqueued) {
 		enqueueUpdate()
@@ -20,14 +23,10 @@ export function enqueueComponentUpdate(com: Component) {
 }
 
 export function enqueueWatcherUpdate(watcher: Watcher) {
-	// If updating watcher trigger another watcher, we should update it in the same update function.
-	if (updating) {
-		if (!watchSet.has(watcher)) {
-			updatingWatchers.unshift(watcher)
-		}
-	}
-	else {
+	// If updating watcher trigger another watcher or component, we should update it in the same update function.
+	if (!watchSet.has(watcher)) {
 		watchSet.add(watcher)
+		updatingWatchers.push(watcher)
 	}
 
 	if (!updateEnqueued) {
@@ -40,11 +39,10 @@ export function enqueueWatcherUpdate(watcher: Watcher) {
  * Note that it will call callback immediately if no updating tasks enqueued.
  */
 export function onRenderComplete(callback: () => void) {
-	if (updateEnqueued) {
-		afterRenderCallbacks.push(callback)
-	}
-	else {
-		callback()
+	afterRenderCallbacks.push(callback)
+	
+	if (!updateEnqueued) {
+		enqueueUpdate()
 	}
 }
 
@@ -72,65 +70,77 @@ function enqueueUpdate() {
 }
 
 function update() {
-	updating = true
-	updatingWatchers = [...watchSet]
+	let updatedTimesMap: Map<Watcher | Component, number> = new Map()
 
-	let watcherUpdatedTimesMap: Map<Watcher, number> = new Map()
+	for (let i = 0; i < 3; i++) {
+		// When updating watch or component, data may changed and enqueu more watcher and component.
+		// if enqueued more watch, we will run it in the same update function.
 
-	/**
-	 * When updating watch, data may changed and enqueu more watcher and component.
-	 * if enqueued more watch, we will run it in the same update function.
-	 * 
-	 * The only problems at ignore watch orders when updating is that:
-	 * We may update inside firstly, and then outside, then data may flow back into inside. 
-	 */
-	for (let i = 0; i < updatingWatchers.length; i++) {
-		let watcher = updatingWatchers[i]
-		watchSet.delete(watcher)
+		// The only problems at ignore watch orders when updating is that:
+		// We may update inside firstly, and then outside, then data may flow back into inside. 
+		for (let j = 0; j < updatingWatchers.length; j++) {
+			let watcher = updatingWatchers[j]
 
-		let updatedTimes = watcherUpdatedTimesMap.get(watcher) || 0
-		watcherUpdatedTimesMap.set(watcher, updatedTimes + 1)
+			// Delete it so it can be added again for at most once.
+			watchSet.delete(watcher)
 
-		if (updatedTimes > 3) {
-			watcher.warnMayInfiniteUpdating()
-		}
-		else {
-			try {
-				watcher.__updateImmediately()
+			let updatedTimes = updatedTimesMap!.get(watcher) || 0
+			updatedTimesMap.set(watcher, updatedTimes + 1)
+		
+			if (updatedTimes > 3) {
+				console.warn(`Watcher "${watcher.toString()}" may have infinite updating`)
 			}
-			catch (err) {
-				console.error(err)
+			else {
+				try {
+					watcher.__updateImmediately()
+				}
+				catch (err) {
+					console.error(err)
+				}
 			}
 		}
-	}
+		updatingWatchers = []
+		
+		for (let j = 0; j < updatingComponents.length; j++) {
+			let com = updatingComponents[j]
+			componentSet.delete(com)
 
-	/**
-	 * All the data should be prepared, and no data should be changed unexpected.
-	 * Should never enqueue any watcher and component updating.
-	 * Observer capturing should be locked.
-	 */
-	for (let com of componentSet) {
-		try {
-			com.__updateImmediately()
+			let updatedTimes = updatedTimesMap!.get(com) || 0
+			updatedTimesMap.set(com, updatedTimes + 1)
+			
+			if (updatedTimes > 3) {
+				console.warn(`Component with element "${com.el.outerHTML}" may have infinite updating`)
+			}
+			else {
+				try {
+					com.__updateImmediately()
+				}
+				catch (err) {
+					console.error(err)
+				}
+			}
 		}
-		catch (err) {
-			console.error(err)
+		updatingComponents = []
+
+		if (updatingWatchers.length === 0) {
+			break
 		}
 	}
 
-	for (let callback of afterRenderCallbacks) {
-		callback()
+	if (updatingWatchers.length > 0) {
+		console.warn(`Watcher "${updatingWatchers[0].toString()}" may have infinite updating, it still need to be updated after 3 times loop`)
+		updatingWatchers = []
+		watchSet = new Set()
 	}
-
-	/**
-	 * If it doest enqueued some watcher or component updating.
-	 * They will be removed here.
-	 */
-	// Benchmark: https://jsperf.com/map-clear-vs-new-map, It moves the clear time to GC.
-	watchSet = new Set()
-	componentSet = new Set()
-	afterRenderCallbacks = []
 
 	updateEnqueued = false
-	updating = false
+
+	// Normally it should not enqueue updating for more watchers and components here.
+	// But if so, enqueue in new updating.
+	let callbacks = afterRenderCallbacks
+	afterRenderCallbacks = []
+
+	for (let callback of callbacks) {
+		callback()
+	}
 }
