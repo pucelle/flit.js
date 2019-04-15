@@ -4,7 +4,7 @@ import {text} from '../parts/template-result'
 import {Transition, TransitionOptions, ShortTransitionOptions, formatShortTransitionOptions} from '../transition'
 
 
-export const cache = defineDirective(class CacheDirective extends Directive {
+class CacheDirective extends Directive {
 
 	private templates: Template[] = []
 	private currentTemplate: Template | null = null
@@ -117,4 +117,6 @@ export const cache = defineDirective(class CacheDirective extends Directive {
 			this.currentTemplate.remove()
 		}
 	}
-}) as (result: TemplateResult | string, transitionOptions?: ShortTransitionOptions) => DirectiveResult
+}
+
+export const cache = defineDirective(CacheDirective) as (result: TemplateResult | string, transitionOptions?: ShortTransitionOptions) => DirectiveResult
