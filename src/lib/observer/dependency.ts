@@ -28,13 +28,17 @@ const comPropMap = new Weak2WayPropMap<Updatable, Com>()
 
 
 /** Currently rendering component or running watcher, and their dependencies. */
-let updating: Updatable | undefined
-let updatingDeps: Set<Dependency> = new Set()
-let updatingComPropMap: Map<Com, Set<PropertyKey>> = new Map()
+interface Updating {
+	target: Updatable
+	deps: Set<Dependency>
+	depPropMap: Map<Com, Set<PropertyKey>>
+}
+
+let updating: Updating | null = null
 
 // a stack is required, `watchImmediately` need to be update immediately,
 // but an component may be updating recently.
-const updatingStack: Updatable[] = []
+const updatingStack: Updating[] = []
 
 
 /** Called when start rendering proxied component or running watch functions. */
@@ -42,18 +46,20 @@ export function startUpdating(upt: Updatable) {
 	if (updating) {
 		updatingStack.push(updating)
 	}
-	updating = upt
+
+	updating = {
+		target: upt,
+		deps: new Set(),
+		depPropMap: new Map()
+	}
 }
 
 /** Called when complete rendering component or complete running watch functions. */
 export function endUpdating(_upt: Updatable) {
 	if (updating) {
-		depMap.updateFromLeft(updating, updatingDeps)
-		comPropMap.updateFromLeft(updating, updatingComPropMap)
-
-		updating = updatingStack.pop()
-		updatingDeps = new Set()
-		updatingComPropMap = new Map()
+		depMap.updateFromLeft(updating.target, updating.deps)
+		comPropMap.updateFromLeft(updating.target, updating.depPropMap)
+		updating = updatingStack.pop() || null
 	}
 }
 
@@ -64,15 +70,18 @@ export function isUpdating(): boolean {
 
 
 /** Called when start rendering component or running watch functions, or component and watcher disconnected. */
-export function clearDependency(updating: Updatable) {
+export function clearDependencies(updating: Updatable) {
 	depMap.clearFromLeft(updating)
 	comPropMap.clearFromLeft(updating)
 }
 
-/**  Called when don't want to obserse object changing. */
-export function clearAsDependency(obj: Dependency) {
-	depMap.clearFromRight(obj)
-	comPropMap.clearFromRight(obj)
+/**
+ * Called when don't want to obserse object or component changing.
+ * In fact only `dep` can only be component target.
+ */
+export function clearAsDependency(dep: Dependency) {
+	depMap.clearFromRight(dep)
+	comPropMap.clearFromRight(dep)
 }
 
 
@@ -91,7 +100,7 @@ export function mayAddDependency(dep: Dependency) {
 		return
 	}
 
-	updatingDeps.add(dep)
+	updating.deps.add(dep)
 }
 
 /** Called when in component's proxy.get. */
@@ -100,10 +109,10 @@ export function mayAddComDependency(com: Com, prop: PropertyKey) {
 		return
 	}
 
-	let propertySet = updatingComPropMap.get(com)
+	let propertySet = updating.depPropMap.get(com)
 	if (!propertySet) {
 		propertySet = new Set()
-		updatingComPropMap.set(com, propertySet)
+		updating.depPropMap.set(com, propertySet)
 	}
 
 	propertySet.add(prop)		

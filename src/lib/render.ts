@@ -8,7 +8,7 @@ import {watchImmediately} from './watcher'
  * Note that if there is "@click=${...}" in template, you shou use `renderInContext(context, ...)`.
  * @param codes The html code piece or html`...` template.
  */
-export function render(codes: string | TemplateResult): DocumentFragment {
+export function render(codes: TemplateResult | string): DocumentFragment {
 	return renderMayInContext(null, codes)
 }
 
@@ -18,11 +18,11 @@ export function render(codes: string | TemplateResult): DocumentFragment {
  * @param context The context you used when rendering.
  * @param codes The html code piece or html`...` template.
  */
-export function renderInContext(context: Component, codes: string | TemplateResult): DocumentFragment {
+export function renderInContext(context: Component, codes: TemplateResult | string): DocumentFragment {
 	return renderMayInContext(context, codes)
 }
 
-function renderMayInContext(context: Component | null, codes: string | TemplateResult): DocumentFragment {
+function renderMayInContext(context: Component | null, codes: TemplateResult | string): DocumentFragment {
 	let fragment: DocumentFragment
 
 	if (codes instanceof TemplateResult) {

@@ -1,4 +1,4 @@
-import {notifyObjectSet, mayAddDependency} from './dependencies'
+import {notifyObjectSet, mayAddDependency} from './dependency'
 import {proxyMap, targetMap} from './shared'
 
 

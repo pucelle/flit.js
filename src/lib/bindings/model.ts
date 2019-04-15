@@ -102,7 +102,7 @@ defineBinding('model', class ModelBinding implements Binding {
 		// Avoid bind twice when model changed.
 		if (!this.com) {
 			this.com = com
-			com.on(this.eventName as any, this.writeModelValueBackToContext, this)
+			;(com as any).on(this.eventName, this.writeModelValueBackToContext, this)
 		}
 
 		this.watchContextModelValue()

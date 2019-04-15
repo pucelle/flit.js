@@ -1,4 +1,4 @@
-import {startUpdating, endUpdating, clearDependency} from './observer'
+import {startUpdating, endUpdating, clearDependencies} from './observer'
 import {enqueueWatcherUpdate} from './queue'
 
 
@@ -184,8 +184,8 @@ export class Watcher {
 	 * Get current watcher referenced objects, then get their referenced watchers.
 	 * Then check if current watcher in it.
 	 */
-	warnMayInfiniteUpdating() {
-		console.warn(`Watcher "${this.fns.map(fn => fn.toString().replace(/\s+/g, ''))}" may have infinite updating`)
+	toString() {
+		return this.fns.map(fn => fn.toString().replace(/\s+/g, ' '))
 	}
 
 	/**
@@ -202,7 +202,7 @@ export class Watcher {
 	// So this will not happen.
 	// But we still need to avoid it by adding a `connected` property, because once update after disconnect, the watcher will have new dependencies and be reconnected. 
 	disconnect() {
-		clearDependency(this)
+		clearDependencies(this)
 		this.connected = false
 	}
 

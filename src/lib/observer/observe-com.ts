@@ -1,4 +1,4 @@
-import {mayAddComDependency, notifyComPropertySet, isUpdating} from './dependencies'
+import {mayAddComDependency, notifyComPropertySet, isUpdating} from './dependency'
 import {proxyMap, Com, targetMap, justObserveIt} from './shared'
 
 
