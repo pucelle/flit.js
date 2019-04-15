@@ -47,12 +47,13 @@ export const originalToString = Object.prototype.toString
  * You should only call it when you know the object will be observed later,
  * and you need to pass it to another context, and got changes in the new context.
  */
-export function observe<T extends object>(obj: T): T {
-	if (typeof obj !== 'object' || !obj) {
-		throw new Error(`"${obj}" is not object and must not be observed`)
+export function observe<T>(value: T): T {
+	if (value && typeof value === 'object') {
+		return justObserveIt(value as unknown as object) as unknown as T
 	}
-
-	return justObserveIt(obj) as T
+	else {
+		return value
+	}
 }
 
 

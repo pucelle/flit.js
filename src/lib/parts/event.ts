@@ -1,5 +1,5 @@
-import {Part, PartType, Context} from "./shared"
-import {Component, getComponentAtElement, onComponentCreatedAt} from '../component'
+import {Part, PartType} from "./shared"
+import {Component, getComponentAtElement, onComponentCreatedAt, Context} from '../component'
 import {on, off} from "../dom-event"
 
 

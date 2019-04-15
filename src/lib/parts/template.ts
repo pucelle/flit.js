@@ -1,4 +1,4 @@
-import {Part, PartType, MayStringValuePart, Context, AnchorNode} from './shared'
+import {Part, PartType, MayStringValuePart, AnchorNode} from './shared'
 import {TemplateResult} from './template-result'
 import {parse, Place} from './template-parser'
 import {NodePart} from './node'
@@ -7,6 +7,7 @@ import {EventPart} from './event'
 import {AttrPart} from './attr'
 import {BindingPart} from './bind'
 import {PropertyPart} from './property'
+import {Context} from '../component'
 
 
 export class Template {

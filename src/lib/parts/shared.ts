@@ -1,9 +1,3 @@
-import {Component} from "../component"
-
-
-/** Context may be others when using `render` or `renderAndUpdate` */
-export type Context = Component | null
-
 export enum PartType {
 	Node,
 	Attr,
