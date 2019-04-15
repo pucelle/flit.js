@@ -33,10 +33,14 @@ export function defineComponent(name: string, Com: ComponentConstructor) {
 		console.warn(`You are trying to overwrite component definition "${name}"`)
 	}
 
-	if (Com.properties && Com.properties.some(p => /A-Z/.test(p))) {
-		let prop = Com.properties.find(p => /A-Z/.test(p))!
-		let dashProp = prop.replace(/A-Z/g, (m0: string) => '-' + m0.toLowerCase())
-		throw new Error(`Static properties "${prop}" are used in HTML element and should not be camel case type, you may use "${dashProp}" instead.`)
+	// `properties` can be camel cased or dash cased.
+	if (Com.properties) {
+		for (let i = 0; i < Com.properties.length; i++) {
+			let prop = Com.properties[i]
+			if (/[A-Z]/.test(prop)) {
+				Com.properties[i] = prop.replace(/[A-Z]/g, (m0: string) => '-' + m0.toLowerCase())
+			}
+		}
 	}
 
 	componentMap.set(name, Com)
@@ -158,6 +162,7 @@ export abstract class Component<Events = {}> extends Emitter<Events> {
 	/**
 	 * Used to assign very important value type properties,
 	 * Normally used to set the properties that will never changed.
+	 * Can be camel cased or dash cased.
 	 */
 	static properties: string[] | null = null
 
