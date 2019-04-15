@@ -72,14 +72,15 @@ function enqueueUpdate() {
 function update() {
 	let updatedTimesMap: Map<Watcher | Component, number> = new Map()
 
-	for (let i = 0; i < 3; i++) {
+	do {
 		// When updating watch or component, data may changed and enqueu more watcher and component.
 		// if enqueued more watch, we will run it in the same update function.
 
 		// The only problems at ignore watch orders when updating is that:
 		// We may update inside firstly, and then outside, then data may flow back into inside. 
-		for (let j = 0; j < updatingWatchers.length; j++) {
-			let watcher = updatingWatchers[j]
+		// So inner watcher may update for 1 more time.
+		for (let i = 0; i < updatingWatchers.length; i++) {
+			let watcher = updatingWatchers[i]
 
 			// Delete it so it can be added again for at most once.
 			watchSet.delete(watcher)
@@ -101,8 +102,11 @@ function update() {
 		}
 		updatingWatchers = []
 		
-		for (let j = 0; j < updatingComponents.length; j++) {
-			let com = updatingComponents[j]
+		// We update components afte watchers because we want to reduce the sencories that
+		// data changing cause components needs to be updated.
+		// In fact component updating will also trigger watcher updating from `:prop`.
+		for (let i = 0; i < updatingComponents.length; i++) {
+			let com = updatingComponents[i]
 			componentSet.delete(com)
 
 			let updatedTimes = updatedTimesMap!.get(com) || 0
@@ -121,22 +125,13 @@ function update() {
 			}
 		}
 		updatingComponents = []
-
-		if (updatingWatchers.length === 0) {
-			break
-		}
 	}
-
-	if (updatingWatchers.length > 0) {
-		console.warn(`Watcher "${updatingWatchers[0].toString()}" may have infinite updating, it still need to be updated after 3 times loop`)
-		updatingWatchers = []
-		watchSet = new Set()
-	}
+	while (updatingWatchers.length > 0)
 
 	updateEnqueued = false
 
-	// Normally it should not enqueue updating for more watchers and components here.
-	// But if so, enqueue in new updating.
+	// Normally `onRenderComplete` should not enqueue updating for more watchers and components here.
+	// But if enqueued, enqueue in a new updating.
 	let callbacks = afterRenderCallbacks
 	afterRenderCallbacks = []
 
