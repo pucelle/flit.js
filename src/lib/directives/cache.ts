@@ -26,7 +26,7 @@ export const cache = defineDirective(class CacheDirective extends Directive {
 		
 		let template = new Template(result, this.context)
 		let fragment = template.getFragment()
-		this.endNode.before(fragment)
+		this.anchorNode.before(fragment)
 		this.mayPlayEnterTransition(template)
 		this.currentTemplate = template
 		this.templates.push(template)
@@ -73,7 +73,7 @@ export const cache = defineDirective(class CacheDirective extends Directive {
 				let template = this.templates.find(t => t.canMergeWith(result as TemplateResult))
 				if (template) {
 					template.merge(result)
-					this.endNode.before(template.getFragment())
+					this.anchorNode.before(template.getFragment())
 					this.mayPlayEnterTransition(template)
 					this.currentTemplate = template
 				}

@@ -20,7 +20,7 @@ export const repeat = defineDirective(class RepeatDirective<T> extends Directive
 		
 		let index = 0
 		for (let item of this.items!) {
-			let template = this.createTemplate(item, index)
+			let template = this.createTemplate(item, index, null)
 			this.templates.push(template)
 		}
 
@@ -37,7 +37,7 @@ export const repeat = defineDirective(class RepeatDirective<T> extends Directive
 		}
 	}
 
-	private createTemplate(item: T, index: number, nextNode: ChildNode = this.endNode): Template {
+	private createTemplate(item: T, index: number, nextNode: ChildNode | null): Template {
 		let result = this.templateFn!(item, index++)
 		if (typeof result === 'string') {
 			result = text`${result}`
@@ -53,7 +53,12 @@ export const repeat = defineDirective(class RepeatDirective<T> extends Directive
 			}
 		}
 
-		nextNode.before(fragment)
+		if (nextNode) {
+			nextNode.before(fragment)
+		}
+		else {
+			this.anchorNode.before(fragment)
+		}
 
 		return template
 	}
@@ -137,7 +142,7 @@ export const repeat = defineDirective(class RepeatDirective<T> extends Directive
 					let template = oldTemplates[reusedIndex]
 
 					// No need to check if `reusedIndex === oldIndex`, they are not equal
-					this.moveTemplate(template, oldIndex < oldItems.length ? oldTemplates[oldIndex].startNode : undefined)
+					this.moveTemplate(template, oldIndex < oldItems.length ? oldTemplates[oldIndex].startNode : null)
 					newTemplates.push(template)
 					reusedIndexSet.add(reusedIndex)
 					continue
@@ -149,14 +154,14 @@ export const repeat = defineDirective(class RepeatDirective<T> extends Directive
 				let reusedIndex = willRemoveIndexSet.keys().next().value
 				let template = oldTemplates[reusedIndex]
 
-				this.moveTemplate(template, oldIndex < oldItems.length ? oldTemplates[oldIndex].startNode : undefined)
+				this.moveTemplate(template, oldIndex < oldItems.length ? oldTemplates[oldIndex].startNode : null)
 				this.reuseTemplate(template, item, index)
 				newTemplates.push(template)
 				reusedIndexSet.add(reusedIndex)
 				continue
 			}
 
-			newTemplates.push(this.createTemplate(item, index, oldIndex < oldItems.length ? oldTemplates[oldIndex].startNode : undefined))
+			newTemplates.push(this.createTemplate(item, index, oldIndex < oldItems.length ? oldTemplates[oldIndex].startNode : null))
 		}
 
 		if (reusedIndexSet.size < oldItems.length) {
@@ -168,8 +173,15 @@ export const repeat = defineDirective(class RepeatDirective<T> extends Directive
 		}
 	}
 
-	private moveTemplate(template: Template, nextNode: ChildNode = this.endNode) {
-		nextNode.before(template.getFragment())
+	private moveTemplate(template: Template, nextNode: ChildNode | null) {
+		let fragment = template.getFragment()
+
+		if (nextNode) {
+			nextNode.before(fragment)
+		}
+		else {
+			this.anchorNode.before(fragment)
+		}
 	}
 
 	private reuseTemplate(template: Template, item: T, index: number) {
