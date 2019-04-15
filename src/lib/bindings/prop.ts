@@ -6,27 +6,29 @@ import {Component, getComponentAtElement, onComponentCreatedAt} from '../compone
 defineBinding('prop', class PropBinding implements Binding {
 
 	private el: HTMLElement
-	private property: string | null
+	private property: string
 	private value: unknown = null
 	private isUpdated: boolean = false
 
 	constructor(el: HTMLElement, value: unknown, modifiers: string[] | null) {
-		if (!el.localName.includes('-')) {
-			throw new Error(`":prop${modifiers ? modifiers.map(m => '.' + m) : ''}" can't set on <${el.localName}>, it only works on custom element`)
+		if (!modifiers) {
+			throw new Error(`":prop" binding requires a modifier like ":prop.name"`)
 		}
 
-		if (modifiers) {
-			if (modifiers.length > 1) {
-				throw new Error(`Modifier "${modifiers.join('.')}" is not allowed, at most one modifier as property name can be specified for ":prop"`)
-			}
+		if (modifiers.length > 1) {
+			throw new Error(`Modifier "${modifiers.join('.')}" is not allowed, at most one modifier as property name can be specified for ":prop"`)
+		}
 
-			if (!/^[\w]+$/.test(modifiers[0])) {
-				throw new Error(`Modifier "${modifiers[0]}" is not a valid property name`)
-			}
+		if (!/^[\w]+$/.test(modifiers[0])) {
+			throw new Error(`Modifier "${modifiers[0]}" is not a valid property name`)
+		}
+
+		if (!el.localName.includes('-')) {
+			throw new Error(`":prop.${modifiers[0]}" can't set on "<${el.localName}>", it only works on custom element`)
 		}
 
 		this.el = el
-		this.property = modifiers ? modifiers[0] : null
+		this.property = modifiers[0]
 		this.update(value)
 	}
 
@@ -52,13 +54,6 @@ defineBinding('prop', class PropBinding implements Binding {
 	}
 
 	setProp(com: Component, value: unknown) {
-		if (this.property) {
-			(com as any)[this.property] = value
-		}
-		else {
-			if (typeof value === 'object') {
-				Object.assign(com, value)
-			}
-		}
+		(com as any)[this.property] = value
 	}
 })
