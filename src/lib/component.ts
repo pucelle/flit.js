@@ -261,7 +261,7 @@ export abstract class Component<Events = {}> extends Emitter<Events> {
 		}
 	}
 
-	__emitConnected(isFirstTime: boolean) {
+	__emitConnected() {
 		if (!this.__connected) {
 			this.__connected = true
 			
@@ -270,15 +270,12 @@ export abstract class Component<Events = {}> extends Emitter<Events> {
 					watcher.connect()
 				}
 			}
-		}
 
-		if (!isFirstTime) {
 			// Must restore before updating, because the restored result may be changed when updating.
 			restoreAsDependency(targetMap.get(this)!)
 		}
 
 		this.__updateImmediately()
-
 		componentSet.add(this)
 		this.onConnected()
 	}
