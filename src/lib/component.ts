@@ -1,6 +1,6 @@
 import {Emitter} from './emitter'
 import {NodePart, AnchorNode, TemplateResult} from './parts'
-import {enqueueComponentUpdate, onRenderComplete} from './queue'
+import {enqueueComponentUpdate} from './queue'
 import {startUpdating, endUpdating, observeCom, clearDependencies, clearAsDependency} from './observer'
 import {Watcher} from './watcher'
 import {targetMap} from './observer/shared'
@@ -131,17 +131,14 @@ export function updateComponents() {
 //   created: just get component and do something.
 //   firstUpdated: watch properties using in `render` for once.
 //   updated: watch properties using in `render`.
-//   firstRendered: get component and using `onRenderComplete`.
-//   rendered: watch properties using in `render` and using `onRenderComplete`.
-//   connedted: in where element was inserted into document.
-//   connedted: in where element was removed.
+//   disconnedted: in where element was removed.
 
-// What about `rendered` event?
-// `rendered` is not semantic enough, you know it's updated, but not what is truly updated.
+// What about `updated` event?
+// `updated` is not semantic enough, you know it's updated, but not what is truly updated.
 // You may need to do something like adjusting outer component's position,
 // the best way to do so is to know when it should be updated.
 // E.g., The component updating because the data flow into it from the outer component,
-// according to the `:prop...` in outer `render()` function, then you should do it in outer `onRendered`.
+// according to the `:prop...` in outer `render()` function, then you should do it in outer `onUpdated`.
 
 /** The abstract component class, you can instantiate it from just creating an element and insert in to document. */
 export abstract class Component<Events = {}> extends Emitter<Events> {
@@ -277,7 +274,6 @@ export abstract class Component<Events = {}> extends Emitter<Events> {
 
 		this.__updateImmediately()
 		componentSet.add(this)
-		this.onConnected()
 	}
 
 	__emitDisconnected() {
@@ -327,13 +323,6 @@ export abstract class Component<Events = {}> extends Emitter<Events> {
 			this.onFirstUpdated()
 		}
 		this.onUpdated()
-
-		onRenderComplete(() => {
-			if (!firstUpdated) {
-				this.onFirstRendered()
-			}
-			this.onRendered()
-		})
 	}
 
 	/** Child class should implement this method, normally returns html`...` or string. */
@@ -366,24 +355,6 @@ export abstract class Component<Events = {}> extends Emitter<Events> {
 	 * Will keep updating other components, so please don't check computed style on elements.
 	 */
 	onUpdated() {}
-
-	/** 
-	 * Called when the components that need to render are all rendered for the first time, after `onFirstUpdated`.
-	 * Will not keep updating other components, now you can check computed style on elements.
-	 */
-	onFirstRendered() {}
-
-	/** 
-	 * Called when the components that need to render are all rendered, after `onRendered`.
-	 * Will not keep updating other components, now you can check computed style on elements.
-	 */
-	onRendered() {}
-
-	/** 
-	 * Called when root element inserted into document.
-	 * This will be called for each time you insert the element into document.
-	 */
-	onConnected() {}
 
 	/**
 	 * Called when root element removed from document.
