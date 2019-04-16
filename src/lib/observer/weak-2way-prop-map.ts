@@ -118,7 +118,10 @@ export class Weak2WayPropMap<L extends object, R extends object> {
 					this.removeLeftRightMap(l, r)
 				}
 			}
-			this.rm.delete(r)
+			// Comment this line very important:
+			// R may be connect again, so we can restore `L -> R -> prop` from the `R -> prop -> L`.
+			// Don't worry, it doesn't prevent GC for `R`.
+			//this.rm.delete(r)
 		}
 	}
 
@@ -127,5 +130,32 @@ export class Weak2WayPropMap<L extends object, R extends object> {
 		if (rps) {
 			rps.delete(r)
 		}
+	}
+
+	restoreFromRight(r: R) {
+		let pls = this.rm.get(r)
+		if (pls) {
+			for (let [prop, ls] of pls.entries()) {
+				for (let l of ls) {
+					this.addLeftRightMap(l, r, prop)
+				}
+			}
+		}
+	}
+
+	private addLeftRightMap(l: L, r: R, prop: PropertyKey) {
+		let rps = this.lm.get(l)
+		if (!rps) {
+			rps = new Map()
+			this.lm.set(l, rps)
+		}
+
+		let ps = rps.get(r)
+		if (!ps) {
+			ps = new Set()
+			rps.set(r, ps)
+		}
+		
+		ps.add(prop)
 	}
 }

@@ -77,13 +77,22 @@ export function clearDependencies(updating: Updatable) {
 
 /**
  * Called when don't want to obserse object or component changing.
- * In fact only `dep` can only be component target.
+ * In fact `dep` can only be component target.
  */
 export function clearAsDependency(dep: Dependency) {
 	depMap.clearFromRight(dep)
 	comPropMap.clearFromRight(dep)
 }
 
+// when one component or watcher was disconnected and connect again,
+// it can easily restore it's dependencies by `update()`,
+// But an dependency, we can't restore it's influenced components or watchers .
+// So we keep the `dep -> prop -> upt` map, and restore `upt -> dep -> prop` map when `dep` connected again.
+
+/** When one component or watcher connected again, here to restore the what it can update. */
+export function restoreAsDependency(dep: Dependency) {
+	comPropMap.restoreFromRight(dep)
+}
 
 // We split adding dependencies to two steps:
 //   1. Collect dependencies, cache them.

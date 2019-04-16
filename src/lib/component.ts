@@ -4,6 +4,7 @@ import {enqueueComponentUpdate, onRenderComplete} from './queue'
 import {startUpdating, endUpdating, observeCom, clearDependencies, clearAsDependency} from './observer'
 import {Watcher} from './watcher'
 import {targetMap} from './observer/shared'
+import {restoreAsDependency} from './observer/dependency';
 
 
 /** Returns the typeof T[P]. */
@@ -260,7 +261,7 @@ export abstract class Component<Events = {}> extends Emitter<Events> {
 		}
 	}
 
-	__emitConnected() {
+	__emitConnected(isFirstTime: boolean) {
 		if (!this.__connected) {
 			this.__connected = true
 			
@@ -269,12 +270,17 @@ export abstract class Component<Events = {}> extends Emitter<Events> {
 					watcher.connect()
 				}
 			}
-
-			componentSet.add(this)
 		}
 
-		this.onConnected()
+		if (!isFirstTime) {
+			// Must restore before updating, because the restored result may be changed when updating.
+			restoreAsDependency(targetMap.get(this)!)
+		}
+
 		this.__updateImmediately()
+
+		componentSet.add(this)
+		this.onConnected()
 	}
 
 	__emitDisconnected() {
@@ -283,6 +289,7 @@ export abstract class Component<Events = {}> extends Emitter<Events> {
 		// We generated `updatable proxy -> dependency target` maps in dependency module,
 		// So here need to pass component target to clear dependencies.
 		clearAsDependency(targetMap.get(this)!)
+
 		componentSet.delete(this)
 		this.onDisconnected()
 

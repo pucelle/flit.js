@@ -55,7 +55,7 @@ export function define(name: string, Com?: ComponentConstructor) {
 				
 				let com = getComponentAtElement(this)
 				if (com) {
-					com.__emitConnected()
+					com.__emitConnected(false)
 				}
 				else {
 					com = new Com(this)
@@ -63,7 +63,7 @@ export function define(name: string, Com?: ComponentConstructor) {
 						assignProperties(com, Com.properties)
 					}
 					com.__emitFirstConnected()
-					com.__emitConnected()
+					com.__emitConnected(true)
 				}
 			}
 		}
