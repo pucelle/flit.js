@@ -128,7 +128,9 @@ export function updateComponents() {
 
 // You can easily know when these events are triggered.
 //   created: just get component and do something.
-//   firstRendered: get component using `onRenderComplete`.
+//   firstUpdated: watch properties using in `render` for once.
+//   updated: watch properties using in `render`.
+//   firstRendered: get component and using `onRenderComplete`.
 //   rendered: watch properties using in `render` and using `onRenderComplete`.
 //   connedted: in where element was inserted into document.
 //   connedted: in where element was removed.
@@ -190,6 +192,8 @@ export abstract class Component<Events = {}> extends Emitter<Events> {
 	}
 
 	__emitFirstConnected() {
+		this.__parseSlots()
+
 		elementComponentMap.set(this.el, this)
 		emitComponentCreatedCallbacks(this.el, this)
 		this.onCreated()
@@ -206,18 +210,66 @@ export abstract class Component<Events = {}> extends Emitter<Events> {
 		// this.emit('created')
 	}
 
-	__emitConnected() {
-		this.__connected = true
-		this.update()
-		this.onConnected()
+	// May first rendered as text, then original child nodes was removed.
+	// Then have slots when secondary rendering.
+	private __parseSlots() {
+		if (this.el.children.length > 0) {
+			// We only check `[slot]` in the children, or:
+			// <com1><com2><el slot="for com2"></com2></com1>
+			// it will cause `slot` for `com2` was captured by `com1`.
+			for (let el of this.el.children) {
+				let slotName = el.getAttribute('slot')!
+				if (slotName) {
+					let els = this.slots[slotName]
+					if (!els) {
+						els = this.slots[slotName] = []
+					}
+					els.push(el as HTMLElement)
 
-		if (this.__watchers) {
-			for (let watcher of this.__watchers) {
-				watcher.connect()
+					// Avoid been treated as slot element again after moved into a component
+					el.removeAttribute('slot')
+					el.remove()
+				}
 			}
 		}
 
-		componentSet.add(this)
+		// `restNodes` are keeped, so if `render()` returns null, nothing need to do.
+		if (this.el.childNodes.length > 0) {
+			this.__restNodes = [...this.el.childNodes]
+		}
+	}
+
+	__moveSlotsInto(fragment: DocumentFragment) {
+		let slots = fragment.querySelectorAll('slot')
+
+		for (let slot of slots) {
+			let slotName = slot.getAttribute('name')
+			if (slotName) {
+				if (this.slots && this.slots[slotName]) {
+					slot.replaceWith(...this.slots[slotName]!)
+				}
+			}
+			else if (this.__restNodes) {
+				slot.replaceWith(...this.__restNodes)
+			}
+		}
+	}
+
+	__emitConnected() {
+		if (!this.__connected) {
+			this.__connected = true
+			
+			if (this.__watchers) {
+				for (let watcher of this.__watchers) {
+					watcher.connect()
+				}
+			}
+
+			componentSet.add(this)
+		}
+
+		this.onConnected()
+		this.__updateImmediately()
 	}
 
 	__emitDisconnected() {
@@ -243,14 +295,6 @@ export abstract class Component<Events = {}> extends Emitter<Events> {
 			return
 		}
 
-		let firstUpdated = this.__firstUpdated
-		if (!firstUpdated) {
-			//this.onChildNodesReady()
-			this.__parseSlots()
-			//this.onSlotsReady()
-			this.__firstUpdated = true
-		}
-
 		startUpdating(this)
 		let result = this.render()
 		endUpdating(this)
@@ -264,64 +308,18 @@ export abstract class Component<Events = {}> extends Emitter<Events> {
 			this.__rootPart = new NodePart(new AnchorNode(this.el), result, this)
 		}
 
+		let firstUpdated = this.__firstUpdated
+		if (!firstUpdated) {
+			this.onFirstUpdated()
+		}
+		this.onUpdated()
+
 		onRenderComplete(() => {
 			if (!firstUpdated) {
 				this.onFirstRendered()
 			}
 			this.onRendered()
 		})
-	}
-
-	// May first rendered as text, then original child nodes was removed.
-	// Then have slots when secondary rendering.
-	private __parseSlots() {
-		if (this.el.children.length > 0) {
-			// We only check `[slot]` in the children, or:
-			// <com1><com2><el slot="for com2"></com2></com1>
-			// it will cause `slot` for `com2` was captured by `com1`.
-			for (let el of this.el.children) {
-				let slotName = el.getAttribute('slot')!
-				if (slotName) {
-					let els = this.slots[slotName]
-					if (!els) {
-						els = this.slots[slotName] = []
-					}
-					els.push(el as HTMLElement)
-
-					// Avoid been treated as slot element again after moved into a component
-					el.removeAttribute('slot')
-
-					el.remove()
-				}
-			}
-		}
-
-		// `restNodes` are keeped, so if `render()` returns null, nothing need to do.
-		if (this.el.childNodes.length > 0) {
-			this.__restNodes = [...this.el.childNodes]
-		}
-	}
-
-	__moveSlotsInto(fragment: DocumentFragment) {
-		let slots = fragment.querySelectorAll('slot')
-
-		for (let slot of slots) {
-			let slotName = slot.getAttribute('name')
-			if (slotName) {
-				if (this.slots && this.slots[slotName]) {
-					while (slot.firstChild) {
-						slot.firstChild.remove()
-					}
-					slot.append(...this.slots[slotName]!)
-				}
-			}
-			else if (this.__restNodes) {
-				while (slot.firstChild) {
-					slot.firstChild.remove()
-				}
-				slot.append(...this.__restNodes)
-			}
-		}
 	}
 
 	/** Child class should implement this method, normally returns html`...` or string. */
@@ -339,25 +337,32 @@ export abstract class Component<Events = {}> extends Emitter<Events> {
 
 	/**
 	 * Called when component instance was just created and all properties assigned.
-	 * Slots and child nodes are not prepared right now.
+	 * Slots and child nodes are prepared right now.
 	 */
 	onCreated() {}
 
-	/** Called after child nodes and sibling nodes prepared, before slot nodes parsed and first rendering. */
-	// Recently we want to reduce the directly operating on elements, but move them to the template and data management.
-	// So this interface and `onSlotsReady` is not available.
-	//onChildNodesReady() {}
-
-	/** Called just after `onChildNodesReady` and slots parsed */
-	//onSlotsReady()
-
 	/**
-	 * Called when rendered for the first time.
-	 * Slots and and child nodes are prepared right now.
+	 * Called after all the data updated for current component for the first time. 
+	 * Will keep updating other components, so please don't check computed style on elements.
+	 */
+	onFirstUpdated() {}
+
+	/** 
+	 * Called after all the data updated for current component.
+	 * Will keep updating other components, so please don't check computed style on elements.
+	 */
+	onUpdated() {}
+
+	/** 
+	 * Called when the components that need to render are all rendered for the first time, after `onFirstUpdated`.
+	 * Will not keep updating other components, now you can check computed style on elements.
 	 */
 	onFirstRendered() {}
 
-	/** Called when all the enqueued components rendered. */
+	/** 
+	 * Called when the components that need to render are all rendered, after `onRendered`.
+	 * Will not keep updating other components, now you can check computed style on elements.
+	 */
 	onRendered() {}
 
 	/** 
@@ -368,7 +373,7 @@ export abstract class Component<Events = {}> extends Emitter<Events> {
 
 	/**
 	 * Called when root element removed from document.
-	* This will be called for each time you removed the element into document.
+	 * This will be called for each time you removed the element into document.
 	 * If you registered global listeners, don't forget to unregister it here.
 	 */
 	onDisconnected() {}
@@ -468,7 +473,6 @@ export abstract class Component<Events = {}> extends Emitter<Events> {
 
 	/** Watch return value of function and trigger callback with this value as argument. Trigger callback for only once. */
 	watchUntil<T>(fn: () => T, callback: () => void): () => void
-
 
 	/** Watch returned values of function and trigger callback if it becomes true. */
 	watchUntil(propOrFn: unknown, callback: () => void): () => void {

@@ -5,7 +5,7 @@ import {ensureComponentStyle, mayRemoveStyle} from './style'
 // When element moved when using APIs like `append`,
 // it will trigger `disconnectedCallback` and then `connectedCallback`.
 // So we using a set to cache will disconnected elements and disconnect them if they still exist in.
-const disconnectLaterSet: Set<HTMLElement> = new Set()
+const disconnectSoonSet: Set<HTMLElement> = new Set()
 
 
 /**
@@ -39,11 +39,15 @@ export function define(name: string, Com?: ComponentConstructor) {
 
 	customElements.define(name, class CustomLitElement extends HTMLElement {
 
-		// A potential problem here:
-		// When `connectedCallback` been called, the child nodes of it is not linked yet.
+		// When `connectedCallback` called on elements in start HTML Document, the child nodes of it is not ready yet.
+		// So we need to render all the codes in js.
+
+		// If we insert bundled js behind all other elements, or with `defer`.
+		// Because elements were prepared already, then they will be instantiated in component registered order, not in element order.
+		// We can fix this by lazy the component instantiation, but seems not very necessary right now.
 		connectedCallback() {
-			if (disconnectLaterSet.has(this)) {
-				disconnectLaterSet.delete(this)
+			if (disconnectSoonSet.has(this)) {
+				disconnectSoonSet.delete(this)
 			}
 			else {
 				ensureComponentStyle(Com, name)
@@ -63,17 +67,17 @@ export function define(name: string, Com?: ComponentConstructor) {
 
 		// Moving element using like `append` will also trigger this.
 		disconnectedCallback() {
-			disconnectLaterSet.add(this)
+			disconnectSoonSet.add(this)
 
 			Promise.resolve().then(() => {
-				if (disconnectLaterSet.has(this)) {
+				if (disconnectSoonSet.has(this)) {
 					let com = getComponentAtElement(this)
 					if (com) {
 						com.__emitDisconnected()
 					}
 
 					mayRemoveStyle(Com)
-					disconnectLaterSet.delete(this)
+					disconnectSoonSet.delete(this)
 				}
 			})
 		}

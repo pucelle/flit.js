@@ -25,7 +25,10 @@ enum AnchorNodeType {
 	Element
 }
 
-/** Used for `RootPart` or `NodePart` to mark end position */
+/**
+ * Used for `RootPart` or `NodePart` to mark end position.
+ * Please never move the command type anchor node, the whole document may be removed.
+ */
 export class AnchorNode {
 
 	private el: HTMLElement | Comment
