@@ -40,11 +40,12 @@ export function define(name: string, Com?: ComponentConstructor) {
 	customElements.define(name, class CustomLitElement extends HTMLElement {
 
 		// When `connectedCallback` called on elements in start HTML Document, the child nodes of it is not ready yet.
-		// So we need to render all the codes in js.
+		// So we must render all the codes in js.
+		// Note that it will be called when insert element to a fragment.
 
 		// If we insert bundled js behind all other elements, or with `defer`.
 		// Because elements were prepared already, then they will be instantiated in component registered order, not in element order.
-		// We can fix this by lazy the component instantiation, but seems not very necessary right now.
+		// We can fix this by lazy the component instantiation, and sort elements, if this is required one day.
 		connectedCallback() {
 			if (disconnectSoonSet.has(this)) {
 				disconnectSoonSet.delete(this)
@@ -53,15 +54,17 @@ export function define(name: string, Com?: ComponentConstructor) {
 				ensureComponentStyle(Com, name)
 				
 				let com = getComponentAtElement(this)
-				if (!com) {
+				if (com) {
+					com.__emitConnected()
+				}
+				else {
 					com = new Com(this)
 					if (Com.properties && this.attributes.length > 0) {
 						assignProperties(com, Com.properties)
 					}
 					com.__emitFirstConnected()
+					com.__emitConnected()
 				}
-
-				com.__emitConnected()
 			}
 		}
 

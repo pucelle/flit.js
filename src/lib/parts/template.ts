@@ -34,7 +34,7 @@ export class Template {
 		this.fragment = this.parseAsFragment(fragment, nodesInPlaces, places)
 
 		if (hasSlots && this.context) {
-			this.context.__moveSlotsInto(fragment)
+			this.context.__hasSlotsToBeFilled = true
 		}
 
 		// Should include at least one node, So it's position can be tracked.

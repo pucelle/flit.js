@@ -185,6 +185,11 @@ export abstract class Component<Events = {}> extends Emitter<Events> {
 	private __watchers: Set<Watcher> | null = null
 	private __connected: boolean = true
 
+	// When updated inner templates and found there are slots need to be filled.
+	// Why not just move slots into template fragment?
+	// Because it will trigger `connectedCallback` when append into fragment.
+	__hasSlotsToBeFilled: boolean = false
+
 	constructor(el: HTMLElement) {
 		super()
 		this.el = el
@@ -192,7 +197,7 @@ export abstract class Component<Events = {}> extends Emitter<Events> {
 	}
 
 	__emitFirstConnected() {
-		this.__parseSlots()
+		this.__prepareSlotElements()
 
 		elementComponentMap.set(this.el, this)
 		emitComponentCreatedCallbacks(this.el, this)
@@ -212,7 +217,7 @@ export abstract class Component<Events = {}> extends Emitter<Events> {
 
 	// May first rendered as text, then original child nodes was removed.
 	// Then have slots when secondary rendering.
-	private __parseSlots() {
+	private __prepareSlotElements() {
 		if (this.el.children.length > 0) {
 			// We only check `[slot]` in the children, or:
 			// <com1><com2><el slot="for com2"></com2></com1>
@@ -239,8 +244,8 @@ export abstract class Component<Events = {}> extends Emitter<Events> {
 		}
 	}
 
-	__moveSlotsInto(fragment: DocumentFragment) {
-		let slots = fragment.querySelectorAll('slot')
+	private __fillSlots() {
+		let slots = this.el.querySelectorAll('slot')
 
 		for (let slot of slots) {
 			let slotName = slot.getAttribute('name')
@@ -306,6 +311,11 @@ export abstract class Component<Events = {}> extends Emitter<Events> {
 		// But note that if it should not return `null` when updating, and you may need `<slot />` instead.
 		else if (result !== null) {
 			this.__rootPart = new NodePart(new AnchorNode(this.el), result, this)
+		}
+
+		if (this.__hasSlotsToBeFilled) {
+			this.__fillSlots()
+			this.__hasSlotsToBeFilled = false
 		}
 
 		let firstUpdated = this.__firstUpdated
