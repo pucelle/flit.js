@@ -2,10 +2,88 @@ import {ComponentConstructor, defineComponent, getComponentAtElement, Component}
 import {ensureComponentStyle, mayRemoveStyle} from './style'
 
 
-// When element moved when using APIs like `append`,
-// it will trigger `disconnectedCallback` and then `connectedCallback`.
-// So we using a set to cache will disconnected elements and disconnect them if they still exist in.
-const disconnectSoonSet: Set<HTMLElement> = new Set()
+// Using queue to delay the connect and disconnect operations on components.
+// Both `connectedCallback` and `disconnectedCallback` may triggered multiple times in DOM removing,
+// so we must delay the component connect and disconnect operation by a queue.
+let connectSoonMap: Map<HTMLElement, ComponentConstructor> = new Map()
+let disconnectSoonMap: Map<HTMLElement, ComponentConstructor> = new Map()
+
+function enqueueConnect(el: HTMLElement, Com: ComponentConstructor) {
+	connectSoonMap.set(el, Com)
+	disconnectSoonMap.delete(el)
+
+	if (!willUpdate) {
+		enqueueUpdate()
+	}
+}
+
+function enqueueDisconnect(el: HTMLElement, Com: ComponentConstructor) {
+	disconnectSoonMap.set(el, Com)
+	connectSoonMap.delete(el)
+
+	if (!willUpdate) {
+		enqueueUpdate()
+	}
+}
+
+let willUpdate = false
+
+function enqueueUpdate() {
+	Promise.resolve().then(update)
+	willUpdate = true
+}
+
+function update() {
+	let connectMap = connectSoonMap
+	let disconnectMap = disconnectSoonMap
+
+	// Very import, more connect and disconnect map may be added when updating.
+	// So we must reset `connectSoonMap` and `disconnectSoonMap` and set `willUpdate` to false before updating.
+	connectSoonMap = new Map()
+	disconnectSoonMap = new Map()
+	willUpdate = false
+
+	for (let [el, Com] of disconnectMap.entries()) {
+		disconnectElement(el, Com)
+	}
+
+	// `el` was sorted inside map.
+	for (let [el, Com] of connectMap.entries()) {
+		// `el` may not in document,
+		// e.g., inserted into a fragment.
+		// No need to worry about forgetting to instantiate it,
+		// it will trigger `connectedCallback` again after insert into document.
+		if (document.contains(el)) {
+			connectElement(el, Com)
+		}
+	}
+}
+
+function connectElement(el: HTMLElement, Com: ComponentConstructor) {
+	ensureComponentStyle(Com, el.localName)
+				
+	let com = getComponentAtElement(el)
+	if (com) {
+		com.__emitConnected()
+	}
+	else {
+		com = new Com(el)
+		if (Com.properties && el.attributes.length > 0) {
+			assignProperties(com, Com.properties)
+		}
+		com.__emitFirstConnected()
+		com.__emitConnected()
+	}
+}
+
+function disconnectElement(el: HTMLElement, Com: ComponentConstructor) {
+	let com = getComponentAtElement(el)
+	if (com) {
+		com.__emitDisconnected()
+	}
+
+	mayRemoveStyle(Com)
+}
 
 
 /**
@@ -43,46 +121,16 @@ export function define(name: string, Com?: ComponentConstructor) {
 		// So we must render all the codes in js.
 		// Note that it will be called when insert element to a fragment.
 
-		// If we insert bundled js behind all other elements, or with `defer`.
-		// Because elements were prepared already, then they will be instantiated in component registered order, not in element order.
-		// We can fix this by lazy the component instantiation, and sort elements, if this is required one day.
+		// If we insert bundled js behind all other elements, or with `defer`,
+		// because elements were prepared already, then they will be instantiated in component registered order, not in element order.
+		// We fix this by the `connectSoonMap`, it output elements in order when iterating.
 		connectedCallback() {
-			if (disconnectSoonSet.has(this)) {
-				disconnectSoonSet.delete(this)
-			}
-			else {
-				ensureComponentStyle(Com, name)
-				
-				let com = getComponentAtElement(this)
-				if (com) {
-					com.__emitConnected()
-				}
-				else {
-					com = new Com(this)
-					if (Com.properties && this.attributes.length > 0) {
-						assignProperties(com, Com.properties)
-					}
-					com.__emitFirstConnected()
-					com.__emitConnected()
-				}
-			}
+			enqueueConnect(this, Com)
 		}
 
 		// Moving element using like `append` will also trigger this.
 		disconnectedCallback() {
-			disconnectSoonSet.add(this)
-
-			Promise.resolve().then(() => {
-				if (disconnectSoonSet.has(this)) {
-					let com = getComponentAtElement(this)
-					if (com) {
-						com.__emitDisconnected()
-					}
-
-					mayRemoveStyle(Com)
-					disconnectSoonSet.delete(this)
-				}
-			})
+			enqueueDisconnect(this, Com)
 		}
 	})
 

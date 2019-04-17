@@ -5,7 +5,7 @@ import {Watcher} from "./watcher"
 let componentSet: Set<Component> = new Set()
 let watchSet: Set<Watcher> = new Set()
 let afterRenderCallbacks: (() => void)[] = []
-let updateEnqueued = false
+let willUpdate = false
 let updatingWatchers: Watcher[] = []
 let updatingComponents: Component[] = []
 
@@ -17,7 +17,7 @@ export function enqueueComponentUpdate(com: Component) {
 		updatingComponents.push(com)
 	}
 
-	if (!updateEnqueued) {
+	if (!willUpdate) {
 		enqueueUpdate()
 	}
 }
@@ -29,7 +29,7 @@ export function enqueueWatcherUpdate(watcher: Watcher) {
 		updatingWatchers.push(watcher)
 	}
 
-	if (!updateEnqueued) {
+	if (!willUpdate) {
 		enqueueUpdate()
 	}
 }
@@ -41,7 +41,7 @@ export function enqueueWatcherUpdate(watcher: Watcher) {
 export function onRenderComplete(callback: () => void) {
 	afterRenderCallbacks.push(callback)
 	
-	if (!updateEnqueued) {
+	if (!willUpdate) {
 		enqueueUpdate()
 	}
 }
@@ -57,16 +57,16 @@ export function renderComplete(): Promise<void> {
 }
 
 function enqueueUpdate() {
-	updateEnqueued = true
-
 	// Why not using `Promise.resolve().then` to start a micro stask:
-	// When initialize a component from `connectCallback`, it's child nodes is not ready,
+	// When initialize a component from `connectedCallback`, it's child nodes is not ready,
 	// even in the following micro task queue.
 	// But we need `<slot>` elemnts to be prepared before updating.
 
 	// Otherwise it's very frequently to trigger updating from data changing ,
 	// but then more data changes in micro tasks and trigger new updating.
 	requestAnimationFrame(update)
+	
+	willUpdate = true
 }
 
 function update() {
@@ -139,7 +139,7 @@ function update() {
 	}
 	while (updatingComponents.length > 0)
 
-	updateEnqueued = false
+	willUpdate = false
 
 	// Normally `onRenderComplete` should not enqueue updating for more watchers and components here.
 	// But if enqueued, enqueue in a new updating.
