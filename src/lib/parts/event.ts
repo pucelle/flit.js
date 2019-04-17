@@ -4,7 +4,7 @@ import {on, off} from "../dom-event"
 
 
 /**
- * <component-name @com-event="${this.onComEvent}" @@click="${this.onClick}">
+ * <component-name @@com-event="${this.onComEvent}">
  * <div @click="${this.onClick}">
  */
 export class EventPart implements Part {
@@ -26,7 +26,7 @@ export class EventPart implements Part {
 		this.el = el
 		this.name = name[0] === '@' ? name.slice(1) : name
 		this.context = context
-		this.isComEvent = el.localName.includes('-') && name[0] !== '@'
+		this.isComEvent = el.localName.includes('-') && name[0] === '@'
 		this.setHandler(handler)
 	}
 
