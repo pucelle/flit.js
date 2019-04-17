@@ -19,7 +19,7 @@ defineBinding('ref', class RefBinding implements Binding {
 
 	update(value: unknown) {
 		if (typeof value === 'string') {
-			this.context.refs[value] = this.el
+			this.context.refs[value] = this.el as HTMLElement
 		}
 		else if (typeof value === 'function') {
 			value.call(this.context, this.el)
