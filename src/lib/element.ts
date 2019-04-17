@@ -1,10 +1,11 @@
 import {ComponentConstructor, defineComponent, getComponentAtElement, Component} from './component'
-import {ensureComponentStyle, mayRemoveStyle} from './style'
+import {ensureComponentStyle, mayRemoveStyle, plusComponentStyleUsedCount} from './style'
 
 
 // Using queue to delay the connect and disconnect operations on components.
 // Both `connectedCallback` and `disconnectedCallback` may triggered multiple times in DOM removing,
 // so we must delay the component connect and disconnect operation by a queue.
+
 let connectSoonMap: Map<HTMLElement, ComponentConstructor> = new Map()
 let disconnectSoonMap: Map<HTMLElement, ComponentConstructor> = new Map()
 
@@ -18,11 +19,15 @@ function enqueueConnect(el: HTMLElement, Com: ComponentConstructor) {
 }
 
 function enqueueDisconnect(el: HTMLElement, Com: ComponentConstructor) {
-	disconnectSoonMap.set(el, Com)
-	connectSoonMap.delete(el)
+	if (connectSoonMap.has(el)) {
+		connectSoonMap.delete(el)
+	}
+	else {
+		disconnectSoonMap.set(el, Com)
 
-	if (!willUpdate) {
-		enqueueUpdate()
+		if (!willUpdate) {
+			enqueueUpdate()
+		}
 	}
 }
 
@@ -49,12 +54,18 @@ function update() {
 
 	// `el` was sorted inside map.
 	for (let [el, Com] of connectMap.entries()) {
+		
 		// `el` may not in document,
 		// e.g., inserted into a fragment.
 		// No need to worry about forgetting to instantiate it,
 		// it will trigger `connectedCallback` again after insert into document.
 		if (document.contains(el)) {
 			connectElement(el, Com)
+		}
+
+		// Although component are not connected, but still need to execute `count++` for it's following disconnected.
+		else {
+			plusComponentStyleUsedCount(Com)
 		}
 	}
 }
@@ -124,6 +135,7 @@ export function define(name: string, Com?: ComponentConstructor) {
 		// If we insert bundled js behind all other elements, or with `defer`,
 		// because elements were prepared already, then they will be instantiated in component registered order, not in element order.
 		// We fix this by the `connectSoonMap`, it output elements in order when iterating.
+		
 		connectedCallback() {
 			enqueueConnect(this, Com)
 		}

@@ -3,8 +3,7 @@ import {TemplateResult} from './parts'
 
 
 /** Cache `Component` -> {style element, referenced count} */
-const componentStyleTagMap: Map<ComponentConstructor, {style: HTMLStyleElement, count: number}> = new Map()
-
+const componentStyleTagMap: Map<ComponentConstructor, {styleTag: HTMLStyleElement | null, count: number}> = new Map()
 
 
 /** Called when component was connected. */
@@ -12,14 +11,27 @@ export function ensureComponentStyle(Com: ComponentConstructor, name: string) {
 	if (Com.style) {
 		if (componentStyleTagMap.has(Com)) {
 			let o = componentStyleTagMap.get(Com)!
+			if (!o.styleTag) {
+				o.styleTag = createStyle(Com.style, name)
+			}
 			o.count++
 		}
 		else {
-			let styleTag = document.createElement('style')
-			styleTag.setAttribute('name', name)
-			styleTag.textContent = getStyleContent(Com.style, name)
-			document.head.append(styleTag)
-			componentStyleTagMap.set(Com, {style: styleTag, count: 1})
+			let styleTag = createStyle(Com.style, name)
+			componentStyleTagMap.set(Com, {styleTag, count: 1})
+		}
+	}
+}
+
+/** Called when component connected, but not in document. */
+export function plusComponentStyleUsedCount(Com: ComponentConstructor) {
+	if (Com.style) {
+		if (componentStyleTagMap.has(Com)) {
+			let o = componentStyleTagMap.get(Com)!
+			o.count++
+		}
+		else {
+			componentStyleTagMap.set(Com, {styleTag: null, count: 1})
 		}
 	}
 }
@@ -31,35 +43,22 @@ export function mayRemoveStyle(Com: ComponentConstructor) {
 		o.count--
 
 		if (o.count === 0) {
-			o.style.remove()
+			if (o.styleTag) {
+				o.styleTag.remove()
+			}
 			componentStyleTagMap.delete(Com)
 		}
 	}
 }
 
-
-/** Add global styles */
-export function addGlobalStyle(style: ComponentStyle) {
+/** Create <style> tag and insert it into body. */
+function createStyle(style: ComponentStyle, name: string): HTMLStyleElement {
 	let styleTag = document.createElement('style')
-	styleTag.setAttribute('name', 'global')
-	styleTag.textContent = getStyleContent(style, '')
+	styleTag.setAttribute('name', name)
+	styleTag.textContent = getStyleContent(style, name === 'global' ? '' : name)
 	document.head.append(styleTag)
+	return styleTag
 }
-
-/** Update all styles for components, you can update styles after theme changed. */
-export function updateStyles() {
-	// `updateStyles` always been called along with `updateComponents`,
-	// So we may need to makesure update style in the same micro task.
-	for (let [Com, {style: styleTag}] of componentStyleTagMap) {
-		if (typeof Com.style === 'function') {
-			let newContent = getStyleContent(Com.style, styleTag.getAttribute('name')!)
-			if (newContent !== styleTag.textContent) {
-				styleTag.textContent = newContent
-			}
-		}
-	}
-}
-
 
 /** Get style text from static style property. */
 function getStyleContent(style: ComponentStyle, scopeName: string): string {
@@ -72,6 +71,26 @@ function getStyleContent(style: ComponentStyle, scopeName: string): string {
 	}
 
 	return StyleParser.parse(style, scopeName)
+}
+
+
+/** Add global styles */
+export function addGlobalStyle(style: ComponentStyle): HTMLStyleElement {
+	return createStyle(style, 'global')
+}
+
+/** Update all styles for components, you can update styles after theme changed. */
+export function updateStyles() {
+	// `updateStyles` always been called along with `updateComponents`,
+	// So we may need to makesure update style in the same micro task.
+	for (let [Com, {styleTag}] of componentStyleTagMap) {
+		if (typeof Com.style === 'function' && styleTag) {
+			let newContent = getStyleContent(Com.style, styleTag.getAttribute('name')!)
+			if (newContent !== styleTag.textContent) {
+				styleTag.textContent = newContent
+			}
+		}
+	}
 }
 
 

@@ -69,7 +69,7 @@ function enqueueUpdate() {
 	willUpdate = true
 }
 
-function update() {
+async function update() {
 	let updatedTimesMap: Map<Watcher | Component, number> = new Map()
 
 	do {
@@ -136,13 +136,17 @@ function update() {
 		}
 
 		updatingWatchers = []
+
+		// If elements were added when updating, they will be connected in next micro task.
+		// Here we must wait them to be instantiated.
+		await Promise.resolve()
 	}
-	while (updatingComponents.length > 0)
+	while (updatingComponents.length > 0 || updatingWatchers.length > 0)
 
 	willUpdate = false
 
-	// Normally `onRenderComplete` should not enqueue updating for more watchers and components here.
-	// But if enqueued, enqueue in a new updating.
+	// Normally `onRenderComplete` should not enqueue more watchers and components.
+	// But if it enqueued, run them in next updating.
 	let callbacks = afterRenderCallbacks
 	afterRenderCallbacks = []
 
