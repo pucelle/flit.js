@@ -4,6 +4,7 @@ import {TemplateResult} from './parts'
 
 /** Cache `Component` -> {style element, referenced count} */
 const componentStyleTagMap: Map<ComponentConstructor, {styleTag: HTMLStyleElement | null, count: number}> = new Map()
+const globalStyleTagSet: Set<[ComponentStyle, HTMLStyleElement]> = new Set()
 
 
 /** Called when component was connected. */
@@ -76,16 +77,26 @@ function getStyleContent(style: ComponentStyle, scopeName: string): string {
 
 /** Add global styles */
 export function addGlobalStyle(style: ComponentStyle): HTMLStyleElement {
-	return createStyle(style, 'global')
+	let styleTag = createStyle(style, 'global')
+	globalStyleTagSet.add([style, styleTag])
+	return styleTag
 }
 
 /** Update all styles for components, you can update styles after theme changed. */
+// `updateStyles` always been called along with `updateComponents`,
+// So we may need to makesure `updateStyles` in the same micro task with `updateComponents`.
 export function updateStyles() {
-	// `updateStyles` always been called along with `updateComponents`,
-	// So we may need to makesure update style in the same micro task.
+	let styleAndTags = [...globalStyleTagSet]
+	
 	for (let [Com, {styleTag}] of componentStyleTagMap) {
-		if (typeof Com.style === 'function' && styleTag) {
-			let newContent = getStyleContent(Com.style, styleTag.getAttribute('name')!)
+		if (Com.style && styleTag) {
+			styleAndTags.push([Com.style, styleTag])
+		}
+	}
+
+	for (let [style, styleTag] of styleAndTags) {
+		if (typeof style === 'function') {
+			let newContent = getStyleContent(style, styleTag.getAttribute('name')!)
 			if (newContent !== styleTag.textContent) {
 				styleTag.textContent = newContent
 			}
