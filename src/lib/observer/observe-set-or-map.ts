@@ -7,9 +7,10 @@ type MapOrSet = Map<unknown, unknown> | Set<unknown>
 const MAP_SET_SET_METHODS = ['add', 'set', 'delete', 'clear']
 
 
-export function observeMapOrSet(ms: MapOrSet) {
+export function observeMapOrSetTarget(ms: MapOrSet) {
 	let proxy = new Proxy(ms, proxyHandler)
 	proxyMap.set(ms, proxy)
+	proxyMap.set(proxy, proxy)
 	targetMap.set(proxy, ms)
 	return proxy
 }

@@ -1,10 +1,11 @@
 import {mayAddDependency, notifyObjectSet, isUpdating} from './dependency'
-import {proxyMap, targetMap, justObserveIt} from './shared'
+import {proxyMap, targetMap, observeTarget} from './shared'
 
 
-export function observeObject(obj: object) {
+export function observePlainObjectTarget(obj: object) {
 	let proxy = new Proxy(obj, proxyHandler)
 	proxyMap.set(obj, proxy)
+	proxyMap.set(proxy, proxy)
 	targetMap.set(proxy, obj)
 	return proxy
 }
@@ -23,7 +24,7 @@ const proxyHandler = {
 					return proxyMap.get(value)
 				}
 				else if (isUpdating()) {
-					return justObserveIt(value)
+					return observeTarget(value)
 				}
 			}
 		}

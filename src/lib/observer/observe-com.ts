@@ -1,10 +1,11 @@
 import {mayAddComDependency, notifyComPropertySet, isUpdating} from './dependency'
-import {proxyMap, Com, targetMap, justObserveIt} from './shared'
+import {proxyMap, Com, targetMap, observeTarget} from './shared'
 
 
-export function observeCom(com: Com): Com {
+export function observeComTarget(com: Com): Com {
 	let proxy = new Proxy(com, proxyHandler)
 	proxyMap.set(com, proxy)
+	proxyMap.set(proxy, proxy)
 	targetMap.set(proxy, com)
 	return proxy as Com
 }
@@ -27,7 +28,7 @@ const proxyHandler = {
 				// Only generate new proxy only when updating still have a little problem.
 				// If we cached some not proxy values, modify them will not cause rerender.
 				else if (isUpdating()) {
-					return justObserveIt(value)
+					return observeTarget(value)
 				}
 			}
 		}

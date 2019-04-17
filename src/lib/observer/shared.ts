@@ -1,6 +1,6 @@
-import {observeObject} from './observe-object'
-import {observeArray} from './observe-array'
-import {observeMapOrSet} from './observe-set-or-map'
+import {observePlainObjectTarget} from './observe-object'
+import {observeArrayTarget} from './observe-array'
+import {observeMapOrSetTarget} from './observe-set-or-map'
 
 
 /** Normal object or array, whose changing will trigger Updatable to update. */
@@ -15,7 +15,10 @@ export interface Updatable {
 }
 
 
+/** `target -> proxy` and `proxy -> proxy` */
 export const proxyMap: WeakMap<object, object> = new WeakMap()
+
+/** `proxy -> target` */
 export const targetMap: WeakMap<object, object> = new WeakMap()
 export const originalToString = Object.prototype.toString
 
@@ -49,7 +52,12 @@ export const originalToString = Object.prototype.toString
  */
 export function observe<T>(value: T): T {
 	if (value && typeof value === 'object') {
-		return justObserveIt(value as unknown as object) as unknown as T
+		let proxy = proxyMap.get(value as unknown as object)
+		if (proxy) {
+			return proxy as unknown as T
+		}
+
+		return observeTarget(value as unknown as object) as unknown as T
 	}
 	else {
 		return value
@@ -57,24 +65,19 @@ export function observe<T>(value: T): T {
 }
 
 
-export function justObserveIt(obj: object): object {
-	let proxy = proxyMap.get(obj)
-	if (proxy) {
-		return proxy
-	}
-
+export function observeTarget(obj: object): object {
 	let str = originalToString.call(obj)
 
 	if (str === '[object Array]') {
-		return observeArray(obj as unknown[])
+		return observeArrayTarget(obj as unknown[])
 	}
 	
 	if (str === '[object Object]') {
-		return observeObject(obj)
+		return observePlainObjectTarget(obj)
 	}
 
 	if (str === '[object Set]' || str === '[object Map]') {
-		return observeMapOrSet(obj as any)
+		return observeMapOrSetTarget(obj as any)
 	}
 
 	return obj

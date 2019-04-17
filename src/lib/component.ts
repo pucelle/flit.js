@@ -1,7 +1,7 @@
 import {Emitter} from './emitter'
 import {NodePart, AnchorNode, TemplateResult} from './parts'
 import {enqueueComponentUpdate} from './queue'
-import {startUpdating, endUpdating, observeCom, clearDependencies, clearAsDependency} from './observer'
+import {startUpdating, endUpdating, observeComTarget, clearDependencies, clearAsDependency} from './observer'
 import {Watcher} from './watcher'
 import {targetMap} from './observer/shared'
 import {restoreAsDependency} from './observer/dependency';
@@ -191,7 +191,7 @@ export abstract class Component<Events = {}> extends Emitter<Events> {
 	constructor(el: HTMLElement) {
 		super()
 		this.el = el
-		return observeCom(this) as Component
+		return observeComTarget(this) as Component
 	}
 
 	__emitFirstConnected() {
@@ -210,6 +210,7 @@ export abstract class Component<Events = {}> extends Emitter<Events> {
 		// This can't be fixed right now since we can't implement a type function like `interface extends`
 		// And the type function below not work as expected:
 		// `type Extends<B, O> = {[key in keyof (B & O)]: key extends keyof O ? O[key] : key extends keyof B ? B[key] : never}`
+		
 		// this.emit('created')
 	}
 

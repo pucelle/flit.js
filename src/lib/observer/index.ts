@@ -4,6 +4,6 @@
 
 
 export {observe} from './shared'
-export {observeCom} from './observe-com'
+export {observeComTarget} from './observe-com'
 export {startUpdating, endUpdating, clearDependencies, clearAsDependency} from './dependency'
 

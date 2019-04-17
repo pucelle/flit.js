@@ -1,13 +1,14 @@
 import {mayAddDependency, notifyObjectSet, isUpdating} from './dependency'
-import {proxyMap, targetMap, justObserveIt} from './shared'
+import {proxyMap, targetMap, observeTarget} from './shared'
 
 
 const ARRAY_SET_METHODS = ['push', 'pop', 'unshift', 'splice', 'shift', 'sort']
 
 
-export function observeArray(arr: unknown[]) {
+export function observeArrayTarget(arr: unknown[]) {
 	let proxy = new Proxy(arr, proxyHandler)
 	proxyMap.set(arr, proxy)
+	proxyMap.set(proxy, proxy)
 	targetMap.set(proxy, arr)
 	return proxy
 }
@@ -27,7 +28,7 @@ const proxyHandler = {
 					return proxyMap.get(value)
 				}
 				else if (isUpdating()) {
-					return justObserveIt(value)
+					return observeTarget(value)
 				}
 			}
 		}
