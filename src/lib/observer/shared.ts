@@ -20,7 +20,8 @@ export const proxyMap: WeakMap<object, object> = new WeakMap()
 
 /** `proxy -> target` */
 export const targetMap: WeakMap<object, object> = new WeakMap()
-export const originalToString = Object.prototype.toString
+
+const originalToString = Object.prototype.toString
 
 
 /** Finding getter descriptor from object. */

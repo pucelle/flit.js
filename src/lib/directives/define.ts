@@ -3,24 +3,14 @@ import {AnchorNode} from '../parts'
 
 
 interface DirectiveConstructor<Args extends any[]> {
-	new(anchorNode: AnchorNode, context: Context): Directive<Args>
+	new(anchorNode: AnchorNode, context: Context, ...args: Args): Directive<Args>
 }
 
 
-export abstract class Directive<Args extends any[] = any[]> {
-
-	protected anchorNode: AnchorNode
-	context: Context
-
-	constructor(anchorNode: AnchorNode, context: Context) {
-		this.anchorNode = anchorNode
-		this.context = context
-	}
-
-	abstract init(...args: Args): void
-	abstract canMergeWith(...args: Args): boolean
-	abstract merge(...args: Args): void
-	abstract remove(): void
+export interface Directive<Args extends any[] = any[]> {
+	canMergeWith(...args: Args): boolean
+	merge(...args: Args): void
+	remove(): void
 }
 
 

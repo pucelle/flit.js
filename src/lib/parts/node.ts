@@ -98,8 +98,7 @@ export class NodePart implements Part {
 		}
 		
 		let Dir = getDirectiveConstructor(directiveResult.id)
-		let directive = new Dir(this.anchorNode, this.context as any)
-		directive.init(...directiveResult.args)
+		let directive = new Dir(this.anchorNode, this.context as any, ...directiveResult.args)
 		this.directive = directive
 	}
 

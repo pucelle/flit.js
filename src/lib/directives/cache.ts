@@ -1,16 +1,22 @@
 import {defineDirective, Directive, DirectiveResult} from './define'
-import {TemplateResult, Template} from '../parts'
+import {TemplateResult, Template, AnchorNode} from '../parts'
 import {text} from '../parts/template-result'
 import {Transition, TransitionOptions, ShortTransitionOptions, formatShortTransitionOptions} from '../transition'
+import {Context} from '../component'
 
 
-class CacheDirective extends Directive {
+class CacheDirective implements Directive {
 
+	private anchorNode: AnchorNode
+	private context: Context
 	private templates: Template[] = []
 	private currentTemplate: Template | null = null
 	private transitionOptions: TransitionOptions | null = null
 
-	init(result: TemplateResult | string, transitionOptions?: ShortTransitionOptions) {
+	constructor(anchorNode: AnchorNode, context: Context, result: TemplateResult | string, transitionOptions?: ShortTransitionOptions) {
+		this.anchorNode = anchorNode
+		this.context = context
+
 		if (result) {
 			this.initResult(result)
 		}
