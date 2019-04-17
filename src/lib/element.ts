@@ -10,15 +10,22 @@ let connectSoonMap: Map<HTMLElement, ComponentConstructor> = new Map()
 let disconnectSoonMap: Map<HTMLElement, ComponentConstructor> = new Map()
 
 function enqueueConnect(el: HTMLElement, Com: ComponentConstructor) {
-	connectSoonMap.set(el, Com)
-	disconnectSoonMap.delete(el)
+	// When append, trigger disconnect and connect soon.
+	if (disconnectSoonMap.has(el)) {
+		disconnectSoonMap.delete(el)
+	}
+	else {
+		connectSoonMap.set(el, Com)
+		disconnectSoonMap.delete(el)
 
-	if (!willUpdate) {
-		enqueueUpdate()
+		if (!willUpdate) {
+			enqueueUpdate()
+		}
 	}
 }
 
 function enqueueDisconnect(el: HTMLElement, Com: ComponentConstructor) {
+	// When inserted into a fragment and then removed.
 	if (connectSoonMap.has(el)) {
 		connectSoonMap.delete(el)
 	}
