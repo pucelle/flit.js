@@ -22,7 +22,7 @@ defineBinding('model', class ModelBinding implements Binding {
 	private com: Component | null = null
 	private unwatch: (() => void) | null = null
 
-	constructor(el: HTMLElement, value: unknown, modifiers: string[] | null, context: Component) {
+	constructor(el: Element, value: unknown, modifiers: string[] | null, context: Component) {
 		if (typeof value !== 'string') {
 			throw new Error('The value of ":model" must be string type')
 		}
@@ -39,7 +39,7 @@ defineBinding('model', class ModelBinding implements Binding {
 			}
 		}
 
-		this.el = el
+		this.el = el as HTMLElement
 		this.modifiers = modifiers
 		this.context = context
 		this.isComModel = el.localName.includes('-')

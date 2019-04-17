@@ -8,8 +8,8 @@ defineBinding('html', class HTMLBinding implements Binding {
 
 	private el: HTMLElement
 
-	constructor(el: HTMLElement, value: unknown) {
-		this.el = el
+	constructor(el: Element, value: unknown) {
+		this.el = el as HTMLElement
 		this.update(value)
 	}
 

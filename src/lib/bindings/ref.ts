@@ -8,10 +8,10 @@ import {Component} from '../component'
  */
 defineBinding('ref', class RefBinding implements Binding {
 
-	private el: HTMLElement
+	private el: Element
 	private context: Component
 
-	constructor(el: HTMLElement, value: unknown, _modifiers: string[] | null, context: Component) {
+	constructor(el: Element, value: unknown, _modifiers: string[] | null, context: Component) {
 		this.el = el
 		this.context = context
 		this.update(value)

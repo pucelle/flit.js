@@ -174,8 +174,8 @@ export abstract class Component<Events = {}> extends Emitter<Events> {
 	 * You can specify `:ref="refName"` on an element,
 	 * or using `:ref=${this.onRef}` to call `this.onRef(refElement)` every time when the reference element updated.
 	 */
-	refs: {[key: string]: HTMLElement} = {}
-	slots: {[key: string]: HTMLElement[]} = {}
+	refs: {[key: string]: Element} = {}
+	slots: {[key: string]: Element[]} = {}
 
 	private __restNodes: Node[] | null = null
 	private __rootPart: NodePart | null = null
@@ -228,7 +228,7 @@ export abstract class Component<Events = {}> extends Emitter<Events> {
 					if (!els) {
 						els = this.slots[slotName] = []
 					}
-					els.push(el as HTMLElement)
+					els.push(el as Element)
 
 					// Avoid been treated as slot element again after moved into a component
 					el.removeAttribute('slot')

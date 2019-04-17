@@ -9,10 +9,10 @@ export class PropertyPart implements MayStringValuePart {
 	type: PartType = PartType.Property
 	strings: string[] | null = null
 
-	private el: HTMLElement
+	private el: Element
 	private name: string
 
-	constructor(el: HTMLElement, name: string, value: unknown) {
+	constructor(el: Element, name: string, value: unknown) {
 		this.el = el
 		this.name = name
 		this.setValue(value)

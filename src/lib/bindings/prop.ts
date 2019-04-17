@@ -10,7 +10,7 @@ defineBinding('prop', class PropBinding implements Binding {
 	private value: unknown = null
 	private isUpdated: boolean = false
 
-	constructor(el: HTMLElement, value: unknown, modifiers: string[] | null) {
+	constructor(el: Element, value: unknown, modifiers: string[] | null) {
 		if (!modifiers) {
 			throw new Error(`":prop" binding requires a modifier like ":prop.name"`)
 		}
@@ -27,7 +27,7 @@ defineBinding('prop', class PropBinding implements Binding {
 			throw new Error(`":prop.${modifiers[0]}" can't set on "<${el.localName}>", it only works on custom element`)
 		}
 
-		this.el = el
+		this.el = el as HTMLElement
 		this.property = modifiers[0]
 		this.update(value)
 	}

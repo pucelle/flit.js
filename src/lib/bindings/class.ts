@@ -11,13 +11,13 @@ import {Component} from '../component'
  */
 defineBinding('class', class ClassNameBinding implements Binding {
 
-	private el: HTMLElement
+	private el: Element
 	private modifiers: string[] | null
 	private lastClassNames: string[] | null = null
 	private scopeName: string
 	private scopedClassNameSet: Set<string> | undefined
 
-	constructor(el: HTMLElement, value: unknown, modifiers: string[] | null, context: Component) {
+	constructor(el: Element, value: unknown, modifiers: string[] | null, context: Component) {
 		if (modifiers) {
 			if (modifiers.length > 1) {
 				throw new Error(`Modifier "${modifiers.join('.')}" is not allowed, at most one modifier as class name can be specified for ":class"`)

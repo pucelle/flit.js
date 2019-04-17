@@ -359,7 +359,7 @@ function cloneParseResult(sharedResult: SharedParseReulst, el: HTMLElement | nul
 	}
 }
 
-function cloneAttributes(el: HTMLElement, attributes: {name: string, value: string}[]) {
+function cloneAttributes(el: Element, attributes: {name: string, value: string}[]) {
 	for (let {name, value} of attributes) {
 		if ((name === 'class' || name === 'style') && el.hasAttribute(name)) {
 			if (name === 'style') {

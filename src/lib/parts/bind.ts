@@ -14,7 +14,7 @@ export class BindingPart implements MayStringValuePart {
 
 	private binding: Binding
 
-	constructor(el: HTMLElement, name: string, value: unknown, context: Context) {
+	constructor(el: Element, name: string, value: unknown, context: Context) {
 		let dotIndex = name.indexOf('.')
 		let bindingName = dotIndex > -1 ? name.slice(0, dotIndex) : name
 		let bindingModifiers = dotIndex > -1 ? name.slice(dotIndex + 1).split('.') : null

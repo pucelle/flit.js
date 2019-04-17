@@ -24,7 +24,7 @@ export interface JSTransitionOptions {
 }
 
 interface JSTransitionConstructor {
-	new (el: HTMLElement, options: JSTransitionOptions): JSTransition
+	new (el: Element, options: JSTransitionOptions): JSTransition
 }
 
 interface JSTransition {
@@ -91,7 +91,7 @@ export function getEasing(easing: TransitionEasing): string {
 }
 
 
-const elementTransitionMap: WeakMap<HTMLElement, Transition> = new WeakMap()
+const elementTransitionMap: WeakMap<Element, Transition> = new WeakMap()
 const definedTransition: Map<string, JSTransitionConstructor> = new Map()
 
 /** Register a js transiton. */
@@ -155,11 +155,11 @@ export function formatShortTransitionOptions(options: ShortTransitionOptions): T
 
 export class Transition {
 
-	private el: HTMLElement
+	private el: Element
 	private options: TransitionOptions
 	private cleaner: (() => void) | null = null
 
-	constructor(el: HTMLElement, options: ShortTransitionOptions) {
+	constructor(el: Element, options: ShortTransitionOptions) {
 		this.el = el
 		this.options = formatShortTransitionOptions(options)
 
@@ -211,8 +211,10 @@ export class Transition {
 				return
 			}
 
+			let el = this.el as HTMLElement | SVGElement
+
 			let onLeaved = (finish: boolean) => {
-				this.el.style.pointerEvents = ''
+				el.style.pointerEvents = ''
 
 				if (this.options.callback) {
 					this.options.callback('leave', finish)
@@ -222,7 +224,7 @@ export class Transition {
 				elementTransitionMap.delete(this.el)
 			}
 
-			this.el.style.pointerEvents = 'none'
+			el.style.pointerEvents = 'none'
 
 			if (this.options.properties) {
 				this.cssLeave(onLeaved)
@@ -302,17 +304,18 @@ export class Transition {
 		let duration = this.options.duration
 		let easing = this.options.easing
 		let canceled = false
+		let el = this.el as HTMLElement | SVGElement
 
 		if (duration) {
-			this.el.style.transitionDuration = String(duration / 1000) + 's'
+			el.style.transitionDuration = String(duration / 1000) + 's'
 		}
 
 		if (easing) {
-			this.el.style.transitionTimingFunction = getEasing(easing)
+			el.style.transitionTimingFunction = getEasing(easing)
 		}
 
-		this.el.style.transition = 'none'
-		this.el.classList.add(className, className + '-from')
+		el.style.transition = 'none'
+		el.classList.add(className, className + '-from')
 
 		requestAnimationFrame(() => {
 			if (canceled) {
@@ -320,19 +323,19 @@ export class Transition {
 			}
 
 			if (duration) {
-				this.el.style.transitionDuration = ''
+				el.style.transitionDuration = ''
 			}
 
 			if (easing) {
-				this.el.style.transitionTimingFunction = ''
+				el.style.transitionTimingFunction = ''
 			}
 
-			this.el.style.transition = ''
-			this.el.classList.remove(className + '-from')
-			this.el.classList.add(className + '-to')
+			el.style.transition = ''
+			el.classList.remove(className + '-from')
+			el.classList.add(className + '-to')
 
 			this.onceTransitionEnd((finish: boolean) => {
-				this.el.classList.remove(className, className + '-to')
+				el.classList.remove(className, className + '-to')
 				callback(finish)
 			})
 		})
@@ -343,7 +346,8 @@ export class Transition {
 	}
 
 	private onceTransitionEnd(onEnd: TransitionCallback) {
-		let computedStyle = getComputedStyle(this.el)
+		let el = this.el as HTMLElement | SVGElement
+		let computedStyle = getComputedStyle(el)
 		let transitionDuration = parseFloat(computedStyle.transitionDuration) || 0
 		let animationDuration = parseFloat(computedStyle.animationDuration) || 0
 		let eventName = transitionDuration > 0 ? 'transitionend' : 'animationend'
@@ -351,22 +355,22 @@ export class Transition {
 
 		let onTransitionEnd = () => {
 			clearTimeout(timeoutId)
-			this.el.style.pointerEvents = ''
+			el.style.pointerEvents = ''
 			onEnd(true)
 		}
 
 		let onTimeout = () => {
-			off(this.el, eventName, onTransitionEnd)
-			this.el.style.pointerEvents = ''
+			off(el, eventName, onTransitionEnd)
+			el.style.pointerEvents = ''
 			onEnd(true)
 		}
 
 		let timeoutId = setTimeout(onTimeout, duration + 50)
-		once(this.el, eventName, onTransitionEnd)
+		once(el, eventName, onTransitionEnd)
 
 		this.cleaner = () => {
 			clearTimeout(timeoutId)
-			off(this.el, eventName, onTransitionEnd)
+			off(el, eventName, onTransitionEnd)
 			onEnd(false)
 		}
 	}
@@ -380,7 +384,7 @@ export class Transition {
 }
 
 
-function animate(el: HTMLElement, startFrame: TransitionFrame, endFrame: TransitionFrame, duration: number, easing: TransitionEasing) {
+function animate(el: Element, startFrame: TransitionFrame, endFrame: TransitionFrame, duration: number, easing: TransitionEasing) {
 	if (!el.animate) {
 		return {
 			promise: Promise.resolve(false),
@@ -420,7 +424,7 @@ const DEFAULT_STYLE: {[key: string]: string} = {
 	transform: 'none'
 }
 
-function animateFrom(el: HTMLElement, startFrame: TransitionFrame, duration: number, easing: TransitionEasing) {
+function animateFrom(el: Element, startFrame: TransitionFrame, duration: number, easing: TransitionEasing) {
 	let endFrame: TransitionFrame = {}
 	let style = getComputedStyle(el)
 
@@ -431,7 +435,7 @@ function animateFrom(el: HTMLElement, startFrame: TransitionFrame, duration: num
 	return animate(el, startFrame, endFrame, duration, easing)
 }
 
-function animateTo(el: HTMLElement, endFrame: TransitionFrame, duration: number, easing: TransitionEasing) {
+function animateTo(el: Element, endFrame: TransitionFrame, duration: number, easing: TransitionEasing) {
 	let startFrame: TransitionFrame = {}
 	let style = getComputedStyle(el)
 

@@ -9,12 +9,12 @@ defineBinding('prop', class PropBinding implements Binding {
 	private value: unknown = null
 	private isUpdated: boolean = false
 
-	constructor(el: HTMLElement, value: unknown) {
+	constructor(el: Element, value: unknown) {
 		if (!el.localName.includes('-')) {
 			throw new Error(`":props" can't set on "<${el.localName}>", it only works on custom element`)
 		}
 
-		this.el = el
+		this.el = el as HTMLElement
 		this.update(value)
 	}
 

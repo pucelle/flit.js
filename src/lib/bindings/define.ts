@@ -2,7 +2,7 @@ import {Component} from '../component'
 
 
 interface BindingConstructor {
-	new(el: HTMLElement, value: unknown, modifiers: string[] | null, context: Component): Binding
+	new(el: Element, value: unknown, modifiers: string[] | null, context: Component): Binding
 }
 
 export interface Binding {

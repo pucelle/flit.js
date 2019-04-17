@@ -21,7 +21,7 @@ class CacheDirective implements Directive {
 			this.initResult(result)
 		}
 
-		// Doesn't play transition for the first time
+		// Doesn't play transition for the first time, but when merge.
 		this.initTransitionOptions(transitionOptions)
 	}
 

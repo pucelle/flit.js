@@ -33,7 +33,7 @@ class RepeatDirective<T> implements Directive {
 			this.wtems.push(template)
 		}
 
-		// Doesn't play transition for the first time
+		// Doesn't play transition for the first time, but when merge.
 		this.initTransitionOptions(transitionOptions)
 	}
 

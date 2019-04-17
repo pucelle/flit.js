@@ -11,14 +11,14 @@ export class EventPart implements Part {
 
 	type: PartType = PartType.Event
 
-	private el: HTMLElement
+	private el: Element
 	private name: string
 	private handler!: Function
 	private context: NonNullable<Context>
 	private isComEvent: boolean
 	private isUpdated: boolean = false
 
-	constructor(el: HTMLElement, name: string, handler: Function, context: Context) {
+	constructor(el: Element, name: string, handler: Function, context: Context) {
 		if (!context) {
 			throw new Error(`A context must be provided when registering event "${name}"`)
 		}
@@ -35,7 +35,7 @@ export class EventPart implements Part {
 		this.handler = newHandler
 
 		if (this.isComEvent) {
-			let com = getComponentAtElement(this.el)
+			let com = getComponentAtElement(this.el as HTMLElement)
 			if (com) {
 				if (oldHandler) {
 					(com as any).off(this.name, oldHandler, this.context)
@@ -43,7 +43,7 @@ export class EventPart implements Part {
 				this.setComHandler(com)
 			}
 			else if (!this.isUpdated) {
-				onComponentCreatedAt(this.el, this.setComHandler.bind(this))
+				onComponentCreatedAt(this.el as HTMLElement, this.setComHandler.bind(this))
 			}
 		}
 		else {

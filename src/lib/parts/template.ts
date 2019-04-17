@@ -72,11 +72,11 @@ export class Template {
 						break
 
 					case PartType.MayAttr:
-						part = new MayAttrPart(node as HTMLElement, place.name!, value)
+						part = new MayAttrPart(node as Element, place.name!, value)
 						break
 
 					case PartType.Event:
-						part = new EventPart(node as HTMLElement, place.name!, value as Function, this.context)
+						part = new EventPart(node as Element, place.name!, value as Function, this.context)
 						break
 
 					case PartType.Attr:
@@ -86,17 +86,17 @@ export class Template {
 							attrValues = values.slice(valueIndex, valueIndex + holes)
 						}
 
-						part = new AttrPart(node as HTMLElement, place.name!, join(place.strings, ...attrValues))
+						part = new AttrPart(node as Element, place.name!, join(place.strings, ...attrValues))
 						;(part as MayStringValuePart).strings = place.strings
 						break
 
 					case PartType.Binding:
-						part = new BindingPart(node as HTMLElement, place.name!, join(place.strings, value), this.context)
+						part = new BindingPart(node as Element, place.name!, join(place.strings, value), this.context)
 						;(part as MayStringValuePart).strings = place.strings
 						break
 
 					case PartType.Property:
-						part = new PropertyPart(node as HTMLElement, place.name!, join(place.strings, value))
+						part = new PropertyPart(node as Element, place.name!, join(place.strings, value))
 						;(part as MayStringValuePart).strings = place.strings
 						break
 				}

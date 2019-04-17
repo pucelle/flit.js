@@ -12,8 +12,8 @@ defineBinding('show', class ShowBinding implements Binding {
 	private value: boolean | undefined = undefined
 	private transitionOptions: TransitionOptions | null = null
 
-	constructor(el: HTMLElement, value: unknown) {
-		this.el = el
+	constructor(el: Element, value: unknown) {
+		this.el = el as HTMLElement
 		this.update(value as any)
 	}
 
