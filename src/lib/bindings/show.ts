@@ -35,7 +35,7 @@ defineBinding('show', class ShowBinding implements Binding {
 					new Transition(this.el, this.transitionOptions).enter()
 				}
 				else {
-					new Transition(this.el, this.transitionOptions).leave((finish: boolean) => {
+					new Transition(this.el, this.transitionOptions).leave().then((finish: boolean) => {
 						// If was stopped by a enter transition, we can't hide it.
 						if (finish) {
 							this.el.hidden = true

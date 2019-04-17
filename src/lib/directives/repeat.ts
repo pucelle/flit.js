@@ -225,7 +225,7 @@ class RepeatDirective<T> extends Directive {
 		if (this.transitionOptions) {
 			let firstElement = template.getNodes().find(el => el.nodeType === 1) as HTMLElement | undefined
 			if (firstElement) {
-				new Transition(firstElement, this.transitionOptions).leave(() => {
+				new Transition(firstElement, this.transitionOptions).leave().then(() => {
 					wtem.remove()
 				})
 			}

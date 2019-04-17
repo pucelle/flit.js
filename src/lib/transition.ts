@@ -4,7 +4,8 @@ import {once, off} from './dom-event'
 export type TransitionEasing = keyof typeof CUBIC_BEZIER_EASINGS | 'linear'
 export type TransitionProperty = keyof typeof CSS_PROPERTIES
 export type TransitionFrame = {[key in TransitionProperty]?: string}
-export type TransitionCallback = (finish: boolean) => void
+export type TransitionPromise = Promise<boolean>
+type TransitionCallback = (finish: boolean) => void
 export type TransitionTypedCallback = (type: 'enter' | 'leave', finish: boolean) => void
 export type ShortTransitionOptions = string | TransitionProperty[] | TransitionOptions
 
@@ -27,8 +28,8 @@ interface JSTransitionConstructor {
 }
 
 interface JSTransition {
-	enter?: (callback: TransitionCallback) => void
-	leave?: (callback: TransitionCallback) => void
+	enter?: TransitionPromise
+	leave?: TransitionPromise
 	clean: () => void
 }
 
@@ -158,9 +159,9 @@ export class Transition {
 	private options: TransitionOptions
 	private cleaner: (() => void) | null = null
 
-	constructor(el: HTMLElement, options: TransitionOptions) {
+	constructor(el: HTMLElement, options: ShortTransitionOptions) {
 		this.el = el
-		this.options = options
+		this.options = formatShortTransitionOptions(options)
 
 		if (elementTransitionMap.has(this.el)) {
 			elementTransitionMap.get(this.el)!.clean()
@@ -169,76 +170,70 @@ export class Transition {
 		elementTransitionMap.set(this.el, this)
 	}
 
-	enter(callback?: TransitionCallback) {
-		this.clean()
-
-		let willPlay = this.options.direction !== 'leave'
-		if (!willPlay) {
-			if (callback) {
-				callback(true)
-			}
-			return
-		}
-
-		let onEntered = (finish: boolean) => {
-			if (this.options.callback) {
-				this.options.callback('enter', finish)
+	enter(): TransitionPromise {
+		return new Promise(resolve => {
+			this.clean()
+			
+			let willPlay = this.options.direction !== 'leave'
+			if (!willPlay) {
+				resolve(true)
+				return
 			}
 
-			if (callback) {
-				callback(finish)
+			let onEntered = (finish: boolean) => {
+				if (this.options.callback) {
+					this.options.callback('enter', finish)
+				}
+
+				resolve(finish)
+				elementTransitionMap.delete(this.el)
 			}
 
-			elementTransitionMap.delete(this.el)
-		}
-
-		if (this.options.properties) {
-			this.cssEnter(onEntered)
-		}
-		else if (definedTransition.has(name)) {
-			this.jsEnter(onEntered)
-		}
-		else {
-			this.classEnterOrLeave('enter', onEntered)
-		}
+			if (this.options.properties) {
+				this.cssEnter(onEntered)
+			}
+			else if (definedTransition.has(name)) {
+				this.jsEnter(onEntered)
+			}
+			else {
+				this.classEnterOrLeave('enter', onEntered)
+			}
+		})
 	}
 
-	leave(callback?: TransitionCallback) {
-		this.clean()
+	leave(): TransitionPromise {
+		return new Promise(resolve => {
+			this.clean()
 
-		let willPlay = this.options.direction !== 'enter'
-		if (!willPlay) {
-			if (callback) {
-				callback(true)
-			}
-			return
-		}
-
-		let onLeaved = (finish: boolean) => {
-			this.el.style.pointerEvents = ''
-
-			if (this.options.callback) {
-				this.options.callback('leave', finish)
+			let willPlay = this.options.direction !== 'enter'
+			if (!willPlay) {
+				resolve(true)
+				return
 			}
 
-			if (callback) {
-				callback(finish)
+			let onLeaved = (finish: boolean) => {
+				this.el.style.pointerEvents = ''
+
+				if (this.options.callback) {
+					this.options.callback('leave', finish)
+				}
+
+				resolve(finish)
+				elementTransitionMap.delete(this.el)
 			}
 
-			elementTransitionMap.delete(this.el)
-		}
+			this.el.style.pointerEvents = 'none'
 
-		this.el.style.pointerEvents = 'none'
-
-		if (this.options.properties) {
-			this.cssLeave(onLeaved)
-		}
-		else if (definedTransition.has(name)) {
-			this.jsLeave(onLeaved)
-		}
-		else {
-			this.classEnterOrLeave('leave', onLeaved)
-		}
+			if (this.options.properties) {
+				this.cssLeave(onLeaved)
+			}
+			else if (definedTransition.has(name)) {
+				this.jsLeave(onLeaved)
+			}
+			else {
+				this.classEnterOrLeave('leave', onLeaved)
+			}
+		})
 	}
 
 	private cssEnter(onEntered: TransitionCallback) {
@@ -273,7 +268,7 @@ export class Transition {
 		let jsTransition = this.getJSTransitionInstance()
 
 		if (jsTransition.enter) {
-			jsTransition.enter(onEntered)
+			jsTransition.enter.then(onEntered)
 			this.cleaner = jsTransition.clean.bind(jsTransition)
 		}
 		else {
@@ -285,7 +280,7 @@ export class Transition {
 		let jsTransition = this.getJSTransitionInstance()
 
 		if (jsTransition.leave) {
-			jsTransition.leave(onLeaved)
+			jsTransition.leave.then(onLeaved)
 			this.cleaner = jsTransition.clean.bind(jsTransition)
 		}
 		else {
@@ -420,12 +415,10 @@ function animate(el: HTMLElement, startFrame: TransitionFrame, endFrame: Transit
 	}
 }
 
-
 /** The default style of element, which is not 0 */
 const DEFAULT_STYLE: {[key: string]: string} = {
 	transform: 'none'
 }
-
 
 function animateFrom(el: HTMLElement, startFrame: TransitionFrame, duration: number, easing: TransitionEasing) {
 	let endFrame: TransitionFrame = {}
@@ -437,7 +430,6 @@ function animateFrom(el: HTMLElement, startFrame: TransitionFrame, duration: num
 
 	return animate(el, startFrame, endFrame, duration, easing)
 }
-
 
 function animateTo(el: HTMLElement, endFrame: TransitionFrame, duration: number, easing: TransitionEasing) {
 	let startFrame: TransitionFrame = {}

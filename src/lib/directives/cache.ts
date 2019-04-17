@@ -95,7 +95,7 @@ class CacheDirective extends Directive {
 		if (this.transitionOptions) {
 			let firstElement = template.getNodes().find(el => el.nodeType === 1) as HTMLElement | undefined
 			if (firstElement) {
-				new Transition(firstElement, this.transitionOptions).leave((finish: boolean) => {
+				new Transition(firstElement, this.transitionOptions).leave().then((finish: boolean) => {
 					if (finish) {
 						template.cacheFragment()
 					}
