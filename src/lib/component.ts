@@ -8,7 +8,6 @@ import {restoreAsDependency} from './observer/dependency';
 
 
 /** Returns the typeof T[P]. */
-type ValueType<T, P extends keyof T> = T extends {[key in P]: infer R} ? R : never
 export type ComponentStyle = TemplateResult | string | (() => TemplateResult | string)
 
 /** The constructor type of component class. */
@@ -321,7 +320,7 @@ export abstract class Component<Events = {}> extends Emitter<Events> {
 
 		let firstUpdated = this.__firstUpdated
 		if (!firstUpdated) {
-			this.onFirstUpdated()
+			this.onReady()
 		}
 		this.onUpdated()
 	}
@@ -346,13 +345,13 @@ export abstract class Component<Events = {}> extends Emitter<Events> {
 	onCreated() {}
 
 	/**
-	 * Called after all the data updated for current component for the first time. 
+	 * Called after all the data updated for the first time. 
 	 * Will keep updating other components, so please don't check computed style on elements.
 	 */
-	onFirstUpdated() {}
+	onReady() {}
 
 	/** 
-	 * Called after all the data updated for current component.
+	 * Called after all the data updated.
 	 * Will keep updating other components, so please don't check computed style on elements.
 	 */
 	onUpdated() {}
@@ -364,22 +363,8 @@ export abstract class Component<Events = {}> extends Emitter<Events> {
 	 */
 	onDisconnected() {}
 
-
-	/** Watch specified property and call callback with the value as argument after it changed. */
-	watch<P extends keyof this>(prop: P, callback: (value: ValueType<this, typeof prop>) => void): () => void
-
 	/** Watch return value of function and trigger callback with this value as argument after it changed. */
-	watch<T>(fn: () => T, callback: (value: T) => void): () => void
-
-	watch(propOrFn: unknown, callback: (value: any) => void): () => void {
-		let fn: () => unknown
-		if (typeof propOrFn === 'string') {
-			fn = () => this[propOrFn as keyof this]
-		}
-		else {
-			fn = propOrFn as () => unknown
-		}
-
+	watch<T>(fn: () => T, callback: (value: T) => void): () => void {
 		let watcher = new Watcher(fn, callback)
 		
 		this.__watchers = this.__watchers || new Set()
@@ -391,22 +376,8 @@ export abstract class Component<Events = {}> extends Emitter<Events> {
 		}
 	}
 
-		
-	/** Watch specified property and call callback with the value as argument later and after it changed. */
-	watchImmediately<P extends keyof this>(prop: P, callback: (value: ValueType<this, typeof prop>) => void): () => void
-
 	/** Watch return value of function and trigger callback with this value as argument later and after it changed.. */
-	watchImmediately<T>(fn: () => T, callback: (value: T) => void): () => void
-
-	watchImmediately(propOrFn: unknown, callback: (value: any) => void): () => void {
-		let fn: () => unknown
-		if (typeof propOrFn === 'string') {
-			fn = () => this[propOrFn as keyof this]
-		}
-		else {
-			fn = propOrFn as () => unknown
-		}
-
+	watchImmediately<T>(fn: () => T, callback: (value: T) => void): () => void {
 		let watcher = new Watcher(fn, callback)
 		this.__watchers = this.__watchers || new Set()
 		this.__watchers.add(watcher)
@@ -419,23 +390,9 @@ export abstract class Component<Events = {}> extends Emitter<Events> {
 		}
 	}
 
-	
-	/** Watch specified property and call callback with the value as argument after it changed. Trigger callback for only once. */
-	watchOnce<P extends keyof this>(prop: P, callback: (value: ValueType<this, typeof prop>) => void): () => void
-
 	/** Watch return value of function and trigger callback with this value as argument. Trigger callback for only once. */
-	watchOnce<T>(fn: () => T, callback: (value: T) => void): () => void
-
-	watchOnce(propOrFn: unknown, callback: (value: any) => void): () => void {
-		let fn: () => unknown
-		if (typeof propOrFn === 'string') {
-			fn = () => this[propOrFn as keyof this]
-		}
-		else {
-			fn = propOrFn as () => unknown
-		}
-
-		let wrappedCallback = (value: unknown) => {
+	watchOnce<T>(fn: () => T, callback: (value: T) => void): () => void {
+		let wrappedCallback = (value: T) => {
 			callback(value)
 			disconnect()
 		}
@@ -453,24 +410,9 @@ export abstract class Component<Events = {}> extends Emitter<Events> {
 		return disconnect
 	}
 
-
-	/** Watch specified property and call callback with the value as argument after it changed. Trigger callback for only once. */
-	watchUntil<P extends keyof this>(prop: P, callback: () => void): () => void
-
 	/** Watch return value of function and trigger callback with this value as argument. Trigger callback for only once. */
-	watchUntil<T>(fn: () => T, callback: () => void): () => void
-
-	/** Watch returned values of function and trigger callback if it becomes true. */
-	watchUntil(propOrFn: unknown, callback: () => void): () => void {
-		let fn: () => unknown
-		if (typeof propOrFn === 'string') {
-			fn = () => this[propOrFn as keyof this]
-		}
-		else {
-			fn = propOrFn as () => unknown
-		}
-
-		let wrappedCallback = (value: unknown) => {
+	watchUntil<T>(fn: () => T, callback: () => void): () => void {
+		let wrappedCallback = (value: T) => {
 			if (value) {
 				callback()
 				disconnect()
