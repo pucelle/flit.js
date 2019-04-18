@@ -18,8 +18,8 @@ defineBinding('model', class ModelBinding implements Binding {
 	private property: string
 	private eventName: string
 
-	private modelName: string | null = null
-	private com: Component | null = null
+	private modelName!: string
+	private com: Component | undefined
 	private unwatch: (() => void) | null = null
 
 	constructor(el: Element, value: unknown, modifiers: string[] | null, context: Component) {
@@ -45,7 +45,7 @@ defineBinding('model', class ModelBinding implements Binding {
 		this.isComModel = el.localName.includes('-')
 
 		if (this.isComModel) {
-			this.property = 'value'
+			this.property = 'value' // or checked
 			this.eventName = 'change'
 		}
 		else {
@@ -64,7 +64,7 @@ defineBinding('model', class ModelBinding implements Binding {
 				this.eventName = isLazy ? 'change' : 'input'
 			}
 
-			// `div@contendeditable` cant trigger change event but not input event
+			// `div@contendeditable` cant trigger change and blur event but not input event
 			else {
 				this.property = 'innerHTML'
 				this.eventName = isLazy ? 'blur' : 'input'
@@ -74,6 +74,7 @@ defineBinding('model', class ModelBinding implements Binding {
 		this.update(value)
 	}
 
+	// Normally this should only be called for once.
 	update(modelName: string) {
 		if (!modelName) {
 			throw new Error(`"${modelName}" is not a valid model name`)
@@ -95,14 +96,20 @@ defineBinding('model', class ModelBinding implements Binding {
 			this.watchContextModelValue()
 		}
 
-		this.setModelValue((this.context as any)[modelName!])
+		this.setModelValue((this.context as any)[modelName])
 	}
 
 	bindCom(com: Component) {
-		// Avoid bind twice when model changed.
+		// Avoid bind event twice when model changed.
 		if (!this.com) {
 			this.com = com
-			;(com as any).on(this.eventName, this.writeModelValueBackToContext, this)
+
+			// Some component use `checked` property as model value.
+			if (com.hasOwnProperty('checked') && typeof (com as any).checked === 'boolean') {
+				this.property = 'checked'
+			}
+
+			com.on(this.eventName, this.writeModelValueToContext, this)
 		}
 
 		this.watchContextModelValue()
@@ -116,11 +123,11 @@ defineBinding('model', class ModelBinding implements Binding {
 		// There is a problem here, we do not support destroy parts and templates and bindings as a tree,
 		// So when the `:model` was included in a `if` part, it can't be unwatch after relatated element removed.
 		// `:model` is convient but eval, isn't it?
-		this.unwatch = this.context.watch(this.modelName! as any, this.setModelValue.bind(this))
+		this.unwatch = this.context.watch(this.modelName as any, this.setModelValue.bind(this))
 	}
 
-	writeModelValueBackToContext(value: unknown) {
-		(this.context as any)[this.modelName!] = value
+	writeModelValueToContext(value: unknown) {
+		(this.context as any)[this.modelName] = value
 	}
 
 	onEventInputOrChange(_e: Event) {
@@ -142,7 +149,7 @@ defineBinding('model', class ModelBinding implements Binding {
 			}
 		}
 		
-		this.writeModelValueBackToContext(value)
+		this.writeModelValueToContext(value)
 	}
 
 	setModelValue(value: unknown) {
@@ -175,14 +182,15 @@ defineBinding('model', class ModelBinding implements Binding {
 			let el = this.el as any
 			value = value === null || value === undefined ? '' : value
 
-		// Here need to avoid:
-		//   input value changed ->
-		//   write value to context ->
-		//   trigger watcher ->
-		//   write same value to input, which may cause cursor position lost.
-		// So we must compare the value firstly.
+			// Here need to avoid:
+			//   input value changed ->
+			//   write value to context ->
+			//   trigger watcher ->
+			//   write same value to input, which may cause cursor position lost.
 
-		if (el[this.property] !== value) {
+			// So we must compare the value firstly.
+
+			if (el[this.property] !== value) {
 				el[this.property] = value
 			}
 		}

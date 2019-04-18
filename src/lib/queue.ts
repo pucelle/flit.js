@@ -88,7 +88,7 @@ async function update() {
 			let com = updatingComponents[i]
 			componentSet.delete(com)
 
-			let updatedTimes = updatedTimesMap!.get(com) || 0
+			let updatedTimes = updatedTimesMap.get(com) || 0
 			updatedTimesMap.set(com, updatedTimes + 1)
 			
 			if (updatedTimes > 3) {
@@ -119,7 +119,7 @@ async function update() {
 			// Delete it so it can be added again for at most once.
 			watchSet.delete(watcher)
 
-			let updatedTimes = updatedTimesMap!.get(watcher) || 0
+			let updatedTimes = updatedTimesMap.get(watcher) || 0
 			updatedTimesMap.set(watcher, updatedTimes + 1)
 		
 			if (updatedTimes > 3) {

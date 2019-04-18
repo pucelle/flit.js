@@ -130,7 +130,7 @@ export class NodePart implements Part {
 					let newTemplate = new Template(result, this.context)
 					let fragment = newTemplate.getFragment()
 
-					oldTemplate.startNode!.before(fragment)
+					oldTemplate.startNode.before(fragment)
 					oldTemplate.remove()
 					templates[i] = newTemplate
 				}

@@ -197,7 +197,7 @@ namespace StyleParser {
 	}
 
 	function parseToNames(selector: string, current: string[] | undefined, comName: string): string[] {
-		let re = /((?:\[.*?\]|\(.*?\)|.)+?)(?:,|$)/gs
+		let re = /((?:\[.*?\]|\(.*?\)|[\s\S])+?)(?:,|$)/g
 		/*
 			(?:
 				\[.*?\] - match [...]

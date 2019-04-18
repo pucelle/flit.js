@@ -226,7 +226,7 @@ class ElementParser {
 		const attrRE = /(\S+)\s*=\s*(".*?"|'.*?'|\$\{flit\})\s*/g
 
 		return attr.replace(attrRE, (m0, name: string, value: string) => {
-			let type: PartType | undefined = undefined
+			let type: PartType | undefined
 			let markerIndex = value.indexOf(VALUE_MARKER)
 
 			switch (name[0]) {

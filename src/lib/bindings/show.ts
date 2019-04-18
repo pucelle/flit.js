@@ -29,7 +29,17 @@ defineBinding('show', class ShowBinding implements Binding {
 		}
 
 		if (newValue !== this.value) {
-			if (this.value !== undefined && this.transitionOptions) {
+			// Not play transition for the first time
+			if (this.value === undefined || !this.transitionOptions) {
+				if (newValue) {
+					this.el.hidden = false
+				}
+				else {
+					this.el.hidden = true
+				}
+			}
+			else {
+
 				if (newValue) {
 					this.el.hidden = false
 					new Transition(this.el, this.transitionOptions).enter()
@@ -41,14 +51,6 @@ defineBinding('show', class ShowBinding implements Binding {
 							this.el.hidden = true
 						}
 					})
-				}
-			}
-			else {
-				if (newValue) {
-					this.el.hidden = false
-				}
-				else {
-					this.el.hidden = true
 				}
 			}
 

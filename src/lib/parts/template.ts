@@ -64,7 +64,7 @@ export class Template {
 				let place = places[nodeIndex]
 				let holes = place.holes
 				let value = values[valueIndex]
-				let part: Part
+				let part: Part | undefined
 
 				switch (place.type) {
 					case PartType.Node:
@@ -103,7 +103,7 @@ export class Template {
 
 				if (holes > 0) {
 					valueIndex += holes
-					this.parts.push(part!)
+					this.parts.push(part!)	// part will always exist when holes > 0
 				}
 			}
 		}

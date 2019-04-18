@@ -38,7 +38,7 @@ export class EventPart implements Part {
 			let com = getComponentAtElement(this.el as HTMLElement)
 			if (com) {
 				if (oldHandler) {
-					(com as any).off(this.name, oldHandler, this.context)
+					com.off(this.name, oldHandler, this.context)
 				}
 				this.setComHandler(com)
 			}
@@ -56,7 +56,7 @@ export class EventPart implements Part {
 	}
 
 	setComHandler(com: Component) {
-		(com as any).on(this.name, this.handler, this.context)
+		com.on(this.name, this.handler, this.context)
 	}
 
 	update(handler: Function) {
