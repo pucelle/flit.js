@@ -279,18 +279,17 @@ class WatchedTemplate<T> {
 	private directive: RepeatDirective<T>
 	private item: T
 	private index: number
-	private watcher: Watcher<TemplateResult> | null = null
-
-	template: Template
+	private watcher!: Watcher<TemplateResult>
+	template!: Template
 
 	constructor(directive: RepeatDirective<T>, item: T, index: number) {
 		this.directive = directive
 		this.item = item
 		this.index = index
-		this.template = this.getTemplate()
+		this.parseAndWatchTemplate()
 	}
 
-	private getTemplate(): Template {
+	private parseAndWatchTemplate() {
 		let templateFn = this.directive.templateFn
 		let context = this.directive.context
 
@@ -316,14 +315,13 @@ class WatchedTemplate<T> {
 		}
 	
 		this.watcher = new Watcher(watchFn, onUpdate)
-
-		return new Template(this.watcher.value, context)
+		this.template = new Template(this.watcher.value, context)
 	}
 
 	updateIndex(index: number) {
 		if (index !== this.index) {
 			this.index = index
-			this.watcher!.__updateImmediately()
+			this.watcher.__updateImmediately()
 		}
 	}
 
@@ -331,13 +329,13 @@ class WatchedTemplate<T> {
 		if (item !== this.item || index !== this.index) {
 			this.item = item
 			this.index = index
-			this.watcher!.__updateImmediately()
+			this.watcher.__updateImmediately()
 		}
 	}
 
 	remove() {
 		this.template!.remove()
-		this.watcher!.disconnect()
+		this.watcher.disconnect()
 	}
 }
 

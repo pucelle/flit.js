@@ -136,7 +136,7 @@ export function cachePropsAtElement(el: HTMLElement, props: {[key: string]: unkn
 	Object.assign(o, props)
 }
 
-function assignPropsCached(el: HTMLElement, com: Component) {
+function assignCachedProps(el: HTMLElement, com: Component) {
 	let o = componentPropertyMap.get(el)
 	if (o) {
 		Object.assign(com, o)
@@ -235,7 +235,7 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 
 		//Must assign here, or they will be covered by assignments in child class constructor.
 		//Benchmark: https://jsperf.com/where-to-initialize-properties
-		assignPropsCached(this.el, this)
+		assignCachedProps(this.el, this)
 
 		elementComponentMap.set(this.el, this)
 		emitComponentCreatedCallbacks(this.el, this)
@@ -481,7 +481,7 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 		return disconnect
 	}
 
-	/** returns scoped class name like `.name -> .name__com-name` */
+	/** returns scoped class name E `.name -> .name__com-name` */
 	scopeClassName(className: string): string {
 		let startsWithDot = className[0] === '.'
 		let classNameWithoutDot = startsWithDot ? className.slice(1) : className
