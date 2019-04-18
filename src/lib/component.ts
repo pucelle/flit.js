@@ -174,7 +174,7 @@ export abstract class Component<Events = {}> extends Emitter<Events> {
 	 * or using `:ref=${this.onRef}` to call `this.onRef(refElement)` every time when the reference element updated.
 	 */
 
-	//Should be `Element` type, but in 99% scenories it's HTMLElement.
+	//Should be `Element` type, but in 99% scenarios it's HTMLElement.
 	refs: {[key: string]: HTMLElement} = {}
 	slots: {[key: string]: HTMLElement[]} = {}
 

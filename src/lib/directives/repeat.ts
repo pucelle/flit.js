@@ -127,7 +127,7 @@ class RepeatDirective<T> implements Directive {
 		let newWtems: WatchedTemplate<T>[] = this.wtems = []
 
 		
-		// Handle removing and reusing
+		// Mark removing and reusing
 		let willRemoveIndexSet: Set<number> = new Set()
 		let reusedIndexSet: Set<number> = new Set()
 
@@ -147,63 +147,84 @@ class RepeatDirective<T> implements Directive {
 		}
 
 
-		// Loop
+		// The `oldIndex` means: old templates with index larger or equal it can keep it's old position
 		for (let index = 0, oldIndex = 0; index < newItems.length; index++) {
 			let item = newItems[index]
 
-			if (oldIndex < oldItems.length) {
-				// Make sure next old item is not used or will be removed
-				while (willRemoveIndexSet.has(oldIndex) || reusedIndexSet.has(oldIndex)) {
-					oldIndex++
-				}
-
-				// Old item just in the right position, only update index
-				if (item === oldItems[oldIndex]) {
-					let wtem = oldWtems[oldIndex]
-					wtem.updateIndex(index)
-					newWtems.push(wtem)
-					reusedIndexSet.add(oldIndex)
-					oldIndex++
-					continue
-				}
-			}
-
 			// May reuse
 			if (oldItemIndexMap.has(item)) {
-				let reusedIndex = oldItemIndexMap.get(item)!
-				if (reusedIndexSet.has(reusedIndex)) {
-					reusedIndex = oldItems.findIndex((t, i) => t === item && !reusedIndexSet.has(i))
+				
+				// Find the old index for item
+				let reuseIndex = oldItemIndexMap.get(item)!
+
+				// Although destnation index can be reuse, but it may be reused by another template.
+				// In this scenario we try to find a new index.
+				if (reusedIndexSet.has(reuseIndex)) {
+					reuseIndex = oldItems.findIndex((t, i) => t === item && !reusedIndexSet.has(i))
 				}
 
-				if (reusedIndex > -1) {
-					let wtem = oldWtems[reusedIndex]
-					let template = wtem.template
-
-					// No need to check if `reusedIndex === oldIndex`, they are not equal
-					this.moveTemplate(template, oldIndex < oldItems.length ? oldWtems[oldIndex].template.startNode : null)
+				// `oldIndex <= oldIndexForItem` means that it can keep position.
+				if (oldIndex <= reuseIndex) {
+					let wtem = oldWtems[reuseIndex]
 					wtem.updateIndex(index)
 					newWtems.push(wtem)
-					reusedIndexSet.add(reusedIndex)
+					reusedIndexSet.add(reuseIndex)
+					oldIndex = reuseIndex + 1
+					continue
+				}
+
+				if (reuseIndex > -1) {
+					let wtem = oldWtems[reuseIndex]
+					this.moveTemplate(wtem.template, oldIndex < oldItems.length ? oldWtems[oldIndex].template.startNode : null)
+					wtem.updateIndex(index)
+					newWtems.push(wtem)
+					reusedIndexSet.add(reuseIndex)
 					continue
 				}
 			}
 
 			// Reuse template that will be removed and rerender it
-			if (willRemoveIndexSet.size > 0 && !this.transitionOptions) {
-				let reusedIndex = willRemoveIndexSet.keys().next().value
-				let wtem = oldWtems[reusedIndex]
-				let template = wtem.template
+			if (!this.transitionOptions && willRemoveIndexSet.size > 0) {
 
-				this.moveTemplate(template, oldIndex < oldItems.length ? oldWtems[oldIndex].template.startNode : null)
+				// Looking for a removed index starts from `oldIndex`, but without come across any can be reused item.
+				let reuseIndex = -1
+				for (let i = oldIndex; i < oldItems.length; i++) {
+					if (willRemoveIndexSet.has(i)) {
+						reuseIndex = i
+						break
+					}
+					else if (newItemSet.has(oldItems[i])) {
+						break
+					}
+				}
+
+				if (reuseIndex > -1) {
+					let wtem = oldWtems[reuseIndex]
+					wtem.update(item, index)
+					newWtems.push(wtem)
+					willRemoveIndexSet.delete(reuseIndex)
+					reusedIndexSet.add(reuseIndex)
+					oldIndex = reuseIndex + 1
+					continue
+				}
+
+				reuseIndex = willRemoveIndexSet.keys().next().value
+
+				let wtem = oldWtems[reuseIndex]
+				this.moveTemplate(wtem.template, oldIndex < oldItems.length ? oldWtems[oldIndex].template.startNode : null)
 				wtem.update(item, index)
 				newWtems.push(wtem)
-				reusedIndexSet.add(reusedIndex)
+				willRemoveIndexSet.delete(reuseIndex)
+				reusedIndexSet.add(reuseIndex)
 				continue
 			}
 
 			newWtems.push(this.createTemplate(item, index, oldIndex < oldItems.length ? oldWtems[oldIndex].template.startNode : null))
 		}
 
+		// Should not follow `willRemoveIndexSet` here:
+		// e.g., two same items exist, and only first one reused, 
+		// the second one needs to be removed but not in `willRemoveIndexSet`.
 		if (reusedIndexSet.size < oldItems.length) {
 			for (let i = 0; i < oldItems.length; i++) {
 				if (!reusedIndexSet.has(i)) {
