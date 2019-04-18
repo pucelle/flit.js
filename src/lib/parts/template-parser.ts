@@ -113,7 +113,7 @@ class ElementParser {
 
 	// Benchmark: https://jsperf.com/regexp-exec-match-replace-speed
 	parse(): SharedParseReulst {
-		const tagRE = /<!--[\s\S]*?-->|<(\w+)([\s\S]*?)>|<\/\w+>/g
+		const tagRE = /<!--[\s\S]*?-->|<([\w-]+)([\s\S]*?)>|<\/[\w-]+>/g
 
 		let codes = ''
 		let lastIndex = 0
