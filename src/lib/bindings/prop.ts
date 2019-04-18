@@ -1,5 +1,5 @@
 import {Binding, defineBinding} from './define'
-import {Component, getComponentAtElement, onComponentCreatedAt} from '../component'
+import {Component, getComponentAtElement, cachePropAtElement} from '../component'
 
 
 /** Binding properties on component. */
@@ -7,8 +7,7 @@ defineBinding('prop', class PropBinding implements Binding {
 
 	private el: HTMLElement
 	private property: string
-	private value: unknown = null
-	private isUpdated: boolean = false
+	private com: Component | undefined
 
 	constructor(el: Element, value: unknown, modifiers: string[] | null) {
 		if (!modifiers) {
@@ -29,31 +28,16 @@ defineBinding('prop', class PropBinding implements Binding {
 
 		this.el = el as HTMLElement
 		this.property = modifiers[0]
+		this.com = getComponentAtElement(el as HTMLElement)
 		this.update(value)
 	}
 
 	update(value: unknown) {
-		let com = getComponentAtElement(this.el)
-		if (com) {
-			this.setProp(com, value)
+		if (this.com) {
+			(this.com as any)[this.property] = value
 		}
 		else {
-			this.value = value
-
-			if (!this.isUpdated) {
-				onComponentCreatedAt(this.el, this.setPropLater.bind(this))
-			}
+			cachePropAtElement(this.el, this.property, value)
 		}
-
-		this.isUpdated = true
-	}
-
-	setPropLater(com: Component) {
-		this.setProp(com, this.value)
-		this.value = null
-	}
-
-	setProp(com: Component, value: unknown) {
-		(com as any)[this.property] = value
 	}
 })

@@ -5,6 +5,7 @@ import {startUpdating, endUpdating, observeComTarget, clearDependencies, clearAs
 import {Watcher} from './watcher'
 import {targetMap} from './observer/shared'
 import {restoreAsDependency} from './observer/dependency';
+import {getScopedClassNameSet} from './style';
 
 
 /** Returns the typeof T[P]. */
@@ -21,7 +22,8 @@ export type ComponentConstructor = {
 export type Context = Component | null
 
 
-const componentMap: Map<string, ComponentConstructor> = new Map()
+/** To cache `name -> component constructor` */
+const componentConstructorMap: Map<string, ComponentConstructor> = new Map()
 
 /**
  * Define a component with specified name and class, called by `define()`.
@@ -29,7 +31,7 @@ const componentMap: Map<string, ComponentConstructor> = new Map()
  * @param Com The component class.
  */
 export function defineComponent(name: string, Com: ComponentConstructor) {
-	if (componentMap.has(name)) {
+	if (componentConstructorMap.has(name)) {
 		console.warn(`You are trying to overwrite component definition "${name}"`)
 	}
 
@@ -43,7 +45,7 @@ export function defineComponent(name: string, Com: ComponentConstructor) {
 		}
 	}
 
-	componentMap.set(name, Com)
+	componentConstructorMap.set(name, Com)
 }
 
 /**
@@ -52,10 +54,11 @@ export function defineComponent(name: string, Com: ComponentConstructor) {
  * @param Com The component class.
  */
 export function getComponentConstructorByName(name: string): ComponentConstructor | undefined {
-	return componentMap.get(name)
+	return componentConstructorMap.get(name)
 }
 
 
+/** To cache callbacks after component initialized */
 const componentCreatedMap: WeakMap<HTMLElement, ((com: Component) => void)[]> = new WeakMap()
 
 /** Call callbacks after component instance created. */
@@ -79,6 +82,7 @@ export function emitComponentCreatedCallbacks(el: HTMLElement, com: Component) {
 }
 
 
+/** To cache `el -> com` map */
 const elementComponentMap: WeakMap<HTMLElement, Component> = new WeakMap()
 
 /**
@@ -111,6 +115,37 @@ export function getComponentAtElementAsync(el: HTMLElement): Promise<Component |
 }
 
 
+/** To cache properties from `:prop` or `:props` which will be assigned to component in it's constructor. */
+const componentPropertyMap: WeakMap<HTMLElement, {[key: string]: unknown}> = new WeakMap()
+
+export function cachePropAtElement(el: HTMLElement, prop: string, value: unknown) {
+	let o = componentPropertyMap.get(el)
+	if (!o) {
+		o = new Map()
+		componentPropertyMap.set(el, o)
+	}
+	o[prop] = value
+}
+
+export function cachePropsAtElement(el: HTMLElement, props: {[key: string]: unknown}) {
+	let o = componentPropertyMap.get(el)
+	if (!o) {
+		o = new Map()
+		componentPropertyMap.set(el, o)
+	}
+	Object.assign(o, props)
+}
+
+function assignPropsCached(el: HTMLElement, com: Component) {
+	let o = componentPropertyMap.get(el)
+	if (o) {
+		Object.assign(com, o)
+		componentPropertyMap.delete(el)
+	}
+}
+
+
+/** To mark all the connected components */
 const componentSet: Set<Component> = new Set()
 
 /** Update all components, e.g., when current language changed. */
@@ -140,7 +175,7 @@ export function updateComponents() {
 // according to the `:prop...` in outer `render()` function, then you should do it in outer `onUpdated`.
 
 /** The abstract component class, you can instantiate it from just creating an element and insert in to document. */
-export abstract class Component<Events = {}> extends Emitter<Events> {
+export abstract class Component<Events = any> extends Emitter<Events> {
 
 	static get = getComponentAtElement
 	static getAsync = getComponentAtElementAsync
@@ -197,6 +232,10 @@ export abstract class Component<Events = {}> extends Emitter<Events> {
 
 	__emitFirstConnected() {
 		this.__prepareSlotElements()
+
+		//Must assign here, or they will be covered by assignments in child class constructor.
+		//Benchmark: https://jsperf.com/where-to-initialize-properties
+		assignPropsCached(this.el, this)
 
 		elementComponentMap.set(this.el, this)
 		emitComponentCreatedCallbacks(this.el, this)
@@ -440,5 +479,19 @@ export abstract class Component<Events = {}> extends Emitter<Events> {
 		}
 
 		return disconnect
+	}
+
+	/** returns scoped class name like `.name -> .name__com-name` */
+	scopeClassName(className: string): string {
+		let startsWithDot = className[0] === '.'
+		let classNameWithoutDot = startsWithDot ? className.slice(1) : className
+		let scopedClassNameSet = getScopedClassNameSet(this.el.localName)
+
+		if (scopedClassNameSet && scopedClassNameSet.has(classNameWithoutDot)) {
+			return className + '__' + this.el.localName
+		}
+		else {
+			return className
+		}
 	}
 }
