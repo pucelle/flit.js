@@ -362,7 +362,9 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 		let firstUpdated = this.__firstUpdated
 		if (!firstUpdated) {
 			this.onReady()
+			this.__firstUpdated = true
 		}
+		
 		this.onUpdated()
 	}
 
