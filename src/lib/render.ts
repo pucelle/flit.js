@@ -1,28 +1,15 @@
 import {TemplateResult, Template} from './parts'
-import {Component, Context} from './component'
-import {watchImmediately} from './watcher'
+import {Component, Context, getComponentConstructorByName, getComponent} from './component'
+import {Watcher} from './watcher'
+import {connectElement} from './element'
 
 
 /**
- * Render html codes or a template like html`...`, returns the rendered result as an document fragment.
- * Note that if there is "@click=${...}" in template, you shou use `renderInContext(context, ...)`.
+ * Render html codes or a template like html`...` in context or null, returns the rendered result as an document fragment.
  * @param codes The html code piece or html`...` template.
- */
-export function render(codes: TemplateResult | string): DocumentFragment {
-	return renderMayInContext(null, codes)
-}
-
-/**
- * Render html codes or a template like html`...` in context, returns the rendered result as an document fragment.
- * If there is "@click=${...}" in template, you must pass a context like `render.call(context, ...)`.
  * @param context The context you used when rendering.
- * @param codes The html code piece or html`...` template.
  */
-export function renderInContext(context: Component, codes: TemplateResult | string): DocumentFragment {
-	return renderMayInContext(context, codes)
-}
-
-function renderMayInContext(context: Context, codes: TemplateResult | string): DocumentFragment {
+export function render(codes: TemplateResult | string, context: Component | null = null): DocumentFragment {
 	let fragment: DocumentFragment
 
 	if (codes instanceof TemplateResult) {
@@ -44,65 +31,74 @@ function clearWhiteSpaces(htmlCodes: string): string {
 
 
 /**
- * Render template like html`...` returned from `renderFn`, returns the rendered result as an document fragment.
- * If there is "@click=${...}" in template, you should use `renderAndFollowInContext(context, ...)`.
- * @param renderFn Returns template like html`...`
- * @param onUpdate Called when update after referenced data changed. if new result can't merge with old, will pass a new fragment as argument.
- */
-export function renderAndFollow(renderFn: () => TemplateResult, onUpdate?: (fragment: DocumentFragment | null) => void) {
-	return renderAndFollowMayInContext(null, renderFn, onUpdate)
-}
-	
-/**
- * Render template like html`...` returned from `renderFn` in context, returns the rendered result as an document fragment.
- * If there is "@click=${...}" in template, you must pass a context like `render.call(context, ...)`.
+ * You can't get a component instance immediately by `render` before they were appended into document, but you can do this by `renderComponent`.
+ * Be careful that it's element is not in document when rendering for the first time.
+ * You should append `component.el` to document manually.
+ * @param codes The html code piece or html`...` template.
  * @param context The context you used when rendering.
+ */
+export function renderComponent(codes: TemplateResult | string, context?: Context): Component | null
+
+/**
+ * Render template like html`...` returned from `renderFn` in context or null, returns the first component from the rendering result.
+ * Be careful that it's element is not in document when rendering for the first time.
+ * You should append `component.el` to document manually.
+ * Caution: The returned template from `renderFn` must can merge with the last returned.
  * @param renderFn Returns template like html`...`
+ * @param context The context you used when rendering.
  * @param onUpdate Called when update after referenced data changed. if new result can't merge with old, will pass a new fragment as argument.
  */
-export function renderAndFollowInContext(context: Component, renderFn: () => TemplateResult, onUpdate?: (fragment: DocumentFragment | null) => void) {
-	return renderAndFollowMayInContext(context, renderFn, onUpdate)
-}
+export function renderComponent(renderFn: () => TemplateResult, context?: Context, onUpdate?: () => void): Component | null
 
-function renderAndFollowMayInContext(context: Context, renderFn: () => TemplateResult, onUpdate?: (fragment: DocumentFragment | null) => void) {
-	let template: Template | undefined
+export function renderComponent(codesOrFn: any, context: Context = null, onUpdate?: () => void): Component | null {
+	let fragment: DocumentFragment
+	let watcher: Watcher | undefined
 
-	let onResultChanged = (result: TemplateResult) => {
-		if (template) {
-			if (template.canMergeWith(result)) {
-				template.merge(result)
-
-				if (onUpdate) {
-					onUpdate(null)
-				}
-			}
-			else {
-				template = new Template(result, context)
-
-				if (onUpdate) {
-					onUpdate(template.getFragment())
-				}
-			}
-		}
-		else {
-			template = new Template(result, context)
-		}
-	}
-
-	let unwatch: () => void
-
-	if (context) {
-		unwatch = context.watchImmediately(renderFn, onResultChanged)
+	if (typeof codesOrFn === 'function') {
+		({fragment, watcher} = watchRenderFn(codesOrFn, context, onUpdate))
 	}
 	else {
-		unwatch = watchImmediately(renderFn, onResultChanged)
+		fragment = render(codesOrFn, context)
 	}
-	
-	let fragment = template!.getFragment()
+
+	let firstElement = fragment.firstElementChild as HTMLElement | null
+	if (firstElement) {
+		let Com = getComponentConstructorByName(firstElement.localName)
+		if (Com) {
+			connectElement(firstElement, Com)
+			let com = getComponent(firstElement)!
+
+			// if (watcher) {
+			// 	com.__addWatcher(watcher)
+			// }
+
+			return com
+		}
+	}
+
+	if (watcher) {
+		watcher.disconnect()
+	}
+
+	return null
+}
+
+function watchRenderFn(renderFn: () => TemplateResult, context: Context, onUpdate?: () => void) {
+	let template: Template
+
+	let watcher = new Watcher(renderFn, (result) => {
+		template.merge(result)
+
+		if (onUpdate) {
+			onUpdate()
+		}
+	})
+
+	template = new Template(watcher.value, context)
 
 	return {
-		fragment,
-		unwatch
+		fragment: template.getFragment(),
+		watcher
 	}
 }
 
