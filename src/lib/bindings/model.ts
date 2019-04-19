@@ -6,12 +6,16 @@ import {on} from '../dom-event'
 const ALLOWED_MODIFIERS = ['lazy', 'number']
 
 
-/** Model bind should only handle fixed model name. */
+/** 
+ * Handle `:model="name"`, it binds and auto update a specified property name in current context
+ * with the `<input>` or `<com>` which has `value` or `checked` property, and `change` event.
+ * Model bind should only handle fixed model name.
+ */
 defineBinding('model', class ModelBinding implements Binding {
 
 	private el: HTMLElement
 	private modifiers: string[] | null
-	private context: Context
+	private context: Component
 	private isComModel: boolean
 	private isBooleanValue: boolean = false
 	private isMultiSelect: boolean = false
@@ -24,7 +28,11 @@ defineBinding('model', class ModelBinding implements Binding {
 
 	constructor(el: Element, value: unknown, modifiers: string[] | null, context: Context) {
 		if (typeof value !== 'string') {
-			throw new Error('The value of ":model" must be string type')
+			throw new Error('The value of ":model=value" must be string type')
+		}
+
+		if (!context) {
+			throw new Error(`A context must be provided when registering ":model=value" for component`)
 		}
 
 		if (modifiers) {
@@ -47,10 +55,6 @@ defineBinding('model', class ModelBinding implements Binding {
 		if (this.isComModel) {
 			this.property = 'value' // or checked
 			this.eventName = 'change'
-
-			if (!context) {
-				throw new Error(`A context must be provided when registering ":model={value}" for component`)
-			}
 		}
 		else {
 			let isFormField = ['input', 'select', 'textarea'].includes(el.localName)
@@ -96,11 +100,9 @@ defineBinding('model', class ModelBinding implements Binding {
 			}
 		}
 		else {
-			on(this.el, this.eventName, this.onEventInputOrChange.bind(this))
 			this.watchContextModelValue()
+			on(this.el, this.eventName, this.onEventInputOrChange.bind(this))
 		}
-
-		this.setModelValue((this.context as any)[modelName])
 	}
 
 	bindCom(com: Component) {
@@ -113,7 +115,7 @@ defineBinding('model', class ModelBinding implements Binding {
 				this.property = 'checked'
 			}
 
-			com.on(this.eventName, this.writeModelValueToContext, this)
+			com.on(this.eventName, this.setModelValueToContext, this)
 		}
 
 		this.watchContextModelValue()
@@ -124,14 +126,48 @@ defineBinding('model', class ModelBinding implements Binding {
 			this.unwatch()
 		}
 
-		// There is a problem here, we do not support destroy parts and templates and bindings as a tree,
-		// So when the `:model` was included in a `if` part, it can't be unwatch after relatated element removed.
+		// There is a problem here:
+		// When the `:model` was included in a `if` part, it can't be unwatch after relatated element removed.
 		// `:model` is convient but eval, isn't it?
-		this.unwatch = (this.context as Component).watch(this.modelName as any, this.setModelValue.bind(this))
+		this.unwatch = this.context!.watchImmediately(this.getModelValueFromContext.bind(this), this.setModelValueToTarget.bind(this))
 	}
 
-	writeModelValueToContext(value: unknown) {
-		(this.context as any)[this.modelName] = value
+	getModelValueFromContext(): unknown {
+		let properties = this.modelName.split('.')
+		let value: unknown = this.context
+
+		for (let property of properties) {
+			if (value && typeof value === 'object') {
+				value = (value as any)[property]
+			}
+			else {
+				value = undefined
+				break
+			}
+		}
+
+		return value
+	}
+
+	setModelValueToContext(value: unknown) {
+		let properties = this.modelName.split('.')
+		let object: object = this.context
+
+		for (let i = 0; i < properties.length; i++) {
+			let property = properties[i]
+
+			if (object && typeof object === 'object') {
+				if (i < properties.length - 1) {
+					object = (object as any)[property]
+				}
+				else {
+					(object as any)[property] = value
+				}
+			}
+			else {
+				break
+			}
+		}
 	}
 
 	onEventInputOrChange(_e: Event) {
@@ -153,22 +189,18 @@ defineBinding('model', class ModelBinding implements Binding {
 			}
 		}
 		
-		this.writeModelValueToContext(value)
+		this.setModelValueToContext(value)
 	}
 
-	setModelValue(value: unknown) {
+	setModelValueToTarget(value: unknown) {
 		if (this.isComModel) {
-			this.setComValue(value)
+			let com = this.com as any
+			if (com[this.property] !== value) {
+				com[this.property] = value
+			}
 		}
 		else {
 			this.setInputValue(value)
-		}
-	}
-
-	setComValue(value: unknown) {
-		let com = this.com as any
-		if (com && com[this.property] !== value) {
-			com[this.property] = value
 		}
 	}
 
