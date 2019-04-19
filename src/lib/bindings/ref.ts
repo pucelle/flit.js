@@ -1,5 +1,5 @@
 import {Binding, defineBinding} from './define'
-import {Component} from '../component'
+import {Component, Context} from '../component'
 
 
 /**
@@ -11,7 +11,11 @@ defineBinding('ref', class RefBinding implements Binding {
 	private el: Element
 	private context: Component
 
-	constructor(el: Element, value: unknown, _modifiers: string[] | null, context: Component) {
+	constructor(el: Element, value: unknown, _modifiers: string[] | null, context: Context) {
+		if (!context) {
+			throw new Error(`A context must be provided when registering ":ref"`)
+		}
+
 		this.el = el
 		this.context = context
 		this.update(value)

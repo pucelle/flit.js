@@ -1,5 +1,5 @@
 import {Binding, defineBinding} from './define'
-import {Component, getComponentAtElement, onComponentCreatedAt} from '../component'
+import {Component, getComponentAtElement, onComponentCreatedAt, Context} from '../component'
 import {on} from '../dom-event'
 
 
@@ -11,7 +11,7 @@ defineBinding('model', class ModelBinding implements Binding {
 
 	private el: HTMLElement
 	private modifiers: string[] | null
-	private context: Component
+	private context: Context
 	private isComModel: boolean
 	private isBooleanValue: boolean = false
 	private isMultiSelect: boolean = false
@@ -22,7 +22,7 @@ defineBinding('model', class ModelBinding implements Binding {
 	private com: Component | undefined
 	private unwatch: (() => void) | null = null
 
-	constructor(el: Element, value: unknown, modifiers: string[] | null, context: Component) {
+	constructor(el: Element, value: unknown, modifiers: string[] | null, context: Context) {
 		if (typeof value !== 'string') {
 			throw new Error('The value of ":model" must be string type')
 		}
@@ -47,6 +47,10 @@ defineBinding('model', class ModelBinding implements Binding {
 		if (this.isComModel) {
 			this.property = 'value' // or checked
 			this.eventName = 'change'
+
+			if (!context) {
+				throw new Error(`A context must be provided when registering ":model={value}" for component`)
+			}
 		}
 		else {
 			let isFormField = ['input', 'select', 'textarea'].includes(el.localName)
@@ -123,7 +127,7 @@ defineBinding('model', class ModelBinding implements Binding {
 		// There is a problem here, we do not support destroy parts and templates and bindings as a tree,
 		// So when the `:model` was included in a `if` part, it can't be unwatch after relatated element removed.
 		// `:model` is convient but eval, isn't it?
-		this.unwatch = this.context.watch(this.modelName as any, this.setModelValue.bind(this))
+		this.unwatch = (this.context as Component).watch(this.modelName as any, this.setModelValue.bind(this))
 	}
 
 	writeModelValueToContext(value: unknown) {

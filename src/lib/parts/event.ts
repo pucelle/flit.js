@@ -14,19 +14,20 @@ export class EventPart implements Part {
 	private el: Element
 	private name: string
 	private handler!: Function
-	private context: NonNullable<Context>
+	private context: Context
 	private isComEvent: boolean
 	private isUpdated: boolean = false
 
 	constructor(el: Element, name: string, handler: Function, context: Context) {
-		if (!context) {
-			throw new Error(`A context must be provided when registering event "${name}"`)
-		}
-
 		this.el = el
 		this.name = name[0] === '@' ? name.slice(1) : name
 		this.context = context
 		this.isComEvent = el.localName.includes('-') && name[0] === '@'
+
+		if (this.isComEvent && !context) {
+			throw new Error(`A context must be provided when registering event "${name}"`)
+		}
+
 		this.setHandler(handler)
 	}
 
@@ -38,7 +39,7 @@ export class EventPart implements Part {
 			let com = getComponentAtElement(this.el as HTMLElement)
 			if (com) {
 				if (oldHandler) {
-					com.off(this.name, oldHandler, this.context)
+					com.off(this.name, oldHandler, this.context as Component)
 				}
 				this.setComHandler(com)
 			}
@@ -48,15 +49,15 @@ export class EventPart implements Part {
 		}
 		else {
 			if (oldHandler) {
-				off(this.el, this.name, oldHandler as (e: Event) => void, this.context)
+				off(this.el, this.name, oldHandler as (e: Event) => void, this.context as Component)
 			}
 
-			on(this.el, this.name, newHandler as (e: Event) => void, this.context)
+			on(this.el, this.name, newHandler as (e: Event) => void, this.context as Component)
 		}
 	}
 
 	setComHandler(com: Component) {
-		com.on(this.name, this.handler, this.context)
+		com.on(this.name, this.handler, this.context as Component)
 	}
 
 	update(handler: Function) {

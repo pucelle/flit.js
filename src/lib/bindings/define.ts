@@ -1,8 +1,8 @@
-import {Component} from '../component'
+import {Context} from '../component'
 
 
 interface BindingConstructor {
-	new(el: Element, value: unknown, modifiers: string[] | null, context: Component): Binding
+	new(el: Element, value: unknown, modifiers: string[] | null, context: Context): Binding
 }
 
 export interface Binding {

@@ -21,14 +21,14 @@ export class BindingPart implements MayStringValuePart {
 
 		let BindedClass = getDefinedBinding(bindingName)
 		if (BindedClass) {
-			this.binding = new BindedClass(el, value, bindingModifiers, context as any)
+			this.binding = new BindedClass(el, value, bindingModifiers, context)
 		}
 		else {
 			// `:property` eauqls `:prop.property`
 			BindedClass = getDefinedBinding('prop')!
 			bindingModifiers = bindingModifiers || []
 			bindingModifiers.unshift(bindingName)
-			this.binding = new BindedClass(el, value, bindingModifiers, context as any)
+			this.binding = new BindedClass(el, value, bindingModifiers, context)
 		}
 	}
 
