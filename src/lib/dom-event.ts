@@ -1,3 +1,5 @@
+type EventTarget = Node | Window
+
 type EventHandler = (e: Event) => void
 
 interface EventListener {
@@ -149,7 +151,7 @@ function validateModifiers(rawName: string, name: string, modifiers: string[]): 
 	return true
 }
 
-const ElementEventMap: WeakMap<Node, {[key: string]: EventListener[]}> = new WeakMap()
+const ElementEventMap: WeakMap<EventTarget, {[key: string]: EventListener[]}> = new WeakMap()
 
 
 /**
@@ -159,7 +161,7 @@ const ElementEventMap: WeakMap<Node, {[key: string]: EventListener[]}> = new Wea
  * @param handler The event handler.
  * @param scope The event context used to call handler. You can remove it easily by specify the same scope.
  */
-export function on(el: Node, name: string, handler:　EventHandler, scope?: object) {
+export function on(el: EventTarget, name: string, handler:　EventHandler, scope?: object) {
 	bindEvent(false, el, name, handler, scope)
 }
 
@@ -171,12 +173,12 @@ export function on(el: Node, name: string, handler:　EventHandler, scope?: obje
  * @param handler The event handler.
  * @param scope The event context used to call handler. You can remove it easily by specify the same scope.
  */
-export function once(el: Node, name: string, handler:　EventHandler, scope?: object) {
+export function once(el: EventTarget, name: string, handler:　EventHandler, scope?: object) {
 	bindEvent(true, el, name, handler, scope)
 }
 
 
-function bindEvent(once: boolean, el: Node, rawName: string, handler:　EventHandler, scope?: object) {
+function bindEvent(once: boolean, el: EventTarget, rawName: string, handler:　EventHandler, scope?: object) {
 	let name = rawName
 	let modifiers: string[] | null = null
 
@@ -216,7 +218,7 @@ function bindEvent(once: boolean, el: Node, rawName: string, handler:　EventHan
  * @param handler The event handler.
  * @param scope The event context used to call handler. If specified, it must be match too.
  */
-export function off(el: Node, name: string, handler: EventHandler, scope?: object) {
+export function off(el: EventTarget, name: string, handler: EventHandler, scope?: object) {
 	let eventMap = ElementEventMap.get(el)
 	if (!eventMap) {
 		return
@@ -232,8 +234,12 @@ export function off(el: Node, name: string, handler: EventHandler, scope?: objec
 
 	for (let i = events.length - 1; i >= 0; i--) {
 		let event = events[i]
+		
+		let isHandlerMatch = !handler
+			|| event.handler === handler
+			|| event.handler.hasOwnProperty('__original') && (event.handler as any).__original === handler
 
-		if ((!handler || event.handler === handler) && (!scope || event.scope === scope)) {
+		if (isHandlerMatch && (!scope || event.scope === scope)) {
 			el.removeEventListener(name, event.wrappedHandler, event.capture)
 			events.splice(i, 1)
 		}
@@ -241,7 +247,7 @@ export function off(el: Node, name: string, handler: EventHandler, scope?: objec
 }
 
 
-function wrapHandler(once: boolean, modifiers: string[] | null, el: Node, name: string, handler: EventHandler, scope?: object): EventHandler {
+function wrapHandler(once: boolean, modifiers: string[] | null, el: EventTarget, name: string, handler: EventHandler, scope?: object): EventHandler {
 	let filterModifiers = modifiers ? modifiers.filter(m => !GLOBAL_EVENT_MODIFIERS.includes(m)) : null
 
 	return function wrappedHandler(e: Event) {
