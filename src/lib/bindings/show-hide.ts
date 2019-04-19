@@ -1,15 +1,22 @@
 import {Binding, defineBinding} from './define'
-import {Transition, TransitionOptions, ShortTransitionOptions, formatShortTransitionOptions} from '../transition'
+import {Transition, TransitionOptions} from '../transition'
 
+
+interface ShowHideBindingOptions extends TransitionOptions {
+	when: boolean
+	runAtStart?: boolean
+	transition?: TransitionOptions
+}
 
 /**
  * `:show="boolean"`
  * `:show="{when: boolean, transition: TransitionOptions}"`
  */
-defineBinding('show', class ShowBinding implements Binding {
+class ShowBinding implements Binding {
 
 	private el: HTMLElement
 	private value: boolean | undefined = undefined
+	private runAtStart: boolean = false
 	private transitionOptions: TransitionOptions | null = null
 
 	constructor(el: Element, value: unknown) {
@@ -17,20 +24,22 @@ defineBinding('show', class ShowBinding implements Binding {
 		this.update(value as any)
 	}
 
-	update(value: boolean | {when: boolean, transition: ShortTransitionOptions}) {
+	update(value: boolean | ShowHideBindingOptions) {
 		let newValue: boolean
 
 		if (value && typeof value === 'object') {
 			newValue = value.when
+			this.runAtStart = !!value.runAtStart
 			this.initTransitionOptions(value.transition)
 		}
 		else {
 			newValue = value
+			this.initTransitionOptions(undefined)
 		}
 
 		if (newValue !== this.value) {
-			// Not play transition for the first time
-			if (this.value === undefined || !this.transitionOptions) {
+			// Not play transition for the first time by default
+			if (this.value === undefined && !this.runAtStart || !this.transitionOptions) {
 				if (newValue) {
 					this.el.hidden = false
 				}
@@ -58,12 +67,33 @@ defineBinding('show', class ShowBinding implements Binding {
 		}
 	}
 
-	private initTransitionOptions(transitionOptions: ShortTransitionOptions | undefined) {
+	private initTransitionOptions(transitionOptions: TransitionOptions | undefined) {
 		if (transitionOptions) {
-			this.transitionOptions = formatShortTransitionOptions(transitionOptions)
+			this.transitionOptions = transitionOptions
 		}
 		else {
 			this.transitionOptions = null
 		}
+	}
+}
+
+defineBinding('show', ShowBinding)
+
+
+/**
+ * `:hide="boolean"`
+ * `:hide="{when: boolean, transition: TransitionOptions}"`
+ */
+defineBinding('hide', class HideBinding extends ShowBinding {
+
+	update(value: boolean | ShowHideBindingOptions) {
+		if (typeof value === 'object') {
+			value.when = !value.when
+		}
+		else {
+			value = !value
+		}
+
+		super.update(value)
 	}
 })
