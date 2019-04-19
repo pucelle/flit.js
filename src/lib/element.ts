@@ -105,10 +105,8 @@ function disconnectElement(el: HTMLElement, Com: ComponentConstructor) {
 
 
 /**
- * Defines a component with specified name.
- * Defines a custom element, but just used to start the defined component
+ * Returns a define decorator to defined followed class as a component with specified name.
  * @param name The component name.
- * @param Component The Component class definition.
  */
 export function define(name: string): (Com: ComponentConstructor) => void
 

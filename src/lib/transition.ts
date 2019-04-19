@@ -5,7 +5,7 @@ export type TransitionEasing = keyof typeof CUBIC_BEZIER_EASINGS | 'linear'
 export type TransitionProperty = keyof typeof CSS_PROPERTIES
 export type TransitionFrame = {[key in TransitionProperty]?: string}
 export type TransitionPromise = Promise<boolean>
-type TransitionCallback = (finish: boolean) => void
+export type TransitionCallback = (finish: boolean) => void
 export type TransitionTypedCallback = (type: 'enter' | 'leave', finish: boolean) => void
 export type ShortTransitionOptions = string | TransitionProperty[] | TransitionOptions
 
@@ -23,11 +23,11 @@ export interface JSTransitionOptions {
 	easing: TransitionEasing
 }
 
-interface JSTransitionConstructor {
+export interface JSTransitionConstructor {
 	new (el: Element, options: JSTransitionOptions): JSTransition
 }
 
-interface JSTransition {
+export interface JSTransition {
 	enter?: TransitionPromise
 	leave?: TransitionPromise
 	clean: () => void
