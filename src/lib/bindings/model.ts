@@ -1,5 +1,5 @@
 import {Binding, defineBinding} from './define'
-import {Component, getComponentAtElement, onComponentCreatedAt, Context} from '../component'
+import {Component, getComponent, onComponentCreatedAt, Context} from '../component'
 import {on} from '../dom-event'
 
 
@@ -9,6 +9,7 @@ const ALLOWED_MODIFIERS = ['lazy', 'number']
 /** 
  * Handle `:model="name"`, it binds and auto update a specified property name in current context
  * with the `<input>` or `<com>` which has `value` or `checked` property, and `change` event.
+ * Supports `:model="a.b"`.
  * Model bind should only handle fixed model name.
  */
 defineBinding('model', class ModelBinding implements Binding {
@@ -91,7 +92,7 @@ defineBinding('model', class ModelBinding implements Binding {
 		this.modelName = modelName
 
 		if (this.isComModel) {
-			let com = getComponentAtElement(this.el)
+			let com = getComponent(this.el)
 			if (com) {
 				this.bindCom(com)
 			}

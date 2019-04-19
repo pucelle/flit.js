@@ -89,7 +89,7 @@ const elementComponentMap: WeakMap<HTMLElement, Component> = new WeakMap()
  * Get component instance from root element.
  * @param el The element to get component instance at.
  */
-export function getComponentAtElement(el: HTMLElement): Component | undefined {
+export function getComponent(el: HTMLElement): Component | undefined {
 	return elementComponentMap.get(el)
 }
 
@@ -97,7 +97,7 @@ export function getComponentAtElement(el: HTMLElement): Component | undefined {
  * Get component instance from root element asynchronously.
  * @param el The element to get component instance at.
  */
-export function getComponentAtElementAsync(el: HTMLElement): Promise<Component | undefined> {
+export function getComponentAsync(el: HTMLElement): Promise<Component | undefined> {
 	if (el.localName.includes('-')) {
 		let com = elementComponentMap.get(el)
 		if (com) {
@@ -147,9 +147,6 @@ export function updateComponents() {
 /** The abstract component class, you can instantiate it from just creating an element and insert in to document. */
 export abstract class Component<Events = any> extends Emitter<Events> {
 
-	static get = getComponentAtElement
-	static getAsync = getComponentAtElementAsync
-
 	/**
 	 * The static `style` property contains style text used as styles for current component.
 	 * Styles in it will be partialy scoped, so we have benefits of scoped styles,
@@ -197,15 +194,15 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 	constructor(el: HTMLElement) {
 		super()
 		this.el = el
-		return observeComTarget(this) as Component
+		return observeComTarget(this)
 	}
 
-	__emitFirstConnected() {
-		this.__prepareSlotElements()
-		
+	__emitCreated() {
 		elementComponentMap.set(this.el, this)
 		emitComponentCreatedCallbacks(this.el, this)
 		this.onCreated()
+
+		this.__prepareSlotElements()
 
 		// A typescript issue here:
 		// We accept an `Events` and union it with type `ComponentEvents`,
@@ -266,6 +263,7 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 	}
 
 	__emitConnected() {
+		// Not do following things when firstly connected.
 		if (!this.__connected) {
 			this.__connected = true
 			
@@ -349,13 +347,16 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 
 	/**
 	 * Called when component instance was just created and all properties assigned.
-	 * Slots and child nodes are prepared right now.
+	 * Original child nodes are prepared, but slots are not prepared right now.
+	 * You may changed some data or visit parent node or `this.el` here.
 	 */
 	onCreated() {}
 
 	/**
-	 * Called after all the data updated for the first time. 
+	 * Called after all the data updated for the first time.
+	 * Child nodes are rendered, slots are prepared, but child components are not.
 	 * Will keep updating other components, so please don't check computed style on elements.
+	 * You can visit child nodes here.
 	 */
 	onReady() {}
 
@@ -372,12 +373,16 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 	 */
 	onDisconnected() {}
 
+	// public for `renderComponent`.
+	__addWatcher(watcher: Watcher) {
+		this.__watchers = this.__watchers || new Set()
+		this.__watchers.add(watcher)
+	}
+
 	/** Watch return value of function and trigger callback with this value as argument after it changed. */
 	watch<T>(fn: () => T, callback: (value: T) => void): () => void {
 		let watcher = new Watcher(fn, callback)
-		
-		this.__watchers = this.__watchers || new Set()
-		this.__watchers.add(watcher)
+		this.__addWatcher(watcher)
 
 		return () => {
 			watcher.disconnect()
@@ -388,10 +393,8 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 	/** Watch return value of function and trigger callback with this value as argument later and after it changed.. */
 	watchImmediately<T>(fn: () => T, callback: (value: T) => void): () => void {
 		let watcher = new Watcher(fn, callback)
-		this.__watchers = this.__watchers || new Set()
-		this.__watchers.add(watcher)
-
 		callback(watcher.value)
+		this.__addWatcher(watcher)
 
 		return () => {
 			watcher.disconnect()
@@ -407,9 +410,7 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 		}
 
 		let watcher = new Watcher(fn, wrappedCallback)
-
-		this.__watchers = this.__watchers || new Set()
-		this.__watchers.add(watcher)
+		this.__addWatcher(watcher)
 
 		let disconnect = () => {
 			watcher.disconnect()
@@ -437,8 +438,7 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 			disconnect = () => {}
 		}
 		else {
-			this.__watchers = this.__watchers || new Set()
-			this.__watchers.add(watcher)
+			this.__addWatcher(watcher)
 
 			disconnect = () => {
 				watcher.disconnect()

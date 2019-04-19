@@ -185,8 +185,8 @@ export class Transition {
 					this.options.callback('enter', finish)
 				}
 
-				resolve(finish)
 				elementTransitionMap.delete(this.el)
+				resolve(finish)
 			}
 
 			if (this.options.properties) {
@@ -220,8 +220,8 @@ export class Transition {
 					this.options.callback('leave', finish)
 				}
 
-				resolve(finish)
 				elementTransitionMap.delete(this.el)
+				resolve(finish)
 			}
 
 			el.style.pointerEvents = 'none'

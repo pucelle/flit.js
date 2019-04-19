@@ -1,5 +1,5 @@
 import {Binding, defineBinding} from './define'
-import {Component, getComponentAtElement, onComponentCreatedAt} from '../component'
+import {Component, getComponent, onComponentCreatedAt} from '../component'
 
 
 /** Binding properties on component. */
@@ -13,7 +13,7 @@ defineBinding('prop', class PropBinding implements Binding {
 			throw new Error(`":props" can't set on "<${el.localName}>", it only works on custom element`)
 		}
 
-		let com = getComponentAtElement(el as HTMLElement)
+		let com = getComponent(el as HTMLElement)
 		if (com) {
 			this.com = com
 		}

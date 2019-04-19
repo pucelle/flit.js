@@ -2,12 +2,12 @@ import {mayAddComDependency, notifyComPropertySet, isUpdating} from './dependenc
 import {proxyMap, Com, targetMap, observeTarget} from './shared'
 
 
-export function observeComTarget(com: Com): Com {
+export function observeComTarget<T extends Com>(com: T): T {
 	let proxy = new Proxy(com, proxyHandler)
 	proxyMap.set(com, proxy)
 	proxyMap.set(proxy, proxy)
 	targetMap.set(proxy, com)
-	return proxy as Com
+	return proxy as T
 }
 
 

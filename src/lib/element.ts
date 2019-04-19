@@ -1,4 +1,4 @@
-import {ComponentConstructor, defineComponent, getComponentAtElement, Component} from './component'
+import {ComponentConstructor, defineComponent, getComponent, Component} from './component'
 import {ensureComponentStyle, mayRemoveStyle, plusComponentStyleUsedCount} from './style'
 
 
@@ -77,10 +77,11 @@ function update() {
 	}
 }
 
-function connectElement(el: HTMLElement, Com: ComponentConstructor) {
+/** Export for `renderComponent`, which will create component manually. */
+export function connectElement(el: HTMLElement, Com: ComponentConstructor) {
 	ensureComponentStyle(Com, el.localName)
 				
-	let com = getComponentAtElement(el)
+	let com = getComponent(el)
 	if (com) {
 		com.__emitConnected()
 	}
@@ -89,13 +90,13 @@ function connectElement(el: HTMLElement, Com: ComponentConstructor) {
 		if (Com.properties && el.attributes.length > 0) {
 			assignProperties(com, Com.properties)
 		}
-		com.__emitFirstConnected()
+		com.__emitCreated()
 		com.__emitConnected()
 	}
 }
 
 function disconnectElement(el: HTMLElement, Com: ComponentConstructor) {
-	let com = getComponentAtElement(el)
+	let com = getComponent(el)
 	if (com) {
 		com.__emitDisconnected()
 	}

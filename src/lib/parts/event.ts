@@ -1,5 +1,5 @@
 import {Part, PartType} from "./shared"
-import {Component, getComponentAtElement, onComponentCreatedAt, Context} from '../component'
+import {Component, getComponent, onComponentCreatedAt, Context} from '../component'
 import {on, off} from "../dom-event"
 
 
@@ -36,7 +36,7 @@ export class EventPart implements Part {
 		this.handler = newHandler
 
 		if (this.isComEvent) {
-			let com = getComponentAtElement(this.el as HTMLElement)
+			let com = getComponent(this.el as HTMLElement)
 			if (com) {
 				if (oldHandler) {
 					com.off(this.name, oldHandler, this.context as Component)
