@@ -108,13 +108,23 @@ function renderAndFollowMayInContext(context: Context, renderFn: () => TemplateR
 
 
 /**
- * Append fragment into target, and returns the first element of fragment.
+ * Append fragment or element into target element or selector. Returns the first element of fragment.
  * It's a helper function to use like `appendTo(render(...), document.body)`.
  * @param fragment The fragment to append.
  * @param target The target element to append to.
  */
-export function appendTo(fragment: DocumentFragment, target: Element): Element {
-	let firstElement = fragment.firstElementChild as Element
-	target.append(fragment)
+export function appendTo(el: DocumentFragment | Element, target: Element | string): Element | null {
+	let firstElement = el.firstElementChild as Element
+
+	if (typeof target === 'string') {
+		let targetEl = document.querySelector(target)
+		if (targetEl) {
+			targetEl.append(el)
+		}
+	}
+	else if (target) {
+		target.append(el)
+	}
+
 	return firstElement
 }
