@@ -1,13 +1,13 @@
 import {Binding, defineBinding} from './define'
-import {Component, getComponentAtElement, cachePropAtElement} from '../component'
+import {Component, getComponentAtElement, onComponentCreatedAt} from '../component'
 
 
 /** Binding properties on component. */
 defineBinding('prop', class PropBinding implements Binding {
 
-	private el: HTMLElement
 	private property: string
 	private com: Component | undefined
+	private value: unknown = undefined
 
 	constructor(el: Element, value: unknown, modifiers: string[] | null) {
 		if (!modifiers) {
@@ -26,18 +26,35 @@ defineBinding('prop', class PropBinding implements Binding {
 			throw new Error(`":prop.${modifiers[0]}" can't set on "<${el.localName}>", it only works on custom element`)
 		}
 
-		this.el = el as HTMLElement
 		this.property = modifiers[0]
-		this.com = getComponentAtElement(el as HTMLElement)
+
+		let com = getComponentAtElement(el as HTMLElement)
+		if (com) {
+			this.com = com
+		}
+		else {
+			onComponentCreatedAt(el as HTMLElement, this.onComCreated.bind(this))
+		}
+
 		this.update(value)
+	}
+
+	onComCreated(com: Component) {
+		this.com = com
+		this.updateValue(this.value)
+		this.value = undefined	
 	}
 
 	update(value: unknown) {
 		if (this.com) {
-			(this.com as any)[this.property] = value
+			this.updateValue(value)
 		}
 		else {
-			cachePropAtElement(this.el, this.property, value)
+			this.value = value
 		}
+	}
+
+	updateValue(value: unknown) {
+		(this.com as any)[this.property] = value
 	}
 })

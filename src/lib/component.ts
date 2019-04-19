@@ -115,36 +115,6 @@ export function getComponentAtElementAsync(el: HTMLElement): Promise<Component |
 }
 
 
-/** To cache properties from `:prop` or `:props` which will be assigned to component in it's constructor. */
-const componentPropertyMap: WeakMap<HTMLElement, {[key: string]: unknown}> = new WeakMap()
-
-export function cachePropAtElement(el: HTMLElement, prop: string, value: unknown) {
-	let o = componentPropertyMap.get(el)
-	if (!o) {
-		o = new Map()
-		componentPropertyMap.set(el, o)
-	}
-	o[prop] = value
-}
-
-export function cachePropsAtElement(el: HTMLElement, props: {[key: string]: unknown}) {
-	let o = componentPropertyMap.get(el)
-	if (!o) {
-		o = new Map()
-		componentPropertyMap.set(el, o)
-	}
-	Object.assign(o, props)
-}
-
-function assignCachedProps(el: HTMLElement, com: Component) {
-	let o = componentPropertyMap.get(el)
-	if (o) {
-		Object.assign(com, o)
-		componentPropertyMap.delete(el)
-	}
-}
-
-
 /** To mark all the connected components */
 const componentSet: Set<Component> = new Set()
 
@@ -232,11 +202,7 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 
 	__emitFirstConnected() {
 		this.__prepareSlotElements()
-
-		//Must assign here, or they will be covered by assignments in child class constructor.
-		//Benchmark: https://jsperf.com/where-to-initialize-properties
-		assignCachedProps(this.el, this)
-
+		
 		elementComponentMap.set(this.el, this)
 		emitComponentCreatedCallbacks(this.el, this)
 		this.onCreated()
@@ -261,7 +227,7 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 			// We only check `[slot]` in the children, or:
 			// <com1><com2><el slot="for com2"></com2></com1>
 			// it will cause `slot` for `com2` was captured by `com1`.
-			for (let el of this.el.children) {
+			for (let el of [...this.el.children]) {
 				let slotName = el.getAttribute('slot')!
 				if (slotName) {
 					let els = this.slots[slotName]
