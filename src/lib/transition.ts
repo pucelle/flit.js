@@ -1,4 +1,5 @@
 import {once, off} from './dom-event'
+import {renderComplete} from './queue';
 
 
 export type TransitionEasing = keyof typeof CUBIC_BEZIER_EASINGS | 'linear'
@@ -15,7 +16,7 @@ export interface TransitionOptions {
 	duration?: number
 	easing?: TransitionEasing
 	direction?: 'enter' | 'leave' | 'both'
-	callback?: TransitionTypedCallback
+	onend?: TransitionTypedCallback
 }
 
 export interface JSTransitionOptions {
@@ -182,8 +183,8 @@ export class Transition {
 			}
 
 			let onEntered = (finish: boolean) => {
-				if (this.options.callback) {
-					this.options.callback('enter', finish)
+				if (this.options.onend) {
+					this.options.onend('enter', finish)
 				}
 
 				elementTransitionMap.delete(this.el)
@@ -218,8 +219,8 @@ export class Transition {
 			let onLeaved = (finish: boolean) => {
 				el.style.pointerEvents = ''
 
-				if (this.options.callback) {
-					this.options.callback('leave', finish)
+				if (this.options.onend) {
+					this.options.onend('leave', finish)
 				}
 
 				elementTransitionMap.delete(this.el)
@@ -301,7 +302,7 @@ export class Transition {
 		})
 	}
 
-	private classEnterOrLeave(type: string, callback: TransitionCallback) {
+	private async classEnterOrLeave(type: string, callback: TransitionCallback) {
 		let className = this.options.name + '-' + type
 		let duration = this.options.duration
 		let easing = this.options.easing
@@ -318,6 +319,10 @@ export class Transition {
 
 		el.style.transition = 'none'
 		el.classList.add(className, className + '-from')
+		
+		// Here to makesure rendering complete for current frame,
+		// Then the next `requestAnimationFrame` will be called for a new frame.
+		await renderComplete()
 
 		requestAnimationFrame(() => {
 			if (canceled) {
