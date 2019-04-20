@@ -184,7 +184,7 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 
 	private __restNodes: Node[] | null = null
 	private __rootPart: NodePart | null = null
-	private __firstUpdated: boolean = false
+	private __updated: boolean = false
 	private __watchers: Set<Watcher> | null = null
 	private __connected: boolean = true
 
@@ -204,6 +204,8 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 		emitComponentCreatedCallbacks(this.el, this)
 		this.onCreated()
 
+		// Must parse here, the slot elements may not in use now,
+		// Parse them here will remove slot element so they will not be connected.
 		this.__prepareSlotElements()
 
 		// A typescript issue here:
@@ -241,11 +243,6 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 				}
 			}
 		}
-
-		// `restNodes` are keeped, so if `render()` returns null, nothing need to do.
-		if (this.el.childNodes.length > 0) {
-			this.__restNodes = [...this.el.childNodes]
-		}
 	}
 
 	private __fillSlots() {
@@ -279,7 +276,11 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 			restoreAsDependency(targetMap.get(this)!)
 		}
 
-		this.__updateImmediately()
+		// Why `update` but not `__updateImmediately`?
+		// After component created, it may delete element in `onCreated`
+		// Then in following micro task, it's `__connected` becomes false,
+		// and truly not been updated finally.
+		this.update()
 		componentSet.add(this)
 	}
 
@@ -314,9 +315,16 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 		if (this.__rootPart) {
 			this.__rootPart.update(result)
 		}
+
 		// Not overwrite `render()` to keep it returns `null` when you to do nothing in child nodes.
 		// But note that if it should not return `null` when updating, and you may need `<slot />` instead.
 		else if (result !== null) {
+
+			// It's very import to cache rest nodes here, because child nodes may be removed in their `onCreated`.
+			// If we cache them eraly before they were removed, will restore them in filling `<slot />`.
+			if (this.el.childNodes.length > 0) {
+				this.__restNodes = [...this.el.childNodes]
+			}
 			this.__rootPart = new NodePart(new AnchorNode(this.el, AnchorNodeType.Root), result, this)
 		}
 
@@ -325,10 +333,10 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 			this.__hasSlotsToBeFilled = false
 		}
 
-		let firstUpdated = this.__firstUpdated
-		if (!firstUpdated) {
+		let isFirstlyUpdate = !this.__updated
+		if (isFirstlyUpdate) {
 			this.onReady()
-			this.__firstUpdated = true
+			this.__updated = true
 		}
 		
 		this.onUpdated()
@@ -350,7 +358,7 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 	/**
 	 * Called when component instance was just created and all properties assigned.
 	 * Original child nodes are prepared, but slots are not prepared right now.
-	 * You may changed some data or visit parent node or `this.el` here.
+	 * You may changed some data or visit parent nodes or `this.el` and operate here.
 	 */
 	onCreated() {}
 
