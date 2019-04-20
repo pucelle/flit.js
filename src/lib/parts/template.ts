@@ -68,7 +68,7 @@ export class Template {
 
 				switch (place.type) {
 					case PartType.Node:
-						part = new NodePart(new AnchorNode(node, AnchorNodeType.After), value, this.context)
+						part = new NodePart(new AnchorNode(node, AnchorNodeType.Next), value, this.context)
 						break
 
 					case PartType.MayAttr:

@@ -21,7 +21,7 @@ export interface MayStringValuePart extends Part {
 
 
 export enum AnchorNodeType {
-	After,
+	Next,
 	Root,
 	Parent
 }
@@ -38,19 +38,19 @@ export class AnchorNode {
 	constructor(el: Node, type: AnchorNodeType ) {
 		this.el = el
 		this.type = type
+
+		if (this.type === AnchorNodeType.Root) {
+			while (el.firstChild) {
+				el.firstChild.remove()
+			}
+		}
 	}
 
 	insert(node: Node) {
-		if (this.type === AnchorNodeType.After) {
+		if (this.type === AnchorNodeType.Next) {
 			(this.el as ChildNode).before(node)
 		}
 		else {
-			if (this.type === AnchorNodeType.Root) {
-				while (this.el.firstChild) {
-					this.el.firstChild.remove()
-				}
-			}
-	
 			(this.el as HTMLElement).append(node)
 		}
 	}
