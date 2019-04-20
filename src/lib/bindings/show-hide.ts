@@ -44,7 +44,7 @@ class ShowBinding implements Binding {
 
 		if (newValue !== this.value) {
 			// Not play transition for the first time by default
-			if (this.transitionOptions && (this.value !== undefined || (newValue && this.enterAtStart || !newValue && !this.leaveAtStart))) {
+			if (this.transitionOptions && (this.value !== undefined || (newValue && this.enterAtStart || !newValue && this.leaveAtStart))) {
 				if (newValue) {
 					this.el.hidden = false
 					new Transition(this.el, this.transitionOptions).enter()
