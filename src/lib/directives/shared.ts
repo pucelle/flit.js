@@ -4,47 +4,43 @@ import {Context} from '../component';
 
 export type DirectiveTransitionOptions = DirectiveTransitionAtStartOptions | ShortTransitionOptions
 
+export type TransitionTypedCallback = (type: 'enter' | 'leave', finish: boolean) => void
+
 export interface DirectiveTransitionAtStartOptions {
 	transition: ShortTransitionOptions
 	enterAtStart?: boolean
+	onend?: TransitionTypedCallback
 }
 
 
 export class DirectiveTransition {
 	
 	context: Context
-	protected enterAtStart: boolean = false
 	protected transitionOptions: TransitionOptions | null = null
+	protected enterAtStart: boolean = false
+	protected onend: TransitionTypedCallback | null = null
 
 	constructor(context: Context) {
 		this.context = context
 	}
 
 	protected initTransitionOptions(options: DirectiveTransitionOptions | undefined) {
-		let transitionOptions: TransitionOptions | null = null
-
 		if (options && typeof options === 'object' && options.hasOwnProperty('transition')) {
 			let opt = options as DirectiveTransitionAtStartOptions
 			this.enterAtStart = !!opt.enterAtStart
-			transitionOptions = formatShortTransitionOptions(opt.transition as ShortTransitionOptions)
+			this.onend = opt.onend || null
+			this.transitionOptions = formatShortTransitionOptions(opt.transition as ShortTransitionOptions)
 		}
 		else {
 			this.enterAtStart = false
+			this.onend = null
 
 			if (options) {
-				transitionOptions = formatShortTransitionOptions(options as ShortTransitionOptions)
+				this.transitionOptions = formatShortTransitionOptions(options as ShortTransitionOptions)
 			}
 			else {
-				transitionOptions = null
+				this.transitionOptions = null
 			}
 		}
-
-		if (transitionOptions) {
-			if (transitionOptions.onend) {
-				transitionOptions.onend = transitionOptions.onend.bind(this.context)
-			}
-		}
-
-		this.transitionOptions = transitionOptions
 	}
 }

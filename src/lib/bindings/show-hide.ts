@@ -2,12 +2,14 @@ import {Binding, defineBinding} from './define'
 import {Transition, TransitionOptions} from '../transition'
 import {Context} from '../component'
 
+type TransitionTypedCallback = (type: 'enter' | 'leave', finish: boolean) => void
 
 interface ShowHideBindingOptions {
 	when: boolean
 	transition: TransitionOptions
 	enterAtStart?: boolean
 	leaveAtStart?: boolean
+	onend?: TransitionTypedCallback
 }
 
 /**
@@ -22,6 +24,7 @@ class ShowBinding implements Binding {
 	private enterAtStart: boolean = false
 	private leaveAtStart: boolean = false
 	private transitionOptions: TransitionOptions | null = null
+	private onend: TransitionTypedCallback | null = null
 
 	constructor(el: Element, value: unknown, _modifiers: any, context: Context) {
 		this.el = el as HTMLElement
@@ -36,12 +39,14 @@ class ShowBinding implements Binding {
 			newValue = value.when
 			this.enterAtStart = !!value.enterAtStart
 			this.leaveAtStart = !!value.leaveAtStart
+			this.onend = value.onend || null
 			this.initTransitionOptions(value.transition)
 		}
 		else {
 			newValue = value
 			this.enterAtStart = false
 			this.leaveAtStart = false
+			this.onend = null
 			this.initTransitionOptions(undefined)
 		}
 
@@ -50,13 +55,21 @@ class ShowBinding implements Binding {
 			if (this.transitionOptions && (this.value !== undefined || (newValue && this.enterAtStart || !newValue && this.leaveAtStart))) {
 				if (newValue) {
 					this.el.hidden = false
-					new Transition(this.el, this.transitionOptions).enter()
+					new Transition(this.el, this.transitionOptions).enter().then((finish: boolean) => {
+						if (this.onend) {
+							this.onend.call(this.context, 'enter', finish)
+						}
+					})
 				}
 				else {
 					new Transition(this.el, this.transitionOptions).leave().then((finish: boolean) => {
 						// If was stopped by a enter transition, we can't hide.
 						if (finish) {
 							this.el.hidden = true
+						}
+
+						if (this.onend) {
+							this.onend.call(this.context, 'leave', finish)
 						}
 					})
 				}
@@ -76,9 +89,6 @@ class ShowBinding implements Binding {
 
 	private initTransitionOptions(transitionOptions: TransitionOptions | undefined) {
 		if (transitionOptions) {
-			if (transitionOptions.onend) {
-				transitionOptions.onend = transitionOptions.onend.bind(this.context)
-			}
 			this.transitionOptions = transitionOptions
 		}
 		else {

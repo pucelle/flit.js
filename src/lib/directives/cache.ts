@@ -46,7 +46,11 @@ class CacheDirective extends DirectiveTransition implements Directive {
 		if (this.transitionOptions) {
 			let firstElement = template.getNodes().find(el => el.nodeType === 1) as HTMLElement | undefined
 			if (firstElement) {
-				new Transition(firstElement, this.transitionOptions).enter()
+				new Transition(firstElement, this.transitionOptions).enter().then((finish: boolean) => {
+					if (this.onend) {
+						this.onend.call(this.context, 'enter', finish)
+					}
+				})
 			}
 		}
 	}
@@ -104,6 +108,10 @@ class CacheDirective extends DirectiveTransition implements Directive {
 				new Transition(firstElement, this.transitionOptions).leave().then((finish: boolean) => {
 					if (finish) {
 						template.cacheFragment()
+					}
+
+					if (this.onend) {
+						this.onend.call(this.context, 'leave', finish)
 					}
 				})
 			}

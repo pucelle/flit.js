@@ -7,7 +7,6 @@ export type TransitionProperty = keyof typeof CSS_PROPERTIES
 export type TransitionFrame = {[key in TransitionProperty]?: string}
 export type TransitionPromise = Promise<boolean>
 export type TransitionCallback = (finish: boolean) => void
-export type TransitionTypedCallback = (type: 'enter' | 'leave', finish: boolean) => void
 export type ShortTransitionOptions = string | TransitionProperty[] | TransitionOptions
 
 export interface TransitionOptions {
@@ -16,7 +15,6 @@ export interface TransitionOptions {
 	duration?: number
 	easing?: TransitionEasing
 	direction?: 'enter' | 'leave' | 'both'
-	onend?: TransitionTypedCallback
 }
 
 export interface JSTransitionOptions {
@@ -183,10 +181,6 @@ export class Transition {
 			}
 
 			let onEntered = (finish: boolean) => {
-				if (this.options.onend) {
-					this.options.onend('enter', finish)
-				}
-
 				elementTransitionMap.delete(this.el)
 				resolve(finish)
 			}
@@ -218,11 +212,6 @@ export class Transition {
 
 			let onLeaved = (finish: boolean) => {
 				el.style.pointerEvents = ''
-
-				if (this.options.onend) {
-					this.options.onend('leave', finish)
-				}
-
 				elementTransitionMap.delete(this.el)
 				resolve(finish)
 			}
