@@ -16,6 +16,10 @@ export function observeMapOrSetTarget(ms: MapOrSet) {
 }
 
 
+// A very big issue in map and set:
+// We may add an item to a set, and then test if proxy of item in set,
+// or add proxy of item and cause it has duplicate values in set.
+// We will fix this when we indeed meet this.
 const proxyHandler = {
 
 	get(ms: MapOrSet, prop: PropertyKey): unknown {
@@ -23,7 +27,7 @@ const proxyHandler = {
 		let type = typeof value
 
 		if (!ms.hasOwnProperty(prop) && type === 'function') {
-			// Required, pass proxy to native Set or Map methods will cause error.
+			// Required, pass proxy as this to native Set or Map methods will cause error.
 			value = value.bind(ms)
 			mayAddDependency(ms)
 
