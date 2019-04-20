@@ -150,7 +150,7 @@ export class NodePart implements Part {
 				let template = new Template(results[i], this.context)
 				let fragment = template.getFragment()
 
-				this.anchorNode.before(fragment)
+				this.anchorNode.insert(fragment)
 				templates.push(template)
 			}
 		}
@@ -165,7 +165,7 @@ export class NodePart implements Part {
 			}
 			else {
 				this.textNode = document.createTextNode(text)
-				this.anchorNode.before(this.textNode)
+				this.anchorNode.insert(this.textNode)
 			}
 		}
 		else {

@@ -3,6 +3,7 @@ import {TemplateResult, Template, AnchorNode} from '../parts'
 import {text} from '../parts/template-result'
 import {Transition, TransitionOptions, ShortTransitionOptions, formatShortTransitionOptions} from '../transition'
 import {Context} from '../component'
+import {AnchorNodeType} from '../parts/shared';
 
 
 class CacheDirective implements Directive {
@@ -32,7 +33,7 @@ class CacheDirective implements Directive {
 		
 		let template = new Template(result, this.context)
 		let fragment = template.getFragment()
-		this.anchorNode.before(fragment)
+		this.anchorNode.insert(fragment)
 		this.mayPlayEnterTransition(template)
 		this.currentTemplate = template
 		this.templates.push(template)
@@ -79,7 +80,7 @@ class CacheDirective implements Directive {
 				let template = this.templates.find(t => t.canMergeWith(result as TemplateResult))
 				if (template) {
 					template.merge(result)
-					this.anchorNode.before(template.getFragment())
+					this.anchorNode.insert(template.getFragment())
 					this.mayPlayEnterTransition(template)
 					this.currentTemplate = template
 				}
@@ -97,9 +98,14 @@ class CacheDirective implements Directive {
 
 	private cacheCurrentTemplate() {
 		let template = this.currentTemplate!
+		let firstElement = template.getNodes().find(el => el.nodeType === 1) as HTMLElement | undefined
+
+		// Cached elements have been moved, reset the anchor node to current parent node.
+		if (this.anchorNode.type === AnchorNodeType.After && firstElement && firstElement.parentNode && firstElement.parentNode !== this.anchorNode.el.parentNode) {
+			this.anchorNode = new AnchorNode(firstElement.parentNode, AnchorNodeType.Parent)
+		}
 
 		if (this.transitionOptions) {
-			let firstElement = template.getNodes().find(el => el.nodeType === 1) as HTMLElement | undefined
 			if (firstElement) {
 				new Transition(firstElement, this.transitionOptions).leave().then((finish: boolean) => {
 					if (finish) {

@@ -1,4 +1,4 @@
-import {Part, PartType, MayStringValuePart, AnchorNode} from './shared'
+import {Part, PartType, MayStringValuePart, AnchorNode, AnchorNodeType} from './shared'
 import {TemplateResult} from './template-result'
 import {parse, Place} from './template-parser'
 import {NodePart} from './node'
@@ -68,7 +68,7 @@ export class Template {
 
 				switch (place.type) {
 					case PartType.Node:
-						part = new NodePart(new AnchorNode(node as Comment), value, this.context)
+						part = new NodePart(new AnchorNode(node, AnchorNodeType.After), value, this.context)
 						break
 
 					case PartType.MayAttr:

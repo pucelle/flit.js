@@ -20,9 +20,10 @@ export interface MayStringValuePart extends Part {
 }
 
 
-enum AnchorNodeType {
-	Comment,
-	Element
+export enum AnchorNodeType {
+	After,
+	Root,
+	Parent
 }
 
 /**
@@ -31,21 +32,23 @@ enum AnchorNodeType {
  */
 export class AnchorNode {
 
-	private el: HTMLElement | Comment
-	private type: AnchorNodeType
+	el: Node
+	type: AnchorNodeType
 
-	constructor(el: HTMLElement | Comment) {
+	constructor(el: Node, type: AnchorNodeType ) {
 		this.el = el
-		this.type = el.nodeType === 8 ? AnchorNodeType.Comment : AnchorNodeType.Element
+		this.type = type
 	}
 
-	before(node: Node) {
-		if (this.type === AnchorNodeType.Comment) {
-			this.el.before(node)
+	insert(node: Node) {
+		if (this.type === AnchorNodeType.After) {
+			(this.el as ChildNode).before(node)
 		}
 		else {
-			while (this.el.firstChild) {
-				this.el.firstChild.remove()
+			if (this.type === AnchorNodeType.Root) {
+				while (this.el.firstChild) {
+					this.el.firstChild.remove()
+				}
 			}
 	
 			(this.el as HTMLElement).append(node)

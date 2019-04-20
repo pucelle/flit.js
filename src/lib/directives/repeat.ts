@@ -85,7 +85,7 @@ class RepeatDirective<T> implements Directive {
 			nextNode.before(fragment)
 		}
 		else {
-			this.anchorNode.before(fragment)
+			this.anchorNode.insert(fragment)
 		}
 
 		if (firstElement && this.transitionOptions) {
@@ -241,7 +241,7 @@ class RepeatDirective<T> implements Directive {
 			nextNode.before(fragment)
 		}
 		else {
-			this.anchorNode.before(fragment)
+			this.anchorNode.insert(fragment)
 		}
 	}
 

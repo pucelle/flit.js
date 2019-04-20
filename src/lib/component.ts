@@ -5,7 +5,8 @@ import {startUpdating, endUpdating, observeComTarget, clearDependencies, clearAs
 import {Watcher} from './watcher'
 import {targetMap} from './observer/shared'
 import {restoreAsDependency} from './observer/dependency';
-import {getScopedClassNameSet} from './style';
+import {getScopedClassNameSet} from './style'
+import {AnchorNodeType} from './parts/shared'
 
 
 /** Returns the typeof T[P]. */
@@ -315,7 +316,7 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 		// Not overwrite `render()` to keep it returns `null` when you to do nothing in child nodes.
 		// But note that if it should not return `null` when updating, and you may need `<slot />` instead.
 		else if (result !== null) {
-			this.__rootPart = new NodePart(new AnchorNode(this.el), result, this)
+			this.__rootPart = new NodePart(new AnchorNode(this.el, AnchorNodeType.Root), result, this)
 		}
 
 		if (this.__hasSlotsToBeFilled) {
@@ -373,7 +374,11 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 	 */
 	onDisconnected() {}
 
-	// public for `renderComponent`.
+	/** 
+	 * Add a watcher to connected with current component.
+	 * So it will be disconnected after current component disconnected,
+	 * and connected again after current component connected.
+	 */
 	__addWatcher(watcher: Watcher) {
 		this.__watchers = this.__watchers || new Set()
 		this.__watchers.add(watcher)
