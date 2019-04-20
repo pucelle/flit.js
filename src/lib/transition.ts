@@ -174,7 +174,8 @@ export class Transition {
 		return new Promise(resolve => {
 			this.clean()
 			
-			let willPlay = this.options.direction !== 'leave'
+			let direction = this.options.direction
+			let willPlay = direction === 'enter' || direction === 'both' || direction === undefined
 			if (!willPlay) {
 				resolve(true)
 				return
@@ -205,7 +206,8 @@ export class Transition {
 		return new Promise(resolve => {
 			this.clean()
 
-			let willPlay = this.options.direction !== 'enter'
+			let direction = this.options.direction
+			let willPlay = direction === 'leave' || direction === 'both' || direction === undefined
 			if (!willPlay) {
 				resolve(true)
 				return
