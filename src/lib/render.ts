@@ -9,7 +9,7 @@ import {connectElement} from './element'
  * @param codes The html code piece or html`...` template.
  * @param context The context you used when rendering.
  */
-export function render(codes: TemplateResult | string, context: Component | null = null): DocumentFragment {
+export function render(codes: TemplateResult | string, context: Context = null): DocumentFragment {
 	let fragment: DocumentFragment
 
 	if (codes instanceof TemplateResult) {
@@ -31,9 +31,33 @@ function clearWhiteSpaces(htmlCodes: string): string {
 
 
 /**
+ * Render template like html`...` returned from `renderFn`, returns the rendered result as an document fragment and the watcher.
+ * Will watch `renderFn`, If it's dependent datas changed, will automaticaly updated and call `onUpdate` if it was specified.
+ * If `context` was specified, The connected state of the watcher that used to watch `renderFn` will synchronize with the `context`.
+ * It doesn't connect with returned watcher with context, 
+ * @param renderFn Returns template like html`...`
+ * @param context The context you used when rendering.
+ * @param onUpdate Called when update after referenced data changed. if new result can't merge with old, will pass a new fragment as argument.
+ */
+export function renderAndWatch(renderFn: () => TemplateResult, context: Context = null, onUpdate?: () => void) {
+	let {fragment, watcher} = watchRenderFn(renderFn, context, onUpdate)
+
+	if (context) {
+		context.__addWatcher(watcher)
+	}
+
+	return {
+		fragment,
+		unwatch: watcher.disconnect.bind(watcher)
+	}
+}
+
+
+/**
  * You can't get a component instance immediately by `render` before they were appended into document, but you can do this by `renderComponent`.
  * Be careful that it's element is not in document when rendering for the first time.
  * You should append `component.el` to document manually.
+ * After `el` of returned element removed, it will be disconnected.
  * @param codes The html code piece or html`...` template.
  * @param context The context you used when rendering.
  */
@@ -43,6 +67,7 @@ export function renderComponent(codes: TemplateResult | string, context?: Contex
  * Render template like html`...` returned from `renderFn` in context or null, returns the first component from the rendering result.
  * Be careful that it's element is not in document when rendering for the first time.
  * You should append `component.el` to document manually.
+ * If `context` was specified, The connected state of the watcher that used to watch `renderFn` will synchronize with the `context`.
  * Caution: The returned template from `renderFn` must can merge with the last returned.
  * @param renderFn Returns template like html`...`
  * @param context The context you used when rendering.
@@ -68,9 +93,9 @@ export function renderComponent(codesOrFn: any, context: Context = null, onUpdat
 			connectElement(firstElement, Com)
 			let com = getComponent(firstElement)!
 
-			// if (watcher) {
-			// 	com.__addWatcher(watcher)
-			// }
+			if (watcher) {
+				com.__addWatcher(watcher)
+			}
 
 			return com
 		}
