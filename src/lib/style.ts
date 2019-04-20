@@ -68,7 +68,7 @@ function getStyleContent(style: ComponentStyle, scopeName: string): string {
 	}
 
 	if (style instanceof TemplateResult) {
-		style = style.join()
+		style = style.toString()
 	}
 
 	return StyleParser.parse(style, scopeName)

@@ -40,15 +40,11 @@ export class TemplateResult {
 	}
 
 	/** Join strings and values to string. */
-	join(): string {
+	toString(): string {
 		let text = this.strings[0]
 
 		for (let i = 0; i < this.strings.length - 1; i++) {
 			let value = this.values[i]
-			if (value instanceof TemplateResult) {
-				value = value.join()
-			}
-
 			text += value === null || value === undefined ? '' : String(value)
 			text += this.strings[i + 1]
 		}
