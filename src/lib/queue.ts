@@ -49,6 +49,8 @@ export function onRenderComplete(callback: () => void) {
 /** 
  * Returns a promise which will be resolved after rendered all the components in next micro task.
  * Note that it will call callback in the next micro task if no updating tasks enqueued.
+ * Please don't call `await renderComplete()` for two times,
+ * The second one will be called in a new `requestAnimationFrame` and browser will render before it.
  */
 export function renderComplete(): Promise<void> {
 	return new Promise(resolve => {
