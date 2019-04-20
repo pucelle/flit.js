@@ -1,32 +1,32 @@
 import {defineDirective, Directive, DirectiveResult} from './define'
 import {TemplateResult, Template, AnchorNode} from '../parts'
 import {text} from '../parts/template-result'
-import {Transition, TransitionOptions, ShortTransitionOptions, formatShortTransitionOptions} from '../transition'
+import {Transition} from '../transition'
 import {Context} from '../component'
-import {AnchorNodeType} from '../parts/shared';
+import {AnchorNodeType} from '../parts/shared'
+import {DirectiveTransition, DirectiveTransitionOptions} from './shared'
 
 
-class CacheDirective implements Directive {
+class CacheDirective extends DirectiveTransition implements Directive {
 
 	private anchorNode: AnchorNode
 	private context: Context
 	private templates: Template[] = []
 	private currentTemplate: Template | null = null
-	private transitionOptions: TransitionOptions | null = null
 
-	constructor(anchorNode: AnchorNode, context: Context, result: TemplateResult | string, transitionOptions?: ShortTransitionOptions) {
+	constructor(anchorNode: AnchorNode, context: Context, result: TemplateResult | string, options?: DirectiveTransitionOptions) {
+		super()
+		this.initTransitionOptions(options)
+
 		this.anchorNode = anchorNode
 		this.context = context
 
 		if (result) {
-			this.initResult(result)
+			this.initResult(result, true)
 		}
-
-		// Doesn't play transition for the first time, but when merge.
-		this.initTransitionOptions(transitionOptions)
 	}
 
-	private initResult(result: TemplateResult | string) {
+	private initResult(result: TemplateResult | string, firstTime: boolean = false) {
 		if (typeof result === 'string') {
 			result = text`${result}`
 		}
@@ -34,7 +34,11 @@ class CacheDirective implements Directive {
 		let template = new Template(result, this.context)
 		let fragment = template.getFragment()
 		this.anchorNode.insert(fragment)
-		this.mayPlayEnterTransition(template)
+
+		if (!firstTime || this.enterAtStart) {
+			this.mayPlayEnterTransition(template)
+		}
+
 		this.currentTemplate = template
 		this.templates.push(template)
 	}
@@ -48,26 +52,17 @@ class CacheDirective implements Directive {
 		}
 	}
 
-	private initTransitionOptions(transitionOptions: ShortTransitionOptions | undefined) {
-		if (transitionOptions) {
-			this.transitionOptions = formatShortTransitionOptions(transitionOptions)
-		}
-		else {
-			this.transitionOptions = null
-		}
-	}
-
 	canMergeWith(): boolean {
 		return true
 	}
 
-	merge(result: TemplateResult | string, transitionOptions?: ShortTransitionOptions) {
+	merge(result: TemplateResult | string, options?: DirectiveTransitionOptions) {
+		this.initTransitionOptions(options)
+
 		if (result) {
 			if (typeof result === 'string') {
 				result = text`${result}`
 			}
-
-			this.initTransitionOptions(transitionOptions)
 
 			if (this.currentTemplate && this.currentTemplate.canMergeWith(result)) {
 				this.currentTemplate.merge(result)
@@ -131,4 +126,4 @@ class CacheDirective implements Directive {
 	}
 }
 
-export const cache = defineDirective(CacheDirective) as (result: TemplateResult | string, transitionOptions?: ShortTransitionOptions) => DirectiveResult
+export const cache = defineDirective(CacheDirective) as (result: TemplateResult | string, options?: DirectiveTransitionOptions) => DirectiveResult

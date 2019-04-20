@@ -2,10 +2,11 @@ import {Binding, defineBinding} from './define'
 import {Transition, TransitionOptions} from '../transition'
 
 
-interface ShowHideBindingOptions extends TransitionOptions {
+interface ShowHideBindingOptions {
 	when: boolean
-	runAtStart?: boolean
-	transition?: TransitionOptions
+	transition: TransitionOptions
+	enterAtStart?: boolean
+	leaveAtStart?: boolean
 }
 
 /**
@@ -16,7 +17,8 @@ class ShowBinding implements Binding {
 
 	private el: HTMLElement
 	private value: boolean | undefined = undefined
-	private runAtStart: boolean = false
+	private enterAtStart: boolean = false
+	private leaveAtStart: boolean = false
 	private transitionOptions: TransitionOptions | null = null
 
 	constructor(el: Element, value: unknown) {
@@ -29,37 +31,39 @@ class ShowBinding implements Binding {
 
 		if (value && typeof value === 'object') {
 			newValue = value.when
-			this.runAtStart = !!value.runAtStart
+			this.enterAtStart = !!value.enterAtStart
+			this.leaveAtStart = !!value.leaveAtStart
 			this.initTransitionOptions(value.transition)
 		}
 		else {
 			newValue = value
+			this.enterAtStart = false
+			this.leaveAtStart = false
 			this.initTransitionOptions(undefined)
 		}
 
 		if (newValue !== this.value) {
 			// Not play transition for the first time by default
-			if (this.value === undefined && !this.runAtStart || !this.transitionOptions) {
-				if (newValue) {
-					this.el.hidden = false
-				}
-				else {
-					this.el.hidden = true
-				}
-			}
-			else {
-
+			if (this.transitionOptions && (this.value !== undefined || (newValue && this.enterAtStart || !newValue && !this.leaveAtStart))) {
 				if (newValue) {
 					this.el.hidden = false
 					new Transition(this.el, this.transitionOptions).enter()
 				}
 				else {
 					new Transition(this.el, this.transitionOptions).leave().then((finish: boolean) => {
-						// If was stopped by a enter transition, we can't hide it.
+						// If was stopped by a enter transition, we can't hide.
 						if (finish) {
 							this.el.hidden = true
 						}
 					})
+				}
+			}
+			else {
+				if (newValue) {
+					this.el.hidden = false
+				}
+				else {
+					this.el.hidden = true
 				}
 			}
 

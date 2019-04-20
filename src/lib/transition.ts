@@ -319,6 +319,7 @@ export class Transition {
 
 		requestAnimationFrame(() => {
 			if (canceled) {
+				el.classList.remove(className, className + '-from')
 				return
 			}
 

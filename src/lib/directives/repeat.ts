@@ -1,27 +1,30 @@
 import {defineDirective, Directive, DirectiveResult} from './define'
 import {TemplateResult, Template, AnchorNode} from '../parts'
 import {text} from '../parts/template-result'
-import {Transition, TransitionOptions, formatShortTransitionOptions, ShortTransitionOptions} from '../transition'
+import {Transition} from '../transition'
 import {Watcher} from '../watcher'
 import {observe} from '../observer'
 import {Context} from '../component'
+import {DirectiveTransition, DirectiveTransitionOptions} from './shared'
 
 
 type TemplateFn<T> = (item: T, index: number) => TemplateResult | string
 
 
-class RepeatDirective<T> implements Directive {
+class RepeatDirective<T> extends DirectiveTransition implements Directive {
 
 	private anchorNode: AnchorNode
 	private items: T[] = []
 	private wtems: WatchedTemplate<T>[] = []
-	private transitionOptions: TransitionOptions | null = null
 	private itemsWatcher: Watcher<T[]> | null = null
 
 	context: Context
 	templateFn: TemplateFn<T>
 
-	constructor(anchorNode: AnchorNode, context: Context, items: Iterable<T>, templateFn: TemplateFn<T>, transitionOptions?: ShortTransitionOptions) {
+	constructor(anchorNode: AnchorNode, context: Context, items: Iterable<T>, templateFn: TemplateFn<T>, options?: DirectiveTransitionOptions) {
+		super()
+		this.initTransitionOptions(options)
+
 		this.anchorNode = anchorNode
 		this.context = context
 		this.items = this.getItems(items)
@@ -29,12 +32,9 @@ class RepeatDirective<T> implements Directive {
 		
 		let index = 0
 		for (let item of this.items) {
-			let template = this.createTemplate(item, index, null)
+			let template = this.createTemplate(item, index, null, true)
 			this.wtems.push(template)
 		}
-
-		// Doesn't play transition for the first time, but when merge.
-		this.initTransitionOptions(transitionOptions)
 	}
 
 	private getItems(items: Iterable<T>): T[] {
@@ -62,22 +62,13 @@ class RepeatDirective<T> implements Directive {
 		return this.itemsWatcher.value 
 	}
 
-	private initTransitionOptions(transitionOptions: ShortTransitionOptions | undefined) {
-		if (transitionOptions) {
-			this.transitionOptions = formatShortTransitionOptions(transitionOptions)
-		}
-		else {
-			this.transitionOptions = null
-		}
-	}
-
-	private createTemplate(item: T, index: number, nextNode: ChildNode | null): WatchedTemplate<T> {
+	private createTemplate(item: T, index: number, nextNode: ChildNode | null, firstTime: boolean = false): WatchedTemplate<T> {
 		let wtem = new WatchedTemplate(this, item, index)
 		let template = wtem.template
 		let fragment = template.getFragment()
 		let firstElement: HTMLElement | null = null
 
-		if (this.transitionOptions) {
+		if (this.transitionOptions && (!firstTime || this.enterAtStart)) {
 			firstElement = fragment.firstElementChild as HTMLElement
 		}
 
@@ -99,8 +90,8 @@ class RepeatDirective<T> implements Directive {
 		return templateFn.toString() === this.templateFn.toString()
 	}
 
-	merge(items: Iterable<T>, _templateFn: TemplateFn<T>, transitionOptions?: ShortTransitionOptions) {
-		this.initTransitionOptions(transitionOptions)
+	merge(items: Iterable<T>, _templateFn: TemplateFn<T>, options?: DirectiveTransitionOptions) {
+		this.initTransitionOptions(options)
 		this.updateItems(this.getItems(items))
 	}
 
@@ -271,7 +262,7 @@ class RepeatDirective<T> implements Directive {
 	}
 }
 
-export const repeat = defineDirective(RepeatDirective) as <T>(items: Iterable<T>, templateFn: TemplateFn<T>, transitionOptions?: ShortTransitionOptions) => DirectiveResult
+export const repeat = defineDirective(RepeatDirective) as <T>(items: Iterable<T>, templateFn: TemplateFn<T>, options?: DirectiveTransitionOptions) => DirectiveResult
 
 
 class WatchedTemplate<T> {
