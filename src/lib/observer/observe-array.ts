@@ -33,8 +33,6 @@ const proxyHandler = {
 			}
 		}
 		else if (type === 'function') {
-			// Required, pass proxy to native Array methods may cause some mistakes or not necessary callings.
-			value = value.bind(arr)
 			mayAddDependency(arr)
 
 			if (ARRAY_SET_METHODS.includes(prop as string)) {
