@@ -7,6 +7,7 @@ import {targetMap} from './observer/shared'
 import {restoreAsDependency} from './observer/dependency';
 import {getScopedClassNameSet} from './style'
 import {AnchorNodeType} from './parts/shared'
+import {DirectiveResult} from './directives'
 
 
 /** Returns the typeof T[P]. */
@@ -334,7 +335,7 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 	}
 
 	/** Child class should implement this method, normally returns html`...` or string. */
-	render(): TemplateResult | string |  null {
+	render(): TemplateResult | string | DirectiveResult |  null {
 		return null
 	}
 

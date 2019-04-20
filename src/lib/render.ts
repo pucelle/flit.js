@@ -1,7 +1,8 @@
-import {TemplateResult, Template} from './parts'
+import {TemplateResult, Template, html} from './parts'
 import {Component, Context, getComponentConstructorByName, getComponent} from './component'
 import {Watcher} from './watcher'
 import {connectElement} from './element'
+import {DirectiveResult} from './directives';
 
 
 /**
@@ -9,8 +10,12 @@ import {connectElement} from './element'
  * @param codes The html code piece or html`...` template.
  * @param context The context you used when rendering.
  */
-export function render(codes: TemplateResult | string, context: Context = null): DocumentFragment {
+export function render(codes: TemplateResult | string | DirectiveResult, context: Context = null): DocumentFragment {
 	let fragment: DocumentFragment
+
+	if (codes instanceof DirectiveResult) {
+		codes = html`${codes}`
+	}
 
 	if (codes instanceof TemplateResult) {
 		let template = new Template(codes, context)
@@ -39,7 +44,7 @@ function clearWhiteSpaces(htmlCodes: string): string {
  * @param context The context you used when rendering.
  * @param onUpdate Called when update after referenced data changed. if new result can't merge with old, will pass a new fragment as argument.
  */
-export function renderAndWatch(renderFn: () => TemplateResult, context: Context = null, onUpdate?: () => void) {
+export function renderAndWatch(renderFn: () => TemplateResult | DirectiveResult, context: Context = null, onUpdate?: () => void) {
 	let {fragment, watcher} = watchRenderFn(renderFn, context, onUpdate)
 
 	if (context) {
@@ -61,7 +66,7 @@ export function renderAndWatch(renderFn: () => TemplateResult, context: Context 
  * @param codes The html code piece or html`...` template.
  * @param context The context you used when rendering.
  */
-export function renderComponent(codes: TemplateResult | string, context?: Context): Component | null
+export function renderComponent(codes: TemplateResult | string | DirectiveResult, context?: Context): Component | null
 
 /**
  * Render template like html`...` returned from `renderFn` in context or null, returns the first component from the rendering result.
@@ -73,7 +78,7 @@ export function renderComponent(codes: TemplateResult | string, context?: Contex
  * @param context The context you used when rendering.
  * @param onUpdate Called when update after referenced data changed. if new result can't merge with old, will pass a new fragment as argument.
  */
-export function renderComponent(renderFn: () => TemplateResult, context?: Context, onUpdate?: () => void): Component | null
+export function renderComponent(renderFn: () => TemplateResult | DirectiveResult, context?: Context, onUpdate?: () => void): Component | null
 
 export function renderComponent(codesOrFn: any, context: Context = null, onUpdate?: () => void): Component | null {
 	let fragment: DocumentFragment
@@ -108,10 +113,14 @@ export function renderComponent(codesOrFn: any, context: Context = null, onUpdat
 	return null
 }
 
-function watchRenderFn(renderFn: () => TemplateResult, context: Context, onUpdate?: () => void) {
+function watchRenderFn(renderFn: () => TemplateResult | DirectiveResult, context: Context, onUpdate?: () => void) {
 	let template: Template
 
 	let watcher = new Watcher(renderFn, (result) => {
+		if (result instanceof DirectiveResult) {
+			result = html`${result}`
+		}
+
 		template.merge(result)
 
 		if (onUpdate) {
@@ -119,7 +128,12 @@ function watchRenderFn(renderFn: () => TemplateResult, context: Context, onUpdat
 		}
 	})
 
-	template = new Template(watcher.value, context)
+	let result = watcher.value
+	if (result instanceof DirectiveResult) {
+		result = html`${result}`
+	}
+
+	template = new Template(result, context)
 
 	return {
 		fragment: template.getFragment(),
