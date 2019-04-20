@@ -18,15 +18,13 @@ class RepeatDirective<T> extends DirectiveTransition implements Directive {
 	private wtems: WatchedTemplate<T>[] = []
 	private itemsWatcher: Watcher<T[]> | null = null
 
-	context: Context
 	templateFn: TemplateFn<T>
 
 	constructor(anchorNode: AnchorNode, context: Context, items: Iterable<T>, templateFn: TemplateFn<T>, options?: DirectiveTransitionOptions) {
-		super()
+		super(context)
 		this.initTransitionOptions(options)
 
 		this.anchorNode = anchorNode
-		this.context = context
 		this.items = this.getItems(items)
 		this.templateFn = templateFn
 		

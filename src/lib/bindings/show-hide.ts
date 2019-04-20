@@ -1,5 +1,6 @@
 import {Binding, defineBinding} from './define'
 import {Transition, TransitionOptions} from '../transition'
+import {Context} from '../component'
 
 
 interface ShowHideBindingOptions {
@@ -16,13 +17,15 @@ interface ShowHideBindingOptions {
 class ShowBinding implements Binding {
 
 	private el: HTMLElement
+	private context: Context
 	private value: boolean | undefined = undefined
 	private enterAtStart: boolean = false
 	private leaveAtStart: boolean = false
 	private transitionOptions: TransitionOptions | null = null
 
-	constructor(el: Element, value: unknown) {
+	constructor(el: Element, value: unknown, _modifiers: any, context: Context) {
 		this.el = el as HTMLElement
+		this.context = context
 		this.update(value as any)
 	}
 
@@ -73,6 +76,9 @@ class ShowBinding implements Binding {
 
 	private initTransitionOptions(transitionOptions: TransitionOptions | undefined) {
 		if (transitionOptions) {
+			if (transitionOptions.onend) {
+				transitionOptions.onend = transitionOptions.onend.bind(this.context)
+			}
 			this.transitionOptions = transitionOptions
 		}
 		else {

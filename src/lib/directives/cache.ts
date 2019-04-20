@@ -10,12 +10,11 @@ import {DirectiveTransition, DirectiveTransitionOptions} from './shared'
 class CacheDirective extends DirectiveTransition implements Directive {
 
 	private anchorNode: AnchorNode
-	private context: Context
 	private templates: Template[] = []
 	private currentTemplate: Template | null = null
 
 	constructor(anchorNode: AnchorNode, context: Context, result: TemplateResult | string, options?: DirectiveTransitionOptions) {
-		super()
+		super(context)
 		this.initTransitionOptions(options)
 
 		this.anchorNode = anchorNode
