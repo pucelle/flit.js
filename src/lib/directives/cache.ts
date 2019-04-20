@@ -96,7 +96,7 @@ class CacheDirective extends DirectiveTransition implements Directive {
 		let firstElement = template.getNodes().find(el => el.nodeType === 1) as HTMLElement | undefined
 
 		// Cached elements have been moved, reset the anchor node to current parent node.
-		if (this.anchorNode.type === AnchorNodeType.After && firstElement && firstElement.parentNode && firstElement.parentNode !== this.anchorNode.el.parentNode) {
+		if (this.anchorNode.type === AnchorNodeType.Next && firstElement && firstElement.parentNode && firstElement.parentNode !== this.anchorNode.el.parentNode) {
 			this.anchorNode = new AnchorNode(firstElement.parentNode, AnchorNodeType.Parent)
 		}
 
