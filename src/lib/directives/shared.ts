@@ -1,5 +1,5 @@
 import {TransitionOptions, ShortTransitionOptions, formatShortTransitionOptions} from '../transition'
-import {Context} from '../component';
+import {Context} from '../component'
 
 
 export type DirectiveTransitionOptions = DirectiveTransitionAtStartOptions | ShortTransitionOptions

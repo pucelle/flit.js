@@ -2,7 +2,7 @@ import {TemplateResult, text} from './template-result'
 import {Part, PartType, AnchorNode} from './shared'
 import {Template} from './template'
 import {DirectiveResult, Directive, getDirectiveConstructor} from '../directives'
-import {Context} from '../component';
+import {Context} from '../component'
 
 
 enum ChildContentType {

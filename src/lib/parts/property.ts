@@ -1,4 +1,4 @@
-import {MayStringValuePart, PartType} from "./shared"
+import {MayStringValuePart, PartType} from './shared'
 
 
 /**

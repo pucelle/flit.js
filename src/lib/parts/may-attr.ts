@@ -1,4 +1,4 @@
-import {Part, PartType} from "./shared"
+import {Part, PartType} from './shared'
 
 
 /**

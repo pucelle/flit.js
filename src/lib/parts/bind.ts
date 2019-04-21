@@ -1,6 +1,6 @@
-import {MayStringValuePart, PartType} from "./shared"
+import {MayStringValuePart, PartType} from './shared'
 import {Binding, getDefinedBinding} from '../bindings'
-import {Context} from "../component"
+import {Context} from '../component'
 
 
 /**

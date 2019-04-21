@@ -1,5 +1,5 @@
 import {TemplateType} from './template-result'
-import {PartType} from "./shared"
+import {PartType} from './shared'
 import {getScopedClassNameSet} from '../style'
 
 

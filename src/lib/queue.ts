@@ -1,5 +1,5 @@
-import {Component} from "./component"
-import {Watcher} from "./watcher"
+import {Component} from './component'
+import {Watcher} from './watcher'
 
 
 let componentSet: Set<Component> = new Set()

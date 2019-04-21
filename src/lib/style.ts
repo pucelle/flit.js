@@ -1,5 +1,4 @@
 import {ComponentConstructor, ComponentStyle} from './component'
-import {TemplateResult} from './parts'
 
 
 /** Cache `Component` -> {style element, referenced count} */
@@ -67,11 +66,7 @@ function getStyleContent(style: ComponentStyle, scopeName: string): string {
 		style = style()
 	}
 
-	if (style instanceof TemplateResult) {
-		style = style.toString()
-	}
-
-	return StyleParser.parse(style, scopeName)
+	return StyleParser.parse(String(style), scopeName === 'global' ? '' : scopeName)
 }
 
 

@@ -1,5 +1,5 @@
 import {once, off} from './dom-event'
-import {renderComplete} from './queue';
+import {renderComplete} from './queue'
 
 
 export type TransitionEasing = keyof typeof CUBIC_BEZIER_EASINGS | 'linear'
