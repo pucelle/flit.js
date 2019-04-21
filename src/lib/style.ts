@@ -1,4 +1,5 @@
 import {ComponentConstructor, ComponentStyle} from './component'
+import {onRenderComplete} from './queue';
 
 
 /** Cache `Component` -> {style element, referenced count} */
@@ -81,22 +82,24 @@ export function addGlobalStyle(style: ComponentStyle): HTMLStyleElement {
 // `updateStyles` always been called along with `updateComponents`,
 // So we may need to makesure `updateStyles` in the same micro task with `updateComponents`.
 export function updateStyles() {
-	let styleAndTags = [...globalStyleTagSet]
-	
-	for (let [Com, {styleTag}] of componentStyleTagMap) {
-		if (Com.style && styleTag) {
-			styleAndTags.push([Com.style, styleTag])
-		}
-	}
-
-	for (let [style, styleTag] of styleAndTags) {
-		if (typeof style === 'function') {
-			let newContent = getStyleContent(style, styleTag.getAttribute('name')!)
-			if (newContent !== styleTag.textContent) {
-				styleTag.textContent = newContent
+	onRenderComplete(() => {
+		let styleAndTags = [...globalStyleTagSet]
+		
+		for (let [Com, {styleTag}] of componentStyleTagMap) {
+			if (Com.style && styleTag) {
+				styleAndTags.push([Com.style, styleTag])
 			}
 		}
-	}
+
+		for (let [style, styleTag] of styleAndTags) {
+			if (typeof style === 'function') {
+				let newContent = getStyleContent(style, styleTag.getAttribute('name')!)
+				if (newContent !== styleTag.textContent) {
+					styleTag.textContent = newContent
+				}
+			}
+		}
+	})
 }
 
 
