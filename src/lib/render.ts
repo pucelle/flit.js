@@ -1,8 +1,8 @@
 import {TemplateResult, Template, html} from './parts'
 import {Component, Context, getComponentConstructorByName, getComponent} from './component'
-import {Watcher} from './watcher'
+import {Watcher, globalWatcherSet} from './watcher'
 import {connectElement} from './element'
-import {DirectiveResult} from './directives';
+import {DirectiveResult} from './directives'
 
 
 /**
@@ -50,10 +50,24 @@ export function renderAndWatch(renderFn: () => TemplateResult | DirectiveResult,
 	if (context) {
 		context.__addWatcher(watcher)
 	}
+	else {
+		globalWatcherSet.add(watcher)
+	}
+
+	let unwatch = () => {
+		watcher.disconnect()
+
+		if (context) {
+			context.__deleteWatcher(watcher)
+		}
+		else {
+			globalWatcherSet.delete(watcher)
+		}
+	}
 
 	return {
 		fragment,
-		unwatch: watcher.disconnect.bind(watcher)
+		unwatch
 	}
 }
 

@@ -2,9 +2,9 @@ import {Emitter} from './emitter'
 import {NodePart, AnchorNode, TemplateResult} from './parts'
 import {enqueueComponentUpdate} from './queue'
 import {startUpdating, endUpdating, observeComTarget, clearDependencies, clearAsDependency} from './observer'
-import {Watcher} from './watcher'
+import {Watcher, globalWatcherSet} from './watcher'
 import {targetMap} from './observer/shared'
-import {restoreAsDependency} from './observer/dependency';
+import {restoreAsDependency} from './observer/dependency'
 import {getScopedClassNameSet} from './style'
 import {AnchorNodeType} from './parts/shared'
 import {DirectiveResult} from './directives'
@@ -122,8 +122,13 @@ const componentSet: Set<Component> = new Set()
 
 /** Update all components, e.g., when current language changed. */
 export function updateComponents() {
+	for (let watcher of globalWatcherSet) {
+		watcher.update()
+	}
+
 	for (let com of componentSet) {
 		com.update()
+		com.__updateWatchers()
 	}
 }
 
@@ -365,8 +370,8 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 	/**
 	 * Called after all the data updated for the first time.
 	 * Child nodes are rendered, slots are prepared, but child components are not.
-	 * Will keep updating other components, so please don't check computed style on elements.
-	 * You can visit child nodes here.
+	 * Will keep updating other components, so please don't check computed styles on elements.
+	 * You may visit child nodes or bind events here.
 	 */
 	onReady() {}
 
@@ -393,6 +398,20 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 		this.__watchers.add(watcher)
 	}
 
+	/** Delete one watcher belongs to current component, `__watchers` must be exist. */
+	__deleteWatcher(watcher: Watcher) {
+		this.__watchers!.delete(watcher)
+	}
+
+	/** Update all the watchers, used at `updateComponents`. */
+	__updateWatchers() {
+		if (this.__watchers) {
+			for (let watcher of this.__watchers) {
+				watcher.update()
+			}
+		}
+	}
+
 	/** Watch return value of function and trigger callback with this value as argument after it changed. */
 	watch<T>(fn: () => T, callback: (value: T) => void): () => void {
 		let watcher = new Watcher(fn, callback)
@@ -412,7 +431,7 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 
 		return () => {
 			watcher.disconnect()
-			this.__watchers!.delete(watcher)
+			this.__deleteWatcher(watcher)
 		}
 	}
 
@@ -428,7 +447,7 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 
 		let disconnect = () => {
 			watcher.disconnect()
-			this.__watchers!.delete(watcher)
+			this.__deleteWatcher(watcher)
 		}
 
 		return disconnect
@@ -456,7 +475,7 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 
 			disconnect = () => {
 				watcher.disconnect()
-				this.__watchers!.delete(watcher)
+				this.__deleteWatcher(watcher)
 			}
 		}
 

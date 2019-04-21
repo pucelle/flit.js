@@ -6,10 +6,19 @@ export type WatchFn = () => unknown
 export type WatcherCallback<T> = (value: T) => void
 
 
+/** A set to cache global watchers which not belongs to any  */
+export const globalWatcherSet: Set<Watcher> = new Set()
+
+
 /** Watch return value of function and trigger callback with this value as argument. */
 export function watch<T>(fn: () => T, callback: (value: T) => void): () => void {
 	let watcher = new Watcher(fn, callback)
-	return watcher.disconnect.bind(watcher)
+	globalWatcherSet.add(watcher)
+
+	return () => {
+		watcher.disconnect()
+		globalWatcherSet.delete(watcher)
+	}
 }
 
 
@@ -17,7 +26,12 @@ export function watch<T>(fn: () => T, callback: (value: T) => void): () => void 
 export function watchImmediately<T>(fn: () => T, callback: (value: T) => void): () => void {
 	let watcher = new Watcher(fn, callback)
 	callback(watcher.value)
-	return watcher.disconnect.bind(watcher)
+	globalWatcherSet.add(watcher)
+
+	return () => {
+		watcher.disconnect()
+		globalWatcherSet.delete(watcher)
+	}
 }
 
 
@@ -25,11 +39,18 @@ export function watchImmediately<T>(fn: () => T, callback: (value: T) => void): 
 export function watchOnce<T>(fn: () => T, callback: (value: T) => void): () => void {
 	let wrappedCallback = (value: T) => {
 		callback(value)
-		watcher.disconnect()
+		unwatch()
 	}
 
 	let watcher = new Watcher(fn, wrappedCallback)
-	return watcher.disconnect.bind(watcher)
+	globalWatcherSet.add(watcher)
+
+	let unwatch = () => {
+		watcher.disconnect()
+		globalWatcherSet.delete(watcher)
+	}
+
+	return unwatch
 }
 
 
@@ -38,19 +59,28 @@ export function watchUntil(fn: () => any, callback: () => void): () => void {
 	let wrappedCallback = (value: unknown) => {
 		if (value) {
 			callback()
-			watcher.disconnect()
+			unwatch
 		}
 	}
+
+	let unwatch: () => void
 
 	let watcher = new Watcher(fn, wrappedCallback)
 	if (watcher.value) {
 		watcher.disconnect()
 		callback()
-		return () => {}
+		unwatch = () => {}
 	}
 	else {
-		return watcher.disconnect.bind(watcher)
+		globalWatcherSet.add(watcher)
+
+		unwatch = () => {
+			watcher.disconnect()
+			globalWatcherSet.delete(watcher)
+		}
 	}
+
+	return unwatch
 }
 
 
