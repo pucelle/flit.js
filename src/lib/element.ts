@@ -1,5 +1,5 @@
 import {ComponentConstructor, defineComponent, getComponent, Component} from './component'
-import {ensureComponentStyle, mayRemoveStyle, plusComponentStyleUsedCount} from './style'
+import {ensureComponentStyle} from './style'
 
 
 // Using queue to delay the connect and disconnect operations on components.
@@ -55,8 +55,8 @@ function update() {
 	disconnectSoonMap = new Map()
 	willUpdate = false
 
-	for (let [el, Com] of disconnectMap.entries()) {
-		disconnectElement(el, Com)
+	for (let [el] of disconnectMap.entries()) {
+		disconnectElement(el)
 	}
 
 	// `el` was sorted inside map.
@@ -68,11 +68,6 @@ function update() {
 		// it will trigger `connectedCallback` again after insert into document.
 		if (document.contains(el)) {
 			connectElement(el, Com)
-		}
-
-		// Although component are not connected, but still need to execute `count++` for it's following disconnected.
-		else {
-			plusComponentStyleUsedCount(Com)
 		}
 	}
 }
@@ -95,13 +90,11 @@ export function connectElement(el: HTMLElement, Com: ComponentConstructor) {
 	}
 }
 
-function disconnectElement(el: HTMLElement, Com: ComponentConstructor) {
+function disconnectElement(el: HTMLElement) {
 	let com = getComponent(el)
 	if (com) {
 		com.__emitDisconnected()
 	}
-
-	mayRemoveStyle(Com)
 }
 
 

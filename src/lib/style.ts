@@ -3,54 +3,20 @@ import {onRenderComplete} from './queue';
 
 
 /** Cache `Component` -> {style element, referenced count} */
-const componentStyleTagMap: Map<ComponentConstructor, {styleTag: HTMLStyleElement | null, count: number}> = new Map()
+const componentStyleTagMap: Map<ComponentConstructor, HTMLStyleElement> = new Map()
 const globalStyleTagSet: Set<[ComponentStyle, HTMLStyleElement]> = new Set()
 
 
 /** Called when component was connected. */
 export function ensureComponentStyle(Com: ComponentConstructor, name: string) {
 	if (Com.style) {
-		if (componentStyleTagMap.has(Com)) {
-			let o = componentStyleTagMap.get(Com)!
-			if (!o.styleTag) {
-				o.styleTag = createStyle(Com.style, name)
-			}
-			o.count++
-		}
-		else {
+		if (!componentStyleTagMap.has(Com)) {
 			let styleTag = createStyle(Com.style, name)
-			componentStyleTagMap.set(Com, {styleTag, count: 1})
+			componentStyleTagMap.set(Com, styleTag)
 		}
 	}
 }
 
-/** Called when component connected, but not in document. */
-export function plusComponentStyleUsedCount(Com: ComponentConstructor) {
-	if (Com.style) {
-		if (componentStyleTagMap.has(Com)) {
-			let o = componentStyleTagMap.get(Com)!
-			o.count++
-		}
-		else {
-			componentStyleTagMap.set(Com, {styleTag: null, count: 1})
-		}
-	}
-}
-
-/** Called when component was disconnected. */
-export function mayRemoveStyle(Com: ComponentConstructor) {
-	if (componentStyleTagMap.has(Com)) {
-		let o = componentStyleTagMap.get(Com)!
-		o.count--
-
-		if (o.count === 0) {
-			if (o.styleTag) {
-				o.styleTag.remove()
-			}
-			componentStyleTagMap.delete(Com)
-		}
-	}
-}
 
 /** Create <style> tag and insert it into body. */
 function createStyle(style: ComponentStyle, name: string): HTMLStyleElement {
@@ -85,7 +51,7 @@ export function updateStyles() {
 	onRenderComplete(() => {
 		let styleAndTags = [...globalStyleTagSet]
 		
-		for (let [Com, {styleTag}] of componentStyleTagMap) {
+		for (let [Com, styleTag] of componentStyleTagMap) {
 			if (Com.style && styleTag) {
 				styleAndTags.push([Com.style, styleTag])
 			}
