@@ -252,7 +252,13 @@ class ElementParser {
 			}
 
 			if (type === undefined && markerIndex > -1) {
-				type = PartType.Attr
+				// `class=${...}` -> `:class=${...}`, so the class value can be scoped.
+				if (name === 'class') {
+					type = PartType.Binding
+				}
+				else {
+					type = PartType.Attr
+				}
 			}
 
 			if (type !== undefined) {

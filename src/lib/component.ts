@@ -361,6 +361,25 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 	}
 
 	/**
+	 * Get closest ancestor component which instanceof `Com`.
+	 * It's very common that you extend a component and define a new custom element,
+	 * So you will be can't find the parent component from the tag name. 
+	 */
+	closest<C extends ComponentConstructor>(Com: C): InstanceType<C> | null {
+		let parent = this.el.parentElement
+		
+		while (parent && parent instanceof HTMLElement && parent.localName.includes('-')) {
+			let com = getComponent(parent) as Component
+			if (com instanceof Com) {
+				return com as InstanceType<C>
+			}
+			parent = parent.parentElement
+		}
+
+		return null
+	}
+
+	/**
 	 * Called when component instance was just created and all properties assigned.
 	 * Original child nodes are prepared, but slots are not prepared right now.
 	 * You may changed some data or visit parent nodes or `this.el` and operate here.
