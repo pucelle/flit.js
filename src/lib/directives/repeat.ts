@@ -1,11 +1,12 @@
 import {defineDirective, Directive, DirectiveResult} from './define'
-import {TemplateResult, Template, AnchorNode} from '../parts'
+import {TemplateResult, Template} from '../parts'
 import {text} from '../parts/template-result'
 import {Transition} from '../transition'
 import {Watcher} from '../watcher'
 import {observe} from '../observer'
 import {Context} from '../component'
 import {DirectiveTransition, DirectiveTransitionOptions} from './shared'
+import {NodeAnchor} from '../node-helper'
 
 
 type TemplateFn<T> = (item: T, index: number) => TemplateResult | string
@@ -13,14 +14,14 @@ type TemplateFn<T> = (item: T, index: number) => TemplateResult | string
 
 class RepeatDirective<T> extends DirectiveTransition implements Directive {
 
-	private anchorNode: AnchorNode
+	private anchorNode: NodeAnchor
 	private items: T[] = []
 	private wtems: WatchedTemplate<T>[] = []
 	private itemsWatcher: Watcher<T[]> | null = null
 
 	templateFn: TemplateFn<T>
 
-	constructor(anchorNode: AnchorNode, context: Context, items: Iterable<T>, templateFn: TemplateFn<T>, options?: DirectiveTransitionOptions) {
+	constructor(anchorNode: NodeAnchor, context: Context, items: Iterable<T>, templateFn: TemplateFn<T>, options?: DirectiveTransitionOptions) {
 		super(context)
 		this.initTransitionOptions(options)
 
@@ -63,7 +64,7 @@ class RepeatDirective<T> extends DirectiveTransition implements Directive {
 	private createTemplate(item: T, index: number, nextNode: ChildNode | null, firstTime: boolean = false): WatchedTemplate<T> {
 		let wtem = new WatchedTemplate(this, item, index)
 		let template = wtem.template
-		let fragment = template.getFragment()
+		let fragment = template.nodeRange.getFragment()
 		let firstElement: HTMLElement | null = null
 
 		if (this.transitionOptions && (!firstTime || this.enterAtStart)) {
@@ -164,7 +165,7 @@ class RepeatDirective<T> extends DirectiveTransition implements Directive {
 
 				if (reuseIndex > -1) {
 					let wtem = oldWtems[reuseIndex]
-					this.moveTemplate(wtem.template, oldIndex < oldItems.length ? oldWtems[oldIndex].template.startNode : null)
+					this.moveTemplate(wtem.template, oldIndex < oldItems.length ? oldWtems[oldIndex].template.nodeRange.startNode : null)
 					wtem.updateIndex(index)
 					newWtems.push(wtem)
 					reusedIndexSet.add(reuseIndex)
@@ -200,7 +201,7 @@ class RepeatDirective<T> extends DirectiveTransition implements Directive {
 				reuseIndex = willRemoveIndexSet.keys().next().value
 
 				let wtem = oldWtems[reuseIndex]
-				this.moveTemplate(wtem.template, oldIndex < oldItems.length ? oldWtems[oldIndex].template.startNode : null)
+				this.moveTemplate(wtem.template, oldIndex < oldItems.length ? oldWtems[oldIndex].template.nodeRange.startNode : null)
 				wtem.update(item, index)
 				newWtems.push(wtem)
 				willRemoveIndexSet.delete(reuseIndex)
@@ -208,7 +209,7 @@ class RepeatDirective<T> extends DirectiveTransition implements Directive {
 				continue
 			}
 
-			newWtems.push(this.createTemplate(item, index, oldIndex < oldItems.length ? oldWtems[oldIndex].template.startNode : null))
+			newWtems.push(this.createTemplate(item, index, oldIndex < oldItems.length ? oldWtems[oldIndex].template.nodeRange.startNode : null))
 		}
 
 		// Should not follow `willRemoveIndexSet` here:
@@ -224,7 +225,7 @@ class RepeatDirective<T> extends DirectiveTransition implements Directive {
 	}
 
 	private moveTemplate(template: Template, nextNode: ChildNode | null) {
-		let fragment = template.getFragment()
+		let fragment = template.nodeRange.getFragment()
 
 		if (nextNode) {
 			nextNode.before(fragment)
@@ -238,7 +239,7 @@ class RepeatDirective<T> extends DirectiveTransition implements Directive {
 		let template = wtem.template
 
 		if (this.transitionOptions) {
-			let firstElement = template.getNodes().find(el => el.nodeType === 1) as HTMLElement | undefined
+			let firstElement = template.nodeRange.getNodes().find(el => el.nodeType === 1) as HTMLElement | undefined
 			if (firstElement) {
 				new Transition(firstElement, this.transitionOptions).leave().then(() => {
 					wtem.remove()
@@ -297,7 +298,7 @@ class WatchedTemplate<T> {
 			}
 			else {
 				let newTemplate = new Template(result, context)
-				this.template.startNode.before(newTemplate.getFragment())
+				this.template.nodeRange.startNode.before(newTemplate.nodeRange.getFragment())
 				this.template.remove()
 				this.template = newTemplate
 			}

@@ -1,4 +1,5 @@
-import {Part, PartType, MayStringValuePart, AnchorNode, AnchorNodeType} from './shared'
+import {Part, PartType, MayStringValuePart} from './shared'
+import {NodeAnchor, NodeAnchorType, NodeRange} from "../node-helper"
 import {TemplateResult} from './template-result'
 import {parse, Place} from './template-parser'
 import {NodePart} from './node'
@@ -15,11 +16,8 @@ export class Template {
 	private result: TemplateResult
 	private context: Context
 	private parts: Part[] = []
-	private fragment: DocumentFragment | null = null
-	private hasMultipleHolesPart: boolean = false
 
-	startNode: ChildNode
-	endNode: ChildNode
+	nodeRange: NodeRange
 
 	/**
 	 * Create an template from html`...` like template result and context
@@ -31,30 +29,16 @@ export class Template {
 		this.context = context
 
 		let {fragment, nodesInPlaces, places, hasSlots} = parse(this.result.type, this.result.strings, this.context ? this.context.el : null)
-		this.fragment = this.parseAsFragment(fragment, nodesInPlaces, places)
+		this.nodeRange = new NodeRange(fragment)
+		this.parseParts(nodesInPlaces, places)
 
 		if (hasSlots && this.context) {
 			this.context.__hasSlotsToBeFilled = true
 		}
-
-		// Should include at least one node, So it's position can be tracked.
-		// And should always before any other nodes inside,
-		// So we need to prepend a comment node if it starts with a `hole`.
-		let startNode = this.fragment.firstChild
-		if (!startNode || startNode.nodeType === 8) {
-			startNode = document.createComment('')
-			this.fragment.prepend(startNode)
-		}
-		this.startNode = startNode
-
-		// The end node will never be moved.
-		// It should be a fixed node, or a comment node of a child part.
-		// It will never be null since the parsed result always include at least one node.
-		this.endNode = this.fragment.lastChild!
 	}
 	
 	/** Parse template result and returns a fragment. */
-	private parseAsFragment(fragment: DocumentFragment, nodesInPlaces: Node[] | null, places: Place[] | null): DocumentFragment {
+	private parseParts(nodesInPlaces: Node[] | null, places: Place[] | null) {
 		let values = this.result.values
 		let valueIndex = 0
 
@@ -68,7 +52,7 @@ export class Template {
 
 				switch (place.type) {
 					case PartType.Node:
-						part = new NodePart(new AnchorNode(node, AnchorNodeType.Next), value, this.context)
+						part = new NodePart(new NodeAnchor(node, NodeAnchorType.Next), value, this.context)
 						break
 
 					case PartType.MayAttr:
@@ -82,7 +66,6 @@ export class Template {
 					case PartType.Attr:
 						let attrValues = [value]
 						if (holes > 1) {
-							this.hasMultipleHolesPart = true
 							attrValues = values.slice(valueIndex, valueIndex + holes)
 						}
 
@@ -107,47 +90,6 @@ export class Template {
 				}
 			}
 		}
-
-		return fragment
-	}
-
-	/** Can be used to get firstly parsed fragment, or reuse template nodes as a fragment. */
-	getFragment(): DocumentFragment {
-		let fragment: DocumentFragment
-
-		if (this.fragment) {
-			fragment = this.fragment
-			this.fragment = null
-		}
-		else {
-			fragment = document.createDocumentFragment()
-			fragment.append(...this.getNodes())
-		}
-
-		return fragment
-	}
-
-	/** Cache nodes in a fragment and use them later. */
-	cacheFragment() {
-		this.fragment = this.getFragment()
-	}
-	
-	/** Get nodes belongs to template. */
-	getNodes(): ChildNode[] {
-		let nodes: ChildNode[] = []
-		let node = this.startNode
-
-		while (node) {
-			nodes.push(node)
-
-			if (node === this.endNode) {
-				break
-			}
-
-			node = node.nextSibling as ChildNode
-		}
-
-		return nodes
 	}
 
 	/** Compare if two template result can be merged. */
@@ -174,38 +116,6 @@ export class Template {
 	 * @param result The template result to merge.
 	 */
 	merge(result: TemplateResult) {
-		if (this.hasMultipleHolesPart) {
-			this.mergeWhenPartHasMultipleHoles(result)
-		}
-		else {
-			let diffs = this.compareValues(result)
-			if (!diffs) {
-				return
-			}
-	
-			for (let i = 0; i < diffs.length; i++) {
-				let index = diffs[i]
-				this.mergePartWithValue(this.parts[index], result.values[index] as unknown)
-			}
-		}
-
-		this.result = result
-	}
-
-	private mergePartWithValue(part: Part, value: unknown) {
-		switch (part.type) {
-			case PartType.Node:
-			case PartType.MayAttr:
-			case PartType.Event:
-				part.update(value)
-				break
-
-			default:
-				part.update(join((part as MayStringValuePart).strings, value))
-		}
-	}
-
-	private mergeWhenPartHasMultipleHoles(result: TemplateResult) {
 		let valueIndex = 0
 
 		for (let part of this.parts) {
@@ -238,23 +148,25 @@ export class Template {
 
 			valueIndex += holes
 		}
+
+		this.result = result
 	}
 
-	/** Compare value difference and then merge them later. */
-	compareValues(result: TemplateResult): number[] | null {
-		let diff: number[] = []
+	private mergePartWithValue(part: Part, value: unknown) {
+		switch (part.type) {
+			case PartType.Node:
+			case PartType.MayAttr:
+			case PartType.Event:
+				part.update(value)
+				break
 
-		for (let i = 0; i < this.result.values.length; i++) {
-			if (this.result.values[i] !== result.values[i]) {
-				diff.push(i)
-			}
+			default:
+				part.update(join((part as MayStringValuePart).strings, value))
 		}
-
-		return diff.length > 0 ? diff : null
 	}
 
 	remove() {
-		this.getNodes().forEach(node => (node as ChildNode).remove())
+		this.nodeRange.getNodes().forEach(node => (node as ChildNode).remove())
 	}
 }
 

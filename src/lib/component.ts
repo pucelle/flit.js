@@ -1,12 +1,12 @@
 import {Emitter} from './emitter'
-import {NodePart, AnchorNode, TemplateResult} from './parts'
+import {NodePart, TemplateResult} from './parts'
 import {enqueueComponentUpdate} from './queue'
 import {startUpdating, endUpdating, observeComTarget, clearDependencies, clearAsDependency} from './observer'
 import {Watcher, globalWatcherSet} from './watcher'
 import {targetMap} from './observer/shared'
 import {restoreAsDependency} from './observer/dependency'
 import {getScopedClassNameSet} from './style'
-import {AnchorNodeType} from './parts/shared'
+import {NodeAnchorType, NodeAnchor, NodeRange} from "./node-helper"
 import {DirectiveResult} from './directives'
 
 
@@ -187,7 +187,7 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 	refs: {[key: string]: HTMLElement} = {}
 	slots: {[key: string]: HTMLElement[]} = {}
 
-	private __restNodes: Node[] | null = null
+	private __restSlotNodeRange: NodeRange | null = null
 	private __rootPart: NodePart | null = null
 	private __updated: boolean = false
 	private __watchers: Set<Watcher> | null = null
@@ -211,7 +211,7 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 
 		// Must parse here, the slot elements may not in use now,
 		// Parse them here will remove slot element so they will not be connected.
-		this.__prepareSlotElements()
+		this.__initSlotElements()
 
 		// A typescript issue here:
 		// We accept an `Events` and union it with type `ComponentEvents`,
@@ -228,7 +228,7 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 
 	// May first rendered as text, then original child nodes was removed.
 	// Then have slots when secondary rendering.
-	private __prepareSlotElements() {
+	private __initSlotElements() {
 		if (this.el.children.length > 0) {
 			// We only check `[slot]` in the children, or:
 			// <com1><com2><el slot="for com2"></com2></com1>
@@ -246,22 +246,6 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 					el.removeAttribute('slot')
 					el.remove()
 				}
-			}
-		}
-	}
-
-	private __fillSlots() {
-		let slots = this.el.querySelectorAll('slot')
-
-		for (let slot of slots) {
-			let slotName = slot.getAttribute('name')
-			if (slotName) {
-				if (this.slots && this.slots[slotName]) {
-					slot.replaceWith(...this.slots[slotName]!)
-				}
-			}
-			else if (this.__restNodes) {
-				slot.replaceWith(...this.__restNodes)
 			}
 		}
 	}
@@ -328,9 +312,10 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 			// It's very import to cache rest nodes here, because child nodes may be removed in their `onCreated`.
 			// If we cache them eraly before they were removed, will restore them in filling `<slot />`.
 			if (this.el.childNodes.length > 0) {
-				this.__restNodes = [...this.el.childNodes]
+				this.__initRestSlotRange()
 			}
-			this.__rootPart = new NodePart(new AnchorNode(this.el, AnchorNodeType.Root), result, this)
+
+			this.__rootPart = new NodePart(new NodeAnchor(this.el, NodeAnchorType.Root), result, this)
 		}
 
 		if (this.__hasSlotsToBeFilled) {
@@ -345,6 +330,28 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 		}
 		
 		this.onUpdated()
+	}
+
+	private __initRestSlotRange() {
+		let fragment = document.createDocumentFragment()
+		fragment.append(...this.el.childNodes)
+		this.__restSlotNodeRange = new NodeRange(fragment)
+	}
+
+	private __fillSlots() {
+		let slots = this.el.querySelectorAll('slot')
+
+		for (let slot of slots) {
+			let slotName = slot.getAttribute('name')
+			if (slotName) {
+				if (this.slots && this.slots[slotName]) {
+					slot.replaceWith(...this.slots[slotName]!)
+				}
+			}
+			else if (this.__restSlotNodeRange) {
+				slot.replaceWith(this.__restSlotNodeRange.getFragment())
+			}
+		}
 	}
 
 	/** Child class should implement this method, normally returns html`...` or string. */
@@ -367,7 +374,7 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 	 */
 	closest<C extends ComponentConstructor>(Com: C): InstanceType<C> | null {
 		let parent = this.el.parentElement
-		
+
 		while (parent && parent instanceof HTMLElement && parent.localName.includes('-')) {
 			let com = getComponent(parent) as Component
 			if (com instanceof Com) {

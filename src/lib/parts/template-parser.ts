@@ -128,6 +128,9 @@ class ElementParser {
 			lastIndex = tagRE.lastIndex
 			
 			// Ignore existed comment nodes
+			// An issue here: if comment codes includes `${...}`,
+			// We just remove it but not the tempalte values,
+			// So the followed values will be used to fill the wrong holes.
 			if (code[1] === '!') {
 				continue
 			}

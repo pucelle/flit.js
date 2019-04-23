@@ -19,7 +19,7 @@ export function render(codes: TemplateResult | string | DirectiveResult, context
 
 	if (codes instanceof TemplateResult) {
 		let template = new Template(codes, context)
-		fragment = template.getFragment()
+		fragment = template.nodeRange.getFragment()
 	}
 	else {
 		let template = document.createElement('template')
@@ -150,7 +150,7 @@ function watchRenderFn(renderFn: () => TemplateResult | DirectiveResult, context
 	template = new Template(result, context)
 
 	return {
-		fragment: template.getFragment(),
+		fragment: template.nodeRange.getFragment(),
 		watcher
 	}
 }

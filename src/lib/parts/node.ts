@@ -1,5 +1,6 @@
 import {TemplateResult, text} from './template-result'
-import {Part, PartType, AnchorNode} from './shared'
+import {Part, PartType} from './shared'
+import {NodeAnchor} from "../node-helper";
 import {Template} from './template'
 import {DirectiveResult, Directive, getDirectiveConstructor} from '../directives'
 import {Context} from '../component'
@@ -15,14 +16,14 @@ export class NodePart implements Part {
 
 	type: PartType = PartType.Node
 
-	private anchorNode: AnchorNode
+	private anchorNode: NodeAnchor
 	private context: Context
 	private templates: Template[] | null = null
 	private directive: Directive | null = null
 	private textNode: Text | null = null
 	private contentType: ChildContentType | null = null
 
-	constructor(anchorNode: AnchorNode, value: unknown, context: Context) {
+	constructor(anchorNode: NodeAnchor, value: unknown, context: Context) {
 		this.anchorNode = anchorNode
 		this.context = context
 		this.update(value)
@@ -128,9 +129,9 @@ export class NodePart implements Part {
 				}
 				else {
 					let newTemplate = new Template(result, this.context)
-					let fragment = newTemplate.getFragment()
+					let fragment = newTemplate.nodeRange.getFragment()
 
-					oldTemplate.startNode.before(fragment)
+					oldTemplate.nodeRange.startNode.before(fragment)
 					oldTemplate.remove()
 					templates[i] = newTemplate
 				}
@@ -148,7 +149,7 @@ export class NodePart implements Part {
 		else if (templates.length < results.length) {
 			for (let i = templates.length; i < results.length; i++) {
 				let template = new Template(results[i], this.context)
-				let fragment = template.getFragment()
+				let fragment = template.nodeRange.getFragment()
 
 				this.anchorNode.insert(fragment)
 				templates.push(template)

@@ -1,9 +1,9 @@
 import {Context} from '../component'
-import {AnchorNode} from '../parts'
+import {NodeAnchor} from '../node-helper'
 
 
 interface DirectiveConstructor<Args extends any[]> {
-	new(anchorNode: AnchorNode, context: Context, ...args: Args): Directive<Args>
+	new(anchorNode: NodeAnchor, context: Context, ...args: Args): Directive<Args>
 }
 
 
