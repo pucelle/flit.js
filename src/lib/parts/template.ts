@@ -60,7 +60,7 @@ export class Template {
 						break
 
 					case PartType.Event:
-						part = new EventPart(node as Element, place.name!, value as Function, this.context)
+						part = new EventPart(node as Element, place.name!, value as (...args: any) => void, this.context)
 						break
 
 					case PartType.Attr:

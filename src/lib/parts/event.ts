@@ -13,12 +13,12 @@ export class EventPart implements Part {
 
 	private el: Element
 	private name: string
-	private handler!: Function
+	private handler!: (...args: any) => void
 	private context: Context
 	private isComEvent: boolean
 	private isUpdated: boolean = false
 
-	constructor(el: Element, name: string, handler: Function, context: Context) {
+	constructor(el: Element, name: string, handler: (...args: any) => void, context: Context) {
 		this.el = el
 		this.name = name[0] === '@' ? name.slice(1) : name
 		this.context = context
@@ -31,7 +31,7 @@ export class EventPart implements Part {
 		this.setHandler(handler)
 	}
 
-	private setHandler(newHandler: Function) {
+	private setHandler(newHandler: (...args: any) => void) {
 		let oldHandler = this.handler
 		this.handler = newHandler
 
@@ -60,7 +60,7 @@ export class EventPart implements Part {
 		com.on(this.name, this.handler, this.context as Component)
 	}
 
-	update(handler: Function) {
+	update(handler: (...args: any) => void) {
 		if (typeof handler !== 'function') {
 			throw new Error(`Failed to register listener at "<${this.el.localName} @${this.name}='${handler}'">, the listener is not a function`)
 		}
