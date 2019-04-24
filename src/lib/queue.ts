@@ -36,7 +36,7 @@ export function enqueueWatcherUpdate(watcher: Watcher) {
 
 /** 
  * Call callback after next rendered all the components in next micro task.
- * Note that it will call callback immediately if no updating tasks enqueued.
+ * Note that it was called before `renderComplete` that was called in micro task.
  */
 export function onRenderComplete(callback: () => void) {
 	afterRenderCallbacks.push(callback)
@@ -48,7 +48,7 @@ export function onRenderComplete(callback: () => void) {
 
 /** 
  * Returns a promise which will be resolved after rendered all the components in next micro task.
- * Note that it will call callback in the next micro task if no updating tasks enqueued.
+ * Note that it was called in micro task, after `onRenderComplete` been called.
  * Please don't call `await renderComplete()` for two times,
  * The second one will be called in a new `requestAnimationFrame` and browser will render before it.
  */

@@ -1,4 +1,4 @@
-import {ComponentConstructor, defineComponent, getComponent, Component} from './component'
+import {defineComponent, getComponent, Component} from './component'
 import {ensureComponentStyle} from './style'
 
 
@@ -6,10 +6,10 @@ import {ensureComponentStyle} from './style'
 // Both `connectedCallback` and `disconnectedCallback` may triggered multiple times in DOM removing,
 // so we must delay the component connect and disconnect operation by a queue.
 
-let connectSoonMap: Map<HTMLElement, ComponentConstructor> = new Map()
-let disconnectSoonMap: Map<HTMLElement, ComponentConstructor> = new Map()
+let connectSoonMap: Map<HTMLElement, typeof Component> = new Map()
+let disconnectSoonMap: Map<HTMLElement, typeof Component> = new Map()
 
-function enqueueConnect(el: HTMLElement, Com: ComponentConstructor) {
+function enqueueConnect(el: HTMLElement, Com: typeof Component) {
 	// When append, trigger disconnect and connect soon.
 	if (disconnectSoonMap.has(el)) {
 		disconnectSoonMap.delete(el)
@@ -24,7 +24,7 @@ function enqueueConnect(el: HTMLElement, Com: ComponentConstructor) {
 	}
 }
 
-function enqueueDisconnect(el: HTMLElement, Com: ComponentConstructor) {
+function enqueueDisconnect(el: HTMLElement, Com: typeof Component) {
 	// When inserted into a fragment and then removed.
 	if (connectSoonMap.has(el)) {
 		connectSoonMap.delete(el)
@@ -73,7 +73,7 @@ function update() {
 }
 
 /** Export for `renderComponent`, which will create component manually. */
-export function connectElement(el: HTMLElement, Com: ComponentConstructor) {
+export function connectElement(el: HTMLElement, Com: typeof Component) {
 	ensureComponentStyle(Com, el.localName)
 				
 	let com = getComponent(el)
@@ -102,7 +102,7 @@ function disconnectElement(el: HTMLElement) {
  * Returns a define decorator to defined followed class as a component with specified name.
  * @param name The component name.
  */
-export function define(name: string): (Com: ComponentConstructor) => void
+export function define(name: string): (Com: typeof Component) => void
 
 
 /**
@@ -111,16 +111,16 @@ export function define(name: string): (Com: ComponentConstructor) => void
  * @param name The component name.
  * @param Component The Component class definition.
  */
-export function define(name: string, Com: ComponentConstructor): void
+export function define(name: string, Com: typeof Component): void
 
-export function define(name: string, Com?: ComponentConstructor) {
+export function define(name: string, Com?: typeof Component) {
 	if (!name.includes('-')) {
 		throw new Error(`"${name}" can't be defined as custom element, it must contain "-"`)
 	}
 
 	// Used at `@define` decorator.
 	if (!Com) {
-		return function(Com: ComponentConstructor) {
+		return function(Com: typeof Component) {
 			define(name, Com)
 		}
 	}

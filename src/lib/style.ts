@@ -1,14 +1,14 @@
-import {ComponentConstructor, ComponentStyle} from './component'
+import {Component, ComponentStyle} from './component'
 import {onRenderComplete} from './queue';
 
 
 /** Cache `Component` -> {style element, referenced count} */
-const componentStyleTagMap: Map<ComponentConstructor, HTMLStyleElement> = new Map()
+const componentStyleTagMap: Map<typeof Component, HTMLStyleElement> = new Map()
 const globalStyleTagSet: Set<[ComponentStyle, HTMLStyleElement]> = new Set()
 
 
 /** Called when component was connected. */
-export function ensureComponentStyle(Com: ComponentConstructor, name: string) {
+export function ensureComponentStyle(Com: typeof Component, name: string) {
 	if (Com.style) {
 		if (!componentStyleTagMap.has(Com)) {
 			let styleTag = createStyle(Com.style, name)
