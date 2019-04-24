@@ -21,7 +21,7 @@ class RepeatDirective<T> extends DirectiveTransition implements Directive {
 
 	templateFn: TemplateFn<T>
 
-	constructor(anchorNode: NodeAnchor, context: Context, items: Iterable<T>, templateFn: TemplateFn<T>, options?: DirectiveTransitionOptions) {
+	constructor(anchorNode: NodeAnchor, context: Context, items: Iterable<T> | null, templateFn: TemplateFn<T>, options?: DirectiveTransitionOptions) {
 		super(context)
 		this.initTransitionOptions(options)
 
@@ -36,7 +36,11 @@ class RepeatDirective<T> extends DirectiveTransition implements Directive {
 		}
 	}
 
-	private getItems(items: Iterable<T>): T[] {
+	private getItems(items: Iterable<T> | null): T[] {
+		if (!items) {
+			return []
+		}
+
 		if (this.itemsWatcher) {
 			this.itemsWatcher.disconnect()
 		}
@@ -89,7 +93,7 @@ class RepeatDirective<T> extends DirectiveTransition implements Directive {
 		return templateFn.toString() === this.templateFn.toString()
 	}
 
-	merge(items: Iterable<T>, _templateFn: TemplateFn<T>, options?: DirectiveTransitionOptions) {
+	merge(items: Iterable<T> | null, _templateFn: TemplateFn<T>, options?: DirectiveTransitionOptions) {
 		this.initTransitionOptions(options)
 		this.updateItems(this.getItems(items))
 	}
@@ -261,7 +265,7 @@ class RepeatDirective<T> extends DirectiveTransition implements Directive {
 	}
 }
 
-export const repeat = defineDirective(RepeatDirective) as <T>(items: Iterable<T>, templateFn: TemplateFn<T>, options?: DirectiveTransitionOptions) => DirectiveResult
+export const repeat = defineDirective(RepeatDirective) as <T>(items: Iterable<T> | null, templateFn: TemplateFn<T>, options?: DirectiveTransitionOptions) => DirectiveResult
 
 
 class WatchedTemplate<T> {
