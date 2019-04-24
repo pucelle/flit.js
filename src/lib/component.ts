@@ -149,7 +149,7 @@ export function updateComponents() {
  * We doesn't declare it as `abstract` because we used `typeof Component`,
  * or we'll need to add `interface ComponentConstructor {new(...args: any): Component, style: ..., properties: ...}`.
  */
-export class Component<Events = {}> extends Emitter<Events> {
+export class Component<Events = any> extends Emitter<Events> {
 
 	/**
 	 * The static `style` property contains style text used as styles for current component.
