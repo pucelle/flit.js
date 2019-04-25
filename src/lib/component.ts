@@ -372,11 +372,14 @@ export class Component<Events = any> extends Emitter<Events> {
 	closest<C extends typeof Component>(Com: C): InstanceType<C> | null {
 		let parent = this.el.parentElement
 
-		while (parent && parent instanceof HTMLElement && parent.localName.includes('-')) {
-			let com = getComponent(parent) as Component
-			if (com instanceof Com) {
-				return com as InstanceType<C>
+		while (parent && parent instanceof HTMLElement) {
+			if (parent.localName.includes('-')) {
+				let com = getComponent(parent) as Component
+				if (com instanceof Com) {
+					return com as InstanceType<C>
+				}
 			}
+			
 			parent = parent.parentElement
 		}
 
