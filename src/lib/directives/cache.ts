@@ -133,4 +133,9 @@ class CacheDirective extends DirectiveTransition implements Directive {
 	}
 }
 
+/**
+ * When returned vlaue of `result` changed, this directive will try to reuse old rendered elements.
+ * Note that when old rendering result restored, the scroll positions in it will fall back to start position.
+ * @param result The html`...` result, can be null or empty string. This value map change when rerendering.
+ */
 export const cache = defineDirective(CacheDirective) as (result: TemplateResult | string, options?: DirectiveTransitionOptions) => DirectiveResult
