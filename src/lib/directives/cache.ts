@@ -1,23 +1,23 @@
 import {defineDirective, Directive, DirectiveResult} from './define'
 import {TemplateResult, Template} from '../parts'
 import {text} from '../parts/template-result'
-import {Transition} from '../transition'
 import {Context} from '../component'
 import {NodeAnchorType, NodeAnchor} from "../node-helper"
 import {DirectiveTransition, DirectiveTransitionOptions} from './shared'
 
 
-class CacheDirective extends DirectiveTransition implements Directive {
+class CacheDirective implements Directive {
 
 	private anchorNode: NodeAnchor
+	private context: Context
+	private transition: DirectiveTransition
 	private templates: Template[] = []
 	private currentTemplate: Template | null = null
 
 	constructor(anchorNode: NodeAnchor, context: Context, result: TemplateResult | string, options?: DirectiveTransitionOptions) {
-		super(context)
-		this.initTransitionOptions(options)
-
 		this.anchorNode = anchorNode
+		this.context = context
+		this.transition = new DirectiveTransition(context, options)
 		this.context = context
 
 		if (result) {
@@ -34,24 +34,18 @@ class CacheDirective extends DirectiveTransition implements Directive {
 		let fragment = template.nodeRange.getFragment()
 		this.anchorNode.insert(fragment)
 
-		if (!firstTime || this.enterAtStart) {
-			this.mayPlayEnterTransition(template)
+		if (this.transition.shouldPlayEnterMayAtStart(firstTime)) {
+			this.playEnterTransition(template)
 		}
 
 		this.currentTemplate = template
 		this.templates.push(template)
 	}
 
-	private mayPlayEnterTransition(template: Template) {
-		if (this.transitionOptions) {
-			let firstElement = template.nodeRange.getNodes().find(el => el.nodeType === 1) as HTMLElement | undefined
-			if (firstElement) {
-				new Transition(firstElement, this.transitionOptions).enter().then((finish: boolean) => {
-					if (this.onend) {
-						this.onend.call(this.context, 'enter', finish)
-					}
-				})
-			}
+	private async playEnterTransition(template: Template) {
+		let firstElement = template.nodeRange.getNodes().find(el => el.nodeType === 1) as HTMLElement | undefined
+		if (firstElement) {
+			await this.transition.playEnterAt(firstElement)
 		}
 	}
 
@@ -60,7 +54,7 @@ class CacheDirective extends DirectiveTransition implements Directive {
 	}
 
 	merge(result: TemplateResult | string, options?: DirectiveTransitionOptions) {
-		this.initTransitionOptions(options)
+		this.transition.setOptions(options)
 
 		if (result) {
 			if (typeof result === 'string') {
@@ -79,7 +73,7 @@ class CacheDirective extends DirectiveTransition implements Directive {
 				if (template) {
 					template.merge(result)
 					this.anchorNode.insert(template.nodeRange.getFragment())
-					this.mayPlayEnterTransition(template)
+					this.playEnterTransition(template)
 					this.currentTemplate = template
 				}
 				else {
@@ -94,7 +88,7 @@ class CacheDirective extends DirectiveTransition implements Directive {
 		}
 	}
 
-	private cacheCurrentTemplate() {
+	private async cacheCurrentTemplate() {
 		let template = this.currentTemplate!
 		let firstElement = template.nodeRange.getNodes().find(el => el.nodeType === 1) as HTMLElement | undefined
 
@@ -103,19 +97,9 @@ class CacheDirective extends DirectiveTransition implements Directive {
 			this.anchorNode = new NodeAnchor(firstElement.parentNode, NodeAnchorType.Parent)
 		}
 
-		if (this.transitionOptions) {
-			if (firstElement) {
-				new Transition(firstElement, this.transitionOptions).leave().then((finish: boolean) => {
-					if (finish) {
-						template.nodeRange.cacheFragment()
-					}
-
-					if (this.onend) {
-						this.onend.call(this.context, 'leave', finish)
-					}
-				})
-			}
-			else {
+		if (this.transition.shouldPlay() && firstElement) {
+			let finish = await this.transition.playLeaveAt(firstElement)
+			if (finish) {
 				template.nodeRange.cacheFragment()
 			}
 		}
@@ -131,6 +115,9 @@ class CacheDirective extends DirectiveTransition implements Directive {
 			this.currentTemplate.remove()
 		}
 	}
+
+	onReconnected() {}
+	onDisconnected() {}
 }
 
 /**
