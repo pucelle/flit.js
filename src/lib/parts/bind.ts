@@ -5,7 +5,7 @@ import {Context} from '../component'
 
 /**
  * Transfer arguments to binding module.
- * :class="${...}", :style="${...}", :props="${...}"
+ * `:class=${...}`, `:style=${...}`, `:props=${...}`.
  */
 export class BindingPart implements MayStringValuePart {
 

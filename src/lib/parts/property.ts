@@ -2,7 +2,7 @@ import {MayStringValuePart, PartType} from './shared'
 
 
 /**
- * .property="${...}", which will be assigned by `element.property = value`.
+ * `.property=${...}`, will assign value to element by `element.property = value`.
  */
 export class PropertyPart implements MayStringValuePart {
 

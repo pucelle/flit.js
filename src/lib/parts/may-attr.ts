@@ -2,7 +2,7 @@ import {Part, PartType} from './shared'
 
 
 /**
- * ?checked="${...}", remove the attribute if expression returns false.
+ * `?checked=${...}`, remove the attribute if expression returns false.
  */
 export class MayAttrPart implements Part {
 

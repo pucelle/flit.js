@@ -4,8 +4,8 @@ import {on, off} from '../dom-event'
 
 
 /**
- * <component-name @@com-event="${this.onComEvent}">
- * <div @click="${this.onClick}">
+ * `<component-name @@com-event=${this.onComEvent}>`
+ * `<div @click=${this.onClick}>`
  */
 export class EventPart implements Part {
 

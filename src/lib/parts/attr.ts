@@ -2,7 +2,7 @@ import {MayStringValuePart, PartType} from './shared'
 
 
 /**
- * attr="${...}"
+ * `attr=${...}`, set attribute value.
  */
 export class AttrPart implements MayStringValuePart {
 
