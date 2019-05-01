@@ -1,7 +1,7 @@
 import {TemplateResult, Template, html} from './parts'
-import {Component, Context, getComponentConstructorByName, getComponent} from './component'
+import {Component, Context, getComponentConstructorByName} from './component'
 import {Watcher, globalWatcherSet} from './watcher'
-import {connectElement} from './element'
+import {createComponent} from './element'
 import {DirectiveResult} from './directives'
 
 
@@ -84,8 +84,8 @@ export function renderComponent(codes: TemplateResult | string | DirectiveResult
 
 /**
  * Render template like html`...` returned from `renderFn` in context or null, returns the first component from the rendering result.
- * Be careful that it's element is not in document when rendering for the first time.
- * You should append `component.el` to document manually.
+ * Be careful the returned component was just created yet, not ready or been connected into document.
+ * You should append `component.el` to document manually, Then it will be connected later.
  * If `context` was specified, The connected state of the watcher that used to watch `renderFn` will synchronize with the `context`.
  * Caution: The returned template from `renderFn` must can merge with the last returned.
  * @param renderFn Returns template like html`...`
@@ -109,8 +109,7 @@ export function renderComponent(codesOrFn: any, context: Context = null, onUpdat
 	if (firstElement) {
 		let Com = getComponentConstructorByName(firstElement.localName)
 		if (Com) {
-			connectElement(firstElement, Com)
-			let com = getComponent(firstElement)!
+			let com = createComponent(firstElement, Com)
 
 			if (watcher) {
 				com.__addWatcher(watcher)
