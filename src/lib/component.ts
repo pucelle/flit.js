@@ -135,6 +135,7 @@ export function updateComponents() {
 //   created: just get component and do something.
 //   firstUpdated: watch properties using in `render` for once.
 //   updated: watch properties using in `render`.
+//   connected: in where element was inserted into document.
 //   disconnedted: in where element was removed.
 
 // What about `updated` event?
@@ -190,9 +191,10 @@ export class Component<Events = any> extends Emitter<Events> {
 	private __watchers: Set<Watcher> | null = null
 	private __connected: boolean = true
 
-	// When updated inner templates and found there are slots need to be filled.
+	// When updated inner templates and found there are slots need to be filled, This value will become `true`.
 	// Why not just move slots into template fragment?
-	// Because it will trigger `connectedCallback` when append into fragment.
+	//   1. It will trigger `connectedCallback` when append into fragment.
+	//   2. To handle all `<slot>` elements in one query would be better.
 	__hasSlotsToBeFilled: boolean = false
 
 	constructor(el: HTMLElement) {
@@ -206,9 +208,9 @@ export class Component<Events = any> extends Emitter<Events> {
 		emitComponentCreatedCallbacks(this.el, this)
 		this.onCreated()
 
-		// Must parse here, the slot elements may not in use now,
-		// Parse them here will remove slot element so they will not be connected.
-		this.__initSlotElements()
+		// Must parse here, the slot elements may will be removed soon and use them later,
+		// parse them here will remove slot element so they will not be connected.
+		this.__initSlotNodes()
 
 		// A typescript issue here:
 		// We accept an `Events` and union it with type `ComponentEvents`,
@@ -216,16 +218,17 @@ export class Component<Events = any> extends Emitter<Events> {
 		// `Parmaters<...>` of it will return the arguments of `Events['rendered']`.
 		// So here show the issue that passed arguments `[]` can't be assigned to it.
 
-		// This can't be fixed right now since we can't implement a type function like `interface extends`
-		// And the type function below not work as expected:
-		// `type Extends<B, O> = {[key in keyof (B & O)]: key extends keyof O ? O[key] : key extends keyof B ? B[key] : never}`
+		// This can't be fixed right now since we can't implement a type function like `interface overwritting`
+		// But finally this was resolved by a newly defined type `ExtendEvents` in `emitter.ts`.
 		
 		// this.emit('created')
 	}
 
-	// May first rendered as text, then original child nodes was removed.
-	// Then have slots when secondary rendering.
-	private __initSlotElements() {
+	// Must cache slot nodes before rendering,
+	// Because it may firstly rendered as text, if we don't cache them,
+	// original child nodes will be removed and can't been restored.
+	// So when new rendering requires slot nodes, error happens.
+	private __initSlotNodes() {
 		if (this.el.children.length > 0) {
 			// We only check `[slot]` in the children, or:
 			// <com1><com2><el slot="for com2"></com2></com1>
@@ -248,25 +251,36 @@ export class Component<Events = any> extends Emitter<Events> {
 	}
 
 	__emitConnected() {
+		let isConnected = this.__connected
+
 		// Not do following things when firstly connected.
-		if (!this.__connected) {
-			this.__connected = true
-			
+		if (!isConnected) {
+			// Must restore before updating, because the restored result may be changed when updating.
+			restoreAsDependency(targetMap.get(this)!)
+
 			if (this.__watchers) {
 				for (let watcher of this.__watchers) {
 					watcher.connect()
 				}
 			}
 
-			// Must restore before updating, because the restored result may be changed when updating.
-			restoreAsDependency(targetMap.get(this)!)
+			if (this.__rootPart) {
+				this.__rootPart.onReconnected()
+			}
+
+			this.__connected = true
 		}
 
-		// Why `update` but not `__updateImmediately`?
-		// After component created, it may delete element in `onCreated`
-		// Then in following micro task, it's `__connected` becomes false,
-		// and truly not been updated finally.
+		// Why using `update` but not `__updateImmediately`?
+		// After component created, it may delete element belongs to other components in `onCreated`
+		// Then in following micro task, the deleted components's `__connected` becomes false,
+		// and they will not been updated finally as expected.
 		this.update()
+
+		if (!isConnected) {
+			this.onReconnected()
+		}
+
 		componentSet.add(this)
 	}
 
@@ -274,11 +288,8 @@ export class Component<Events = any> extends Emitter<Events> {
 		clearDependencies(this)
 
 		// We generated `updatable proxy -> dependency target` maps in dependency module,
-		// So here need to pass component target to clear dependencies.
+		// So here need to pass component target but not proxy to clear dependencies.
 		clearAsDependency(targetMap.get(this)!)
-
-		componentSet.delete(this)
-		this.onDisconnected()
 
 		if (this.__watchers) {
 			for (let watcher of this.__watchers) {
@@ -286,7 +297,13 @@ export class Component<Events = any> extends Emitter<Events> {
 			}
 		}
 
+		if (this.__rootPart) {
+			this.__rootPart.onDisconnected()
+		}
+
 		this.__connected = false
+		this.onDisconnected()
+		componentSet.delete(this)
 	}
 
 	__updateImmediately() {
@@ -302,12 +319,11 @@ export class Component<Events = any> extends Emitter<Events> {
 			this.__rootPart.update(result)
 		}
 
-		// Not overwrite `render()` to keep it returns `null` when you to do nothing in child nodes.
-		// But note that if it should not return `null` when updating, and you may need `<slot />` instead.
+		// You may choose to not overwrite `render()` to keep it returns `null` when you don't want to change it's child nodes.
 		else if (result !== null) {
 
 			// It's very import to cache rest nodes here, because child nodes may be removed in their `onCreated`.
-			// If we cache them eraly before they were removed, will restore them in filling `<slot />`.
+			// If we cache them eraly before they were removed, will restore them in `__fillSlot`.
 			if (this.el.childNodes.length > 0) {
 				this.__initRestSlotRange()
 			}
@@ -407,10 +423,17 @@ export class Component<Events = any> extends Emitter<Events> {
 	 */
 	onUpdated() {}
 
+	/** 
+	 * Called when root element was inserted into document again.
+	 * This will be called for each time you insert the element into document.
+	 * If you need to register global listeners, restore them here.
+	 */
+	onReconnected() {}
+
 	/**
 	 * Called when root element removed from document.
 	 * This will be called for each time you removed the element into document.
-	 * If you registered global listeners, don't forget to unregister it here.
+	 * If you registered global listeners, don't forget to unregister them here.
 	 */
 	onDisconnected() {}
 
