@@ -115,9 +115,6 @@ class CacheDirective implements Directive {
 			this.currentTemplate.remove()
 		}
 	}
-
-	onReconnected() {}
-	onDisconnected() {}
 }
 
 /**

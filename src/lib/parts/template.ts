@@ -169,22 +169,6 @@ export class Template {
 	remove() {
 		this.nodeRange.getNodes().forEach(node => (node as ChildNode).remove())
 	}
-
-	onReconnected() {
-		for (let part of this.parts) {
-			if (part instanceof NodePart) {
-				part.onReconnected()
-			}
-		}
-	}
-
-	onDisconnected() {
-		for (let part of this.parts) {
-			if (part instanceof NodePart) {
-				part.onDisconnected()
-			}
-		}
-	}
 }
 
 

@@ -1,32 +1,27 @@
 import {defineDirective, Directive, DirectiveResult} from './define'
-import {TemplateResult, Template} from '../parts'
+import {Template} from '../parts'
 import {Watcher} from '../watcher'
 import {Context} from '../component'
-import {DirectiveTransition, DirectiveTransitionOptions, WatchedTemplate} from './shared'
+import {DirectiveTransition, DirectiveTransitionOptions, WatchedTemplate, TemplateFn} from './shared'
 import {NodeAnchor} from '../node-helper'
 import {observe} from '../observer'
-
-
-export type TemplateFn<T> = (item: T, index: number) => TemplateResult | string
 
 
 export class RepeatDirective<T> implements Directive {
 
 	private anchorNode: NodeAnchor
 	private context: Context
+	private templateFn: TemplateFn<T>
 	private transition: DirectiveTransition
 	private items: T[] = []
 	private wtems: WatchedTemplate<T>[] = []
 	private itemsWatcher: Watcher<T[]> | null = null
 
-	templateFn: TemplateFn<T>
-
 	constructor(anchorNode: NodeAnchor, context: Context, items: Iterable<T> | null, templateFn: TemplateFn<T>, options?: DirectiveTransitionOptions) {
 		this.anchorNode = anchorNode		
 		this.context = context
-		this.transition = new DirectiveTransition(context, options)
-
 		this.templateFn = templateFn
+		this.transition = new DirectiveTransition(context, options)
 		this.updateItems(this.getItems(items))
 	}
 
@@ -40,8 +35,9 @@ export class RepeatDirective<T> implements Directive {
 		}
 
 		// Here must read each item of the `Iterable<T>` so we can observe changes like `a[i] = xxx`.
-		// Otherwise, here it's not updating so we need to observe each item manually,
-		// Then later it can be used to generate template and automatically watch and update it. 
+		// Otherwise, here it's not updating and we can't capture dependencies,
+		// so we need to observe each item manually,
+		// Then later we can generate templates and automatically update them. 
 		let watchFn = () => {
 			return [...items].map(observe)
 		}
@@ -252,9 +248,6 @@ export class RepeatDirective<T> implements Directive {
 			wtem.remove()
 		}
 	}
-
-	onReconnected() {}
-	onDisconnected() {}
 }
 
 /**

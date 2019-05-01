@@ -10,8 +10,6 @@ export interface Directive<Args extends any[] = any[]> {
 	canMergeWith(...args: Args): boolean
 	merge(...args: Args): void
 	remove(): void
-	onReconnected(): void
-	onDisconnected(): void
 }
 
 

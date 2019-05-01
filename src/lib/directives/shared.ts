@@ -1,6 +1,5 @@
 import {TransitionOptions, ShortTransitionOptions, formatShortTransitionOptions, Transition} from '../transition'
 import {Context} from '../component'
-import {TemplateFn} from './repeat';
 import {Template, TemplateResult, text} from '../parts';
 import {Watcher} from '../watcher';
 
@@ -73,6 +72,9 @@ export class DirectiveTransition {
 	}
 }
 
+
+
+export type TemplateFn<T> = (item: T, index: number) => TemplateResult | string
 
 /** Used to watch and update template result generated from `templateFn`. */
 export class WatchedTemplate<T> {

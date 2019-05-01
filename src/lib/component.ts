@@ -264,10 +264,6 @@ export class Component<Events = any> extends Emitter<Events> {
 				}
 			}
 
-			if (this.__rootPart) {
-				this.__rootPart.onReconnected()
-			}
-
 			this.__connected = true
 		}
 
@@ -295,10 +291,6 @@ export class Component<Events = any> extends Emitter<Events> {
 			for (let watcher of this.__watchers) {
 				watcher.disconnect()
 			}
-		}
-
-		if (this.__rootPart) {
-			this.__rootPart.onDisconnected()
 		}
 
 		this.__connected = false
