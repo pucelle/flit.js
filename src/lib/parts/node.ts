@@ -175,4 +175,26 @@ export class NodePart implements Part {
 			}
 		}
 	}
+
+	onReconnected() {
+		if (this.templates) {
+			for (let template of this.templates) {
+				template.onReconnected()
+			}
+		}
+		else if (this.directive) {
+			this.directive.onReconnected()
+		}
+	}
+
+	onDisconnected() {
+		if (this.templates) {
+			for (let template of this.templates) {
+				template.onDisconnected()
+			}
+		}
+		else if (this.directive) {
+			this.directive.onDisconnected()
+		}
+	}
 }

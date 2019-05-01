@@ -72,22 +72,26 @@ function update() {
 	}
 }
 
-/** Export for `renderComponent`, which will create component manually. */
-export function connectElement(el: HTMLElement, Com: typeof Component) {
+function connectElement(el: HTMLElement, Com: typeof Component) {
 	ensureComponentStyle(Com, el.localName)
 				
 	let com = getComponent(el)
-	if (com) {
-		com.__emitConnected()
+	if (!com) {
+		com = createComponent(el, Com)
 	}
-	else {
-		com = new Com(el)
-		if (Com.properties && el.attributes.length > 0) {
-			assignProperties(com, Com.properties)
-		}
-		com.__emitCreated()
-		com.__emitConnected()
+	
+	com.__emitConnected()
+}
+
+/** Export for `renderComponent`, which will create component manually. */
+export function createComponent(el: HTMLElement, Com: typeof Component): Component {
+	let com = new Com(el)
+	if (Com.properties && el.attributes.length > 0) {
+		assignProperties(com, Com.properties)
 	}
+	com.__emitCreated()
+
+	return com
 }
 
 function disconnectElement(el: HTMLElement) {
