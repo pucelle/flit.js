@@ -99,4 +99,23 @@ export class NodeRange {
 
 		return nodes
 	}
+
+	/** Get first element in range. */
+	getFirstElement(): HTMLElement | null {
+		let node = this.startNode
+
+		while (node) {
+			if (node.nodeType === 1) {
+				return node as HTMLElement
+			}
+
+			if (node === this.endNode) {
+				break
+			}
+
+			node = node.nextSibling as ChildNode
+		}
+
+		return null
+	}
 }
