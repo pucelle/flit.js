@@ -9,37 +9,44 @@ import {observe} from '../observer'
 
 export class RepeatDirective<T> implements Directive {
 
-	private anchorNode: NodeAnchor
-	private context: Context
-	private templateFn: TemplateFn<T>
-	private transition: DirectiveTransition
-	private items: T[] = []
-	private wtems: WatchedTemplate<T>[] = []
-	private itemsWatcher: Watcher<T[]> | null = null
+	protected anchor: NodeAnchor
+	protected context: Context
+	protected templateFn: TemplateFn<T>
+	protected transition: DirectiveTransition
+	protected items: T[] = []
+	protected wtems: WatchedTemplate<T>[] = []
+	protected itemsWatcher: Watcher<T[]> | null = null
 
-	constructor(anchorNode: NodeAnchor, context: Context, items: Iterable<T> | null, templateFn: TemplateFn<T>, options?: DirectiveTransitionOptions) {
-		this.anchorNode = anchorNode		
+	/** 
+	 * For `liveRepeat`, specify the the start index of first item in the whole data.
+	 * It was initialized from start options, and was reset when trigger `scroll` event on `scroller`.
+	 */
+	protected startIndex: number = 0
+
+	constructor(anchor: NodeAnchor, context: Context, items: Iterable<T> | null, templateFn: TemplateFn<T>, transitionOptions?: DirectiveTransitionOptions) {
+		this.anchor = anchor		
 		this.context = context
 		this.templateFn = templateFn
-		this.transition = new DirectiveTransition(context, options)
-		this.updateItems(this.getItems(items))
+		this.transition = new DirectiveTransition(context, transitionOptions)
+		this.initItems(items)
 	}
 
-	private getItems(items: Iterable<T> | null): T[] {
+	protected initItems(items: Iterable<T> | null) {
+		this.watchAndUpdateItems(items)
+	}
+
+	private watchAndUpdateItems(items: Iterable<T> | null) {
 		if (!items) {
-			return []
+			return
 		}
 
 		if (this.itemsWatcher) {
 			this.itemsWatcher.disconnect()
 		}
 
-		// Here must read each item of the `Iterable<T>` so we can observe changes like `a[i] = xxx`.
-		// Otherwise, here it's not updating and we can't capture dependencies,
-		// so we need to observe each item manually,
-		// Then later we can generate templates and automatically update them. 
+		// Here need to read each item of the `Iterable<T>` so we can observe changes like `a[i] = xxx`.
 		let watchFn = () => {
-			return [...items].map(observe)
+			return [...items]
 		}
 
 		let onUpdate = (items: T[]) => {
@@ -47,14 +54,13 @@ export class RepeatDirective<T> implements Directive {
 		}
 
 		this.itemsWatcher = new Watcher(watchFn, onUpdate)
-
-		return this.itemsWatcher.value 
+		this.updateItems(this.itemsWatcher.value)
 	}
 
 	private createTemplate(item: T, index: number, nextNode: ChildNode | null, firstTime: boolean = false): WatchedTemplate<T> {
 		let wtem = new WatchedTemplate(this.context, this.templateFn, item, index)
 		let template = wtem.template
-		let fragment = template.nodeRange.getFragment()
+		let fragment = template.range.getFragment()
 		let firstElement: HTMLElement | null = null
 
 		if (this.transition.shouldPlayEnterMayAtStart(firstTime)) {
@@ -65,7 +71,7 @@ export class RepeatDirective<T> implements Directive {
 			nextNode.before(fragment)
 		}
 		else {
-			this.anchorNode.insert(fragment)
+			this.anchor.insert(fragment)
 		}
 
 		if (firstElement) {
@@ -81,7 +87,7 @@ export class RepeatDirective<T> implements Directive {
 
 	merge(items: Iterable<T> | null, _templateFn: TemplateFn<T>, options?: DirectiveTransitionOptions) {
 		this.transition.setOptions(options)
-		this.updateItems(this.getItems(items))
+		this.watchAndUpdateItems(items)
 	}
 
 	// We want to reduce moving times, the best way is here:
@@ -94,7 +100,7 @@ export class RepeatDirective<T> implements Directive {
 	// But here we need to keep the index of template nodes that will be removed,
 	// So we check from start position to end position,
 	// collected templates which will be removed but keep them in their old position.
-	updateItems(items: T[]) {
+	protected updateItems(items: T[]) {
 		// Old
 		let oldItems = this.items
 		let oldItemIndexMap: Map<T, number> = new Map()
@@ -102,7 +108,10 @@ export class RepeatDirective<T> implements Directive {
 		
 
 		// New
-		let newItems = this.items = items
+		// Here it's not updating and we can't capture dependencies,
+		// so we need to observe each item manually,
+		// then later we can generate templates and automatically update them when properties of item changed.
+		let newItems = this.items = items.map(observe)
 		let newItemSet: Set<T> = new Set(this.items)
 		let newWtems: WatchedTemplate<T>[] = this.wtems = []
 
@@ -113,17 +122,18 @@ export class RepeatDirective<T> implements Directive {
 
 		for (let i = 0; i < oldItems.length; i++) {
 			let oldItem = oldItems[i]
-			if (!oldItemIndexMap.has(oldItem)) {
-				oldItemIndexMap.set(oldItem, i)
-			}
-			if (!newItemSet.has(oldItem)) {
+
+			// Duplicate item, remove it.
+			if (oldItemIndexMap.has(oldItem)) {
 				willRemoveIndexSet.add(i)
 			}
-		}
+			else {
+				oldItemIndexMap.set(oldItem, i)
 
-		let oldIndex = 0
-		while (willRemoveIndexSet.has(oldIndex)) {
-			oldIndex++
+				if (!newItemSet.has(oldItem)) {
+					willRemoveIndexSet.add(i)
+				}
+			}
 		}
 
 
@@ -138,15 +148,19 @@ export class RepeatDirective<T> implements Directive {
 				let reuseIndex = oldItemIndexMap.get(item)!
 
 				// Although destnation index can be reuse, but it may be reused by another template.
-				// In this scenario we try to find a new index.
+				// In this scenario we don't try to find a new index match item,
+				// Such that all the duplicate wtems except the first one will be removed.
+				// Otherwise, this can avoid nothing to move and then cause `scrollTop` of `parentNode` changed,
+				// See the comment in `updateLiveItems` of `live-repeat.ts` for more details.
 				if (reusedIndexSet.has(reuseIndex)) {
-					reuseIndex = oldItems.findIndex((t, i) => t === item && !reusedIndexSet.has(i))
+					reuseIndex = -1
+					//reuseIndex = oldItems.findIndex((t, i) => t === item && !reusedIndexSet.has(i))
 				}
 
 				// `oldIndex <= oldIndexForItem` means that it can keep position.
 				if (oldIndex <= reuseIndex) {
 					let wtem = oldWtems[reuseIndex]
-					wtem.updateIndex(index)
+					wtem.updateIndex(index + this.startIndex)
 					newWtems.push(wtem)
 					reusedIndexSet.add(reuseIndex)
 					oldIndex = reuseIndex + 1
@@ -155,8 +169,8 @@ export class RepeatDirective<T> implements Directive {
 
 				if (reuseIndex > -1) {
 					let wtem = oldWtems[reuseIndex]
-					this.moveTemplate(wtem.template, oldIndex < oldItems.length ? oldWtems[oldIndex].template.nodeRange.startNode : null)
-					wtem.updateIndex(index)
+					this.moveTemplate(wtem.template, oldIndex < oldItems.length ? oldWtems[oldIndex].template.range.startNode : null)
+					wtem.updateIndex(index + this.startIndex)
 					newWtems.push(wtem)
 					reusedIndexSet.add(reuseIndex)
 					continue
@@ -180,7 +194,7 @@ export class RepeatDirective<T> implements Directive {
 
 				if (reuseIndex > -1) {
 					let wtem = oldWtems[reuseIndex]
-					wtem.update(item, index)
+					wtem.update(item, index + this.startIndex)
 					newWtems.push(wtem)
 					willRemoveIndexSet.delete(reuseIndex)
 					reusedIndexSet.add(reuseIndex)
@@ -191,15 +205,21 @@ export class RepeatDirective<T> implements Directive {
 				reuseIndex = willRemoveIndexSet.keys().next().value
 
 				let wtem = oldWtems[reuseIndex]
-				this.moveTemplate(wtem.template, oldIndex < oldItems.length ? oldWtems[oldIndex].template.nodeRange.startNode : null)
-				wtem.update(item, index)
+				this.moveTemplate(wtem.template, oldIndex < oldItems.length ? oldWtems[oldIndex].template.range.startNode : null)
+				wtem.update(item, index + this.startIndex)
 				newWtems.push(wtem)
 				willRemoveIndexSet.delete(reuseIndex)
 				reusedIndexSet.add(reuseIndex)
 				continue
 			}
 
-			newWtems.push(this.createTemplate(item, index, oldIndex < oldItems.length ? oldWtems[oldIndex].template.nodeRange.startNode : null))
+			newWtems.push(
+				this.createTemplate(
+					item,
+					index + this.startIndex,
+					oldIndex < oldItems.length ? oldWtems[oldIndex].template.range.startNode : null
+				)
+			)
 		}
 
 		// Should not follow `willRemoveIndexSet` here:
@@ -215,13 +235,13 @@ export class RepeatDirective<T> implements Directive {
 	}
 
 	private moveTemplate(template: Template, nextNode: ChildNode | null) {
-		let fragment = template.nodeRange.getFragment()
+		let fragment = template.range.getFragment()
 
 		if (nextNode) {
 			nextNode.before(fragment)
 		}
 		else {
-			this.anchorNode.insert(fragment)
+			this.anchor.insert(fragment)
 		}
 	}
 
@@ -229,7 +249,7 @@ export class RepeatDirective<T> implements Directive {
 		let template = wtem.template
 
 		if (this.transition.shouldPlay()) {
-			let firstElement = template.nodeRange.getNodes().find(el => el.nodeType === 1) as HTMLElement | undefined
+			let firstElement = template.range.getFirstElement()
 			if (firstElement) {
 				this.transition.playLeaveAt(firstElement)
 				wtem.remove()
