@@ -8,16 +8,16 @@ import {DirectiveTransition, DirectiveTransitionOptions} from './shared'
 
 class CacheDirective implements Directive {
 
-	private anchorNode: NodeAnchor
+	private anchor: NodeAnchor
 	private context: Context
 	private transition: DirectiveTransition
 	private templates: Template[] = []
 	private currentTemplate: Template | null = null
 
-	constructor(anchorNode: NodeAnchor, context: Context, result: TemplateResult | string, options?: DirectiveTransitionOptions) {
-		this.anchorNode = anchorNode
+	constructor(anchor: NodeAnchor, context: Context, result: TemplateResult | string, transitionOptions?: DirectiveTransitionOptions) {
+		this.anchor = anchor
 		this.context = context
-		this.transition = new DirectiveTransition(context, options)
+		this.transition = new DirectiveTransition(context, transitionOptions)
 		this.context = context
 
 		if (result) {
@@ -31,8 +31,8 @@ class CacheDirective implements Directive {
 		}
 		
 		let template = new Template(result, this.context)
-		let fragment = template.nodeRange.getFragment()
-		this.anchorNode.insert(fragment)
+		let fragment = template.range.getFragment()
+		this.anchor.insert(fragment)
 
 		if (this.transition.shouldPlayEnterMayAtStart(firstTime)) {
 			this.playEnterTransition(template)
@@ -43,7 +43,7 @@ class CacheDirective implements Directive {
 	}
 
 	private async playEnterTransition(template: Template) {
-		let firstElement = template.nodeRange.getNodes().find(el => el.nodeType === 1) as HTMLElement | undefined
+		let firstElement = template.range.getFirstElement()
 		if (firstElement) {
 			await this.transition.playEnterAt(firstElement)
 		}
@@ -72,7 +72,7 @@ class CacheDirective implements Directive {
 				let template = this.templates.find(t => t.canMergeWith(result as TemplateResult))
 				if (template) {
 					template.merge(result)
-					this.anchorNode.insert(template.nodeRange.getFragment())
+					this.anchor.insert(template.range.getFragment())
 					this.playEnterTransition(template)
 					this.currentTemplate = template
 				}
@@ -90,21 +90,21 @@ class CacheDirective implements Directive {
 
 	private async cacheCurrentTemplate() {
 		let template = this.currentTemplate!
-		let firstElement = template.nodeRange.getNodes().find(el => el.nodeType === 1) as HTMLElement | undefined
+		let firstElement = template.range.getFirstElement()
 
 		// Cached elements have been moved, reset the anchor node to current parent node.
-		if (this.anchorNode.type === NodeAnchorType.Next && firstElement && firstElement.parentNode && firstElement.parentNode !== this.anchorNode.el.parentNode) {
-			this.anchorNode = new NodeAnchor(firstElement.parentNode, NodeAnchorType.Parent)
+		if (this.anchor.type === NodeAnchorType.Next && firstElement && firstElement.parentNode && firstElement.parentNode !== this.anchor.el.parentNode) {
+			this.anchor = new NodeAnchor(firstElement.parentNode, NodeAnchorType.Parent)
 		}
 
 		if (this.transition.shouldPlay() && firstElement) {
 			let finish = await this.transition.playLeaveAt(firstElement)
 			if (finish) {
-				template.nodeRange.cacheFragment()
+				template.range.cacheFragment()
 			}
 		}
 		else {
-			template.nodeRange.cacheFragment()
+			template.range.cacheFragment()
 		}
 
 		this.currentTemplate = null

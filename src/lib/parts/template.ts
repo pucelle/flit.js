@@ -17,7 +17,7 @@ export class Template {
 	private context: Context
 	private parts: Part[] = []
 
-	nodeRange: NodeRange
+	range: NodeRange
 
 	/**
 	 * Create an template from html`...` like template result and context
@@ -29,7 +29,7 @@ export class Template {
 		this.context = context
 
 		let {fragment, nodesInPlaces, places, hasSlots} = parse(this.result.type, this.result.strings, this.context ? this.context.el : null)
-		this.nodeRange = new NodeRange(fragment)
+		this.range = new NodeRange(fragment)
 		this.parseParts(nodesInPlaces, places)
 
 		if (hasSlots && this.context) {
@@ -167,7 +167,7 @@ export class Template {
 
 	// Been called when this template will never be used any more.
 	remove() {
-		this.nodeRange.getNodes().forEach(node => (node as ChildNode).remove())
+		this.range.getNodes().forEach(node => (node as ChildNode).remove())
 	}
 }
 

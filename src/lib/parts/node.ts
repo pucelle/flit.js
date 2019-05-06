@@ -16,15 +16,15 @@ export class NodePart implements Part {
 
 	type: PartType = PartType.Node
 
-	private anchorNode: NodeAnchor
+	private anchor: NodeAnchor
 	private context: Context
 	private templates: Template[] | null = null
 	private directive: Directive | null = null
 	private textNode: Text | null = null
 	private contentType: ChildContentType | null = null
 
-	constructor(anchorNode: NodeAnchor, value: unknown, context: Context) {
-		this.anchorNode = anchorNode
+	constructor(anchor: NodeAnchor, value: unknown, context: Context) {
+		this.anchor = anchor
 		this.context = context
 		this.update(value)
 	}
@@ -99,7 +99,7 @@ export class NodePart implements Part {
 		}
 		
 		let Dir = getDirectiveConstructor(directiveResult.id)
-		let directive = new Dir(this.anchorNode, this.context as any, ...directiveResult.args)
+		let directive = new Dir(this.anchor, this.context as any, ...directiveResult.args)
 		this.directive = directive
 	}
 
@@ -129,9 +129,9 @@ export class NodePart implements Part {
 				}
 				else {
 					let newTemplate = new Template(result, this.context)
-					let fragment = newTemplate.nodeRange.getFragment()
+					let fragment = newTemplate.range.getFragment()
 
-					oldTemplate.nodeRange.startNode.before(fragment)
+					oldTemplate.range.startNode.before(fragment)
 					oldTemplate.remove()
 					templates[i] = newTemplate
 				}
@@ -149,9 +149,9 @@ export class NodePart implements Part {
 		else if (templates.length < results.length) {
 			for (let i = templates.length; i < results.length; i++) {
 				let template = new Template(results[i], this.context)
-				let fragment = template.nodeRange.getFragment()
+				let fragment = template.range.getFragment()
 
-				this.anchorNode.insert(fragment)
+				this.anchor.insert(fragment)
 				templates.push(template)
 			}
 		}
@@ -166,7 +166,7 @@ export class NodePart implements Part {
 			}
 			else {
 				this.textNode = document.createTextNode(text)
-				this.anchorNode.insert(this.textNode)
+				this.anchor.insert(this.textNode)
 			}
 		}
 		else {

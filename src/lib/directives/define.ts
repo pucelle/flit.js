@@ -3,7 +3,7 @@ import {NodeAnchor} from '../node-helper'
 
 
 interface DirectiveConstructor<Args extends any[]> {
-	new(anchorNode: NodeAnchor, context: Context, ...args: Args): Directive<Args>
+	new(anchor: NodeAnchor, context: Context, ...args: Args): Directive<Args>
 }
 
 export interface Directive<Args extends any[] = any[]> {

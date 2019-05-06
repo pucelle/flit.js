@@ -112,7 +112,7 @@ export class WatchedTemplate<T> {
 			}
 			else {
 				let newTemplate = new Template(result, this.context)
-				this.template.nodeRange.startNode.before(newTemplate.nodeRange.getFragment())
+				this.template.range.startNode.before(newTemplate.range.getFragment())
 				this.template.remove()
 				this.template = newTemplate
 			}
