@@ -123,7 +123,7 @@ export class RepeatDirective<T> implements Directive {
 		for (let i = 0; i < oldItems.length; i++) {
 			let oldItem = oldItems[i]
 
-			// Duplicate item, remove it.
+			// Duplicate item, which should be removed.
 			if (oldItemIndexMap.has(oldItem)) {
 				willRemoveIndexSet.add(i)
 			}
@@ -137,8 +137,11 @@ export class RepeatDirective<T> implements Directive {
 		}
 
 
-		// The `oldIndex` means: old templates with index larger or equal it can keep it's old position
-		for (let index = 0, oldIndex = 0; index < newItems.length; index++) {
+		// When we are looking for item to reuse, we should firstly find item with index >= `lastReusedIndex`,
+		// If we found, we can reuse it without needing to move element.
+		// If can't, we use another item and move the element to the right position.
+		// Such that we can reduce the times to moving elements.
+		for (let index = 0, reuseStartIndex = 0; index < newItems.length; index++) {
 			let item = newItems[index]
 
 			// May reuse
@@ -147,29 +150,26 @@ export class RepeatDirective<T> implements Directive {
 				// Find the old index for item
 				let reuseIndex = oldItemIndexMap.get(item)!
 
-				// Although destnation index can be reuse, but it may be reused by another template.
-				// In this scenario we don't try to find a new index match item,
-				// Such that all the duplicate wtems except the first one will be removed.
-				// Otherwise, this can avoid nothing to move and then cause `scrollTop` of `parentNode` changed,
-				// See the comment in `updateLiveItems` of `live-repeat.ts` for more details.
+				// Although template with the index can be reused, but it may be reused already.
+				// In this scenario we don't try to find a new index that match item,
+				// Such that all the items with duplicate value except the first one will be removed.
 				if (reusedIndexSet.has(reuseIndex)) {
 					reuseIndex = -1
-					//reuseIndex = oldItems.findIndex((t, i) => t === item && !reusedIndexSet.has(i))
 				}
 
-				// `oldIndex <= oldIndexForItem` means that it can keep position.
-				if (oldIndex <= reuseIndex) {
+				// it can keep position, no need to move.
+				if (reuseStartIndex <= reuseIndex) {
 					let wtem = oldWtems[reuseIndex]
 					wtem.updateIndex(index + this.startIndex)
 					newWtems.push(wtem)
 					reusedIndexSet.add(reuseIndex)
-					oldIndex = reuseIndex + 1
+					reuseStartIndex = reuseIndex + 1
 					continue
 				}
 
 				if (reuseIndex > -1) {
 					let wtem = oldWtems[reuseIndex]
-					this.moveTemplate(wtem.template, oldIndex < oldItems.length ? oldWtems[oldIndex].template.range.startNode : null)
+					this.moveTemplate(wtem.template, reuseStartIndex < oldItems.length ? oldWtems[reuseStartIndex].template.range.startNode : null)
 					wtem.updateIndex(index + this.startIndex)
 					newWtems.push(wtem)
 					reusedIndexSet.add(reuseIndex)
@@ -182,7 +182,7 @@ export class RepeatDirective<T> implements Directive {
 
 				// Looking for a removed index starts from `oldIndex`, but without come across any can be reused item.
 				let reuseIndex = -1
-				for (let i = oldIndex; i < oldItems.length; i++) {
+				for (let i = reuseStartIndex; i < oldItems.length; i++) {
 					if (willRemoveIndexSet.has(i)) {
 						reuseIndex = i
 						break
@@ -198,14 +198,14 @@ export class RepeatDirective<T> implements Directive {
 					newWtems.push(wtem)
 					willRemoveIndexSet.delete(reuseIndex)
 					reusedIndexSet.add(reuseIndex)
-					oldIndex = reuseIndex + 1
+					reuseStartIndex = reuseIndex + 1
 					continue
 				}
 
 				reuseIndex = willRemoveIndexSet.keys().next().value
 
 				let wtem = oldWtems[reuseIndex]
-				this.moveTemplate(wtem.template, oldIndex < oldItems.length ? oldWtems[oldIndex].template.range.startNode : null)
+				this.moveTemplate(wtem.template, reuseStartIndex < oldItems.length ? oldWtems[reuseStartIndex].template.range.startNode : null)
 				wtem.update(item, index + this.startIndex)
 				newWtems.push(wtem)
 				willRemoveIndexSet.delete(reuseIndex)
@@ -217,7 +217,7 @@ export class RepeatDirective<T> implements Directive {
 				this.createTemplate(
 					item,
 					index + this.startIndex,
-					oldIndex < oldItems.length ? oldWtems[oldIndex].template.range.startNode : null
+					reuseStartIndex < oldItems.length ? oldWtems[reuseStartIndex].template.range.startNode : null
 				)
 			)
 		}
