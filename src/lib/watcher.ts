@@ -141,8 +141,8 @@ export class Watcher<T = any> {
 	 */
 
 	// One question: Will the update be triggered after disconnected?
-	//   1. Data changed, cause watcher update been enqueued, and will be updated in next micro task.
-	//   2. later some element was removed in same stack, related watcher was disconnected in next micro task.
+	//   1. Data changed, cause watcher update been enqueued, and will be updated in micro task queue.
+	//   2. later some element was removed in same stack, related watcher was disconnected in micro task queue.
 	//   3. Update and then disconnect.
 	//
 	// So this will not happen.
