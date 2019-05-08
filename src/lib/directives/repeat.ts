@@ -1,5 +1,4 @@
 import {defineDirective, Directive, DirectiveResult} from './define'
-import {Template} from '../parts'
 import {Watcher} from '../watcher'
 import {Context} from '../component'
 import {DirectiveTransition, DirectiveTransitionOptions, WatchedTemplate, TemplateFn} from './shared'
@@ -16,6 +15,7 @@ export class RepeatDirective<T> implements Directive {
 	protected items: T[] = []
 	protected wtems: WatchedTemplate<T>[] = []
 	protected itemsWatcher: Watcher<T[]> | null = null
+	protected firstlyUpdated: boolean = false
 
 	/** 
 	 * For `liveRepeat`, specify the the start index of first item in the whole data.
@@ -57,30 +57,6 @@ export class RepeatDirective<T> implements Directive {
 		this.updateItems(this.itemsWatcher.value)
 	}
 
-	private createTemplate(item: T, index: number, nextNode: ChildNode | null, firstTime: boolean = false): WatchedTemplate<T> {
-		let wtem = new WatchedTemplate(this.context, this.templateFn, item, index)
-		let template = wtem.template
-		let fragment = template.range.getFragment()
-		let firstElement: HTMLElement | null = null
-
-		if (this.transition.shouldPlayEnterMayAtStart(firstTime)) {
-			firstElement = fragment.firstElementChild as HTMLElement
-		}
-
-		if (nextNode) {
-			nextNode.before(fragment)
-		}
-		else {
-			this.anchor.insert(fragment)
-		}
-
-		if (firstElement) {
-			this.transition.playEnterAt(firstElement)
-		}
-
-		return wtem
-	}
-
 	canMergeWith(_items: Iterable<T>, templateFn: TemplateFn<T>): boolean {
 		return templateFn.toString() === this.templateFn.toString()
 	}
@@ -100,7 +76,12 @@ export class RepeatDirective<T> implements Directive {
 	// But here we need to keep the index of template nodes that will be removed,
 	// So we check from start position to end position,
 	// collected templates which will be removed but keep them in their old position.
-	protected updateItems(items: T[]) {
+
+	// Concepts:
+	//   matched: same item, no need to update item. if duplicate items exist, only the first one match.
+	//   reuse: reuse not in use item and update item on it.
+
+		protected updateItems(items: T[]) {
 		// Old
 		let oldItems = this.items
 		let oldItemIndexMap: Map<T, number> = new Map()
@@ -108,40 +89,54 @@ export class RepeatDirective<T> implements Directive {
 		
 
 		// New
-		// Here it's not updating and we can't capture dependencies,
+		// Here it's not in updating and we can't capture dependencies,
 		// so we need to observe each item manually,
 		// then later we can generate templates and automatically update them when properties of item changed.
 		let newItems = this.items = items.map(observe)
 		let newItemSet: Set<T> = new Set(this.items)
-		let newWtems: WatchedTemplate<T>[] = this.wtems = []
+		this.wtems = []
 
 		
-		// Mark removing and reusing
-		let willRemoveIndexSet: Set<number> = new Set()
-		let reusedIndexSet: Set<number> = new Set()
+		// Mark not in use and reused
+		let notInUseIndexSet: Set<number> = new Set()
+		let usedIndexSet: Set<number> = new Set()
 
 		for (let i = 0; i < oldItems.length; i++) {
 			let oldItem = oldItems[i]
 
-			// Duplicate item, which should be removed.
-			if (oldItemIndexMap.has(oldItem)) {
-				willRemoveIndexSet.add(i)
+			// Duplicate item or placeholder item, which should not in use.
+			if (oldItem === null || oldItemIndexMap.has(oldItem)) {
+				notInUseIndexSet.add(i)
 			}
 			else {
 				oldItemIndexMap.set(oldItem, i)
 
 				if (!newItemSet.has(oldItem)) {
-					willRemoveIndexSet.add(i)
+					notInUseIndexSet.add(i)
 				}
 			}
 		}
 
 
-		// When we are looking for item to reuse, we should firstly find item with index >= `lastReusedIndex`,
-		// If we found, we can reuse it without needing to move element.
-		// If can't, we use another item and move the element to the right position.
-		// Such that we can reduce the times to moving elements.
-		for (let index = 0, reuseStartIndex = 0; index < newItems.length; index++) {
+		// "Old matched index" is the core indicator we moving elements according to.
+		// When we reuse other elements, we move it before "next matched index",
+		// such than when we meet the "next matched index" later, we don't need to move the elements.
+		function getNextMatchedOldIndex(startIndex: number): number {
+			for (let i = startIndex; i < oldItems.length; i++) {
+				let oldItem = oldItems[i]
+				if (newItemSet.has(oldItem) && oldItemIndexMap.get(oldItem) === i) {
+					return i
+				}
+			}
+
+			return oldItems.length
+		}
+
+		let lastMatchedOldIndex = -1
+		let nextMatchedOldIndex = getNextMatchedOldIndex(0)
+
+
+		for (let index = 0; index < newItems.length; index++) {
 			let item = newItems[index]
 
 			// May reuse
@@ -153,71 +148,56 @@ export class RepeatDirective<T> implements Directive {
 				// Although template with the index can be reused, but it may be reused already.
 				// In this scenario we don't try to find a new index that match item,
 				// Such that all the items with duplicate value except the first one will be removed.
-				if (reusedIndexSet.has(reuseIndex)) {
+				if (usedIndexSet.has(reuseIndex)) {
 					reuseIndex = -1
 				}
 
-				// it can keep position, no need to move.
-				if (reuseStartIndex <= reuseIndex) {
-					let wtem = oldWtems[reuseIndex]
-					wtem.updateIndex(index + this.startIndex)
-					newWtems.push(wtem)
-					reusedIndexSet.add(reuseIndex)
-					reuseStartIndex = reuseIndex + 1
+				// It's already in the right position, no need to move.
+				if (nextMatchedOldIndex <= reuseIndex) {
+					this.useMatched(oldWtems[reuseIndex], index)
+					usedIndexSet.add(reuseIndex)
+					lastMatchedOldIndex = nextMatchedOldIndex
+					nextMatchedOldIndex = getNextMatchedOldIndex(reuseIndex + 1)
 					continue
 				}
 
 				if (reuseIndex > -1) {
-					let wtem = oldWtems[reuseIndex]
-					this.moveTemplate(wtem.template, reuseStartIndex < oldItems.length ? oldWtems[reuseStartIndex].template.range.startNode : null)
-					wtem.updateIndex(index + this.startIndex)
-					newWtems.push(wtem)
-					reusedIndexSet.add(reuseIndex)
+					this.move(oldWtems[reuseIndex], nextMatchedOldIndex < oldItems.length ? oldWtems[nextMatchedOldIndex]: null)
+					this.useMatched(oldWtems[reuseIndex], index)
+					usedIndexSet.add(reuseIndex)
 					continue
 				}
 			}
 
 			// Reuse template that will be removed and rerender it
-			if (!this.transition.shouldPlay() && willRemoveIndexSet.size > 0) {
-
-				// Looking for a removed index starts from `oldIndex`, but without come across any can be reused item.
+			if (!this.transition.shouldPlay() && notInUseIndexSet.size > 0) {
 				let reuseIndex = -1
-				for (let i = reuseStartIndex; i < oldItems.length; i++) {
-					if (willRemoveIndexSet.has(i)) {
+
+				// Looking for a not in use index betweens `lastMatchedOldIndex` and `nextMatchedOldIndex`,
+				// Such that we have no need to move it.
+				for (let i = lastMatchedOldIndex + 1; i < nextMatchedOldIndex; i++) {
+					if (notInUseIndexSet.has(i)) {
 						reuseIndex = i
 						break
 					}
-					else if (newItemSet.has(oldItems[i])) {
-						break
-					}
 				}
 
-				if (reuseIndex > -1) {
-					let wtem = oldWtems[reuseIndex]
-					wtem.update(item, index + this.startIndex)
-					newWtems.push(wtem)
-					willRemoveIndexSet.delete(reuseIndex)
-					reusedIndexSet.add(reuseIndex)
-					reuseStartIndex = reuseIndex + 1
-					continue
+				if (reuseIndex === -1) {
+					reuseIndex = notInUseIndexSet.keys().next().value
+					this.move(oldWtems[reuseIndex], nextMatchedOldIndex < oldItems.length ? oldWtems[nextMatchedOldIndex]: null)
 				}
-
-				reuseIndex = willRemoveIndexSet.keys().next().value
-
-				let wtem = oldWtems[reuseIndex]
-				this.moveTemplate(wtem.template, reuseStartIndex < oldItems.length ? oldWtems[reuseStartIndex].template.range.startNode : null)
-				wtem.update(item, index + this.startIndex)
-				newWtems.push(wtem)
-				willRemoveIndexSet.delete(reuseIndex)
-				reusedIndexSet.add(reuseIndex)
+				
+				this.reuse(oldWtems[reuseIndex], item, index)
+				notInUseIndexSet.delete(reuseIndex)
+				usedIndexSet.add(reuseIndex)
 				continue
 			}
 
-			newWtems.push(
-				this.createTemplate(
+			this.wtems.push(
+				this.create(
 					item,
-					index + this.startIndex,
-					reuseStartIndex < oldItems.length ? oldWtems[reuseStartIndex].template.range.startNode : null
+					index,
+					nextMatchedOldIndex < oldItems.length ? oldWtems[nextMatchedOldIndex]: null
 				)
 			)
 		}
@@ -225,27 +205,63 @@ export class RepeatDirective<T> implements Directive {
 		// Should not follow `willRemoveIndexSet` here:
 		// e.g., two same items exist, and only first one reused, 
 		// the second one needs to be removed but not in `willRemoveIndexSet`.
-		if (reusedIndexSet.size < oldItems.length) {
+		if (usedIndexSet.size < oldItems.length) {
 			for (let i = 0; i < oldItems.length; i++) {
-				if (!reusedIndexSet.has(i)) {
-					this.removeTemplate(oldWtems[i])
+				if (!usedIndexSet.has(i)) {
+					this.delete(oldWtems[i])
 				}
 			}
 		}
+
+		this.firstlyUpdated = true
 	}
 
-	private moveTemplate(template: Template, nextNode: ChildNode | null) {
-		let fragment = template.range.getFragment()
+	private useMatched(wtem: WatchedTemplate<T>, index: number) {
+		wtem.updateIndex(index + this.startIndex)
+		this.wtems.push(wtem)
+	}
 
-		if (nextNode) {
-			nextNode.before(fragment)
+	private reuse(wtem: WatchedTemplate<T>, item: T, index: number) {
+		wtem.update(item, index + this.startIndex)
+		this.wtems.push(wtem)
+	}
+
+	private move(wtem: WatchedTemplate<T>, nextOldWtem: WatchedTemplate<T> | null) {
+		let fragment = wtem.template.range.getFragment()
+
+		if (nextOldWtem) {
+			nextOldWtem.template.range.startNode.before(fragment)
 		}
 		else {
 			this.anchor.insert(fragment)
 		}
 	}
 
-	private removeTemplate(wtem: WatchedTemplate<T>) {
+	private create(item: T, index: number, nextOldWtem: WatchedTemplate<T> | null): WatchedTemplate<T> {
+		let wtem = new WatchedTemplate(this.context, this.templateFn, item, index + this.startIndex)
+		let template = wtem.template
+		let fragment = template.range.getFragment()
+		let firstElement: HTMLElement | null = null
+
+		if (this.transition.shouldPlayEnterMayAtStart(this.firstlyUpdated)) {
+			firstElement = fragment.firstElementChild as HTMLElement
+		}
+
+		if (nextOldWtem) {
+			nextOldWtem.template.range.startNode.before(fragment)
+		}
+		else {
+			this.anchor.insert(fragment)
+		}
+
+		if (firstElement) {
+			this.transition.playEnterAt(firstElement)
+		}
+
+		return wtem
+	}
+
+	private delete(wtem: WatchedTemplate<T>) {
 		let template = wtem.template
 
 		if (this.transition.shouldPlay()) {

@@ -1,13 +1,13 @@
 import {defineDirective, DirectiveResult} from './define'
 import {Context} from '../component'
 import {DirectiveTransitionOptions, WatchedTemplate} from './shared'
-import {NodeAnchor, NodeAnchorType} from '../node-helper'
+import {NodeAnchor} from '../node-helper'
 import {on} from '../dom-event'
 import {Watcher} from '../watcher'
 import {TemplateResult} from '../parts'
 import {RepeatDirective} from './repeat'
-import {onRenderComplete} from '../queue'
-import {binaryFindIndexToInsert, ScrollerClientRect} from './helper'
+import {onRenderComplete, renderComplete} from '../queue'
+import {binaryFindIndexToInsert, ScrollerClientRect, ThrottleByAnimationFrame, repeatValue} from './helper'
 
 
 interface LiveOptions<T> {
@@ -51,15 +51,16 @@ export class LiveRepeatDirective<T> extends RepeatDirective<T | null> {
 
 	private dataWatcher: Watcher<T[]> | null = null
 
-	/** The parent node of `anchorNode`, it's `overflow` value must be `auto` or `scroll`. */
+	/** The parent node of `anchorNode`, it will be used as a slider to slide in the scroller element. */
+	private slider!: HTMLElement
+
+	/** The parent node of `slider`, it's `overflow` value must be `auto` or `scroll`. */
 	private scroller!: HTMLElement
-	private startPlaceholder!: HTMLElement
-	private endPlaceholder!: HTMLElement
 
 	/**
 	* How many items to render each time.
-	* If you are using dynamic data, you should set this value to count of data that you ajax interface returned.
-	* Otherwise you should set this value big enough to cover viewport, but too big to render too much items.
+	* If you are using dynamic data, you should set this value to count of items that you ajax interface returned.
+	* Otherwise you may set this value big enough to cover viewport, but should not too big to render too much items.
 	* Normally 50 would be enough since minimal lineHeight is `24` and `24 * 50 = 1200` can cover most screens.
 	* If the render result can't cover the viewport, it will be double until it can and rerender.
 	*/
@@ -83,22 +84,26 @@ export class LiveRepeatDirective<T> extends RepeatDirective<T | null> {
 	 */
 	private dataCount: number = -1
 
+	// Doesn't implement a data cacher, because data may changed,
+	// but here it's only a simple directive,
+	// we have no way to manage the whole life cycle of data.
 	private dataGetter: GroupDataGetter<T> | null = null
 
 	/** `startIndex` can only be set for once from `options`. */
 	private startIndexApplied: boolean = false
 
 	/** 
-	 * Caluated average item height by this value, it will be used to calculate start and end placeholder height.
+	 * Average item height value, it is used to calculate the position of the `slider`.
 	 * It will be detected automatically from the first rendering if was not initialized.
 	 */
 	private averageItemHeight: number = 0
 
-	/** We need this property to keep the element's position by adjusting `scroller.scrollTop`. */
-	private lastVisibleElement: HTMLElement | null = null
-
-	/** When requesting data, scroll event should not trigger rerendering, this value will be set to `true`. */
-	//private lockRendering: boolean = false
+	/** 
+	 * When we scrolled up or down, we don't know about the height of just inserted or removed elements.
+	 * So we need this property to specify the element in the index, and keep it's scrolling position by adjusting.
+	 */
+	private indexToKeepPosition: number = -1
+	private topOfKeepPositionElement: number = -1
 
 	constructor(
 		anchor: NodeAnchor,
@@ -109,26 +114,34 @@ export class LiveRepeatDirective<T> extends RepeatDirective<T | null> {
 	) {
 		super(anchor, context, null, templateFn, transitionOptions)
 
-		this.initElementsAndAnchor(anchor)
+		this.initElements()
 		this.setRenderOptions(options)
-		this.updateLiveProperties()
+		this.updateAfterStartIndexPrepared()
 	}
 
 	initItems() {}
 
-	private initElementsAndAnchor(anchor: NodeAnchor) {
-		this.scroller = anchor.el.parentElement as HTMLElement
-		on(this.scroller, 'scroll.passive', this.onScroll, this)
+	private initElements() {
+		this.slider = this.anchor.el.parentElement as HTMLElement
+		this.scroller = this.slider.parentElement as HTMLElement
+		
+		if (!this.slider || !this.scroller || this.scroller.children.length !== 1 || this.slider.children.length !== 0) {
+			throw new Error(`"liveRepeat" must be contained by the struct like "
+				<div style="overflow: auto | scroll">
+					<div>
+						\${liveRepeat(...)}
+					</div>
+				</div>
+			"`)
+		}
 
-		this.endPlaceholder = document.createElement('div')
-		this.endPlaceholder.style.cssText = 'margin: 0; padding: 0; height: 0;'
-		;(anchor.el as ChildNode).after(this.endPlaceholder)
+		on(this.scroller, 'scroll.passive', ThrottleByAnimationFrame(this.onScroll.bind(this)))
 
-		this.startPlaceholder = document.createElement('div')
-		this.startPlaceholder.style.cssText = 'margin: 0; padding: 0; height: 0;'
-		;(anchor.el as ChildNode).after(this.startPlaceholder)
-
-		this.anchor = new NodeAnchor(this.endPlaceholder, NodeAnchorType.Next)
+		onRenderComplete(() => {
+			if (!['scroll', 'auto'].includes(getComputedStyle(this.scroller).overflow!)) {
+				console.error(`The "overflow" value of "scroller" of "liveRepeat" must have "scroll" or "auto"`)
+			}
+		})
 	}
 
 	private setRenderOptions(options: LiveOptions<T>) {
@@ -176,7 +189,7 @@ export class LiveRepeatDirective<T> extends RepeatDirective<T | null> {
 			}
 		}
 		catch {
-			throw new Error(`The "templateFn" must can render "null" to a template result in async mode`)
+			throw new Error(`The "templateFn" must can render "null" to a template result or string when using async data`)
 		}
 	}
 
@@ -191,7 +204,7 @@ export class LiveRepeatDirective<T> extends RepeatDirective<T | null> {
 
 		let onUpdate = (data: T[]) => {
 			this.data = data
-			this.updateLiveProperties()
+			this.updateAfterStartIndexPrepared()
 		}
 
 		this.dataWatcher = new Watcher(watchFn, onUpdate)
@@ -205,134 +218,149 @@ export class LiveRepeatDirective<T> extends RepeatDirective<T | null> {
 	merge(options: any, _templateFn: LiveTemplateFn<T>, transitionOptions?: DirectiveTransitionOptions) {
 		this.setRenderOptions(options as LiveOptions<T>)
 		this.transition.setOptions(transitionOptions)
-		this.updateLiveProperties()
+		this.updateAfterStartIndexPrepared()
 	}
 
-	/** Update live properties. The `startIndex` is prepared now. */
-	private async updateLiveProperties() {
-		// Note that the `endIndex` may be larger than data length.
-		// Items betweens `startIndex` and `endIndex `should cover the viewport.
-		let startIndex = this.startIndex
-		let endIndex = this.limitIndex(startIndex + this.groupSize * this.renderGroupCount)
-		
-		let offsetTopOfLastVisibleElement: number | undefined
-		if (this.lastVisibleElement) {
-			offsetTopOfLastVisibleElement = this.lastVisibleElement.offsetTop
-		}
+	// The `startIndex` is prepared now.
+	private async updateAfterStartIndexPrepared() {
+		let endIndex = this.limitEndIndex(this.startIndex + this.groupSize * this.renderGroupCount)
 
 		if (this.data) {
-			this.updateLiveItems(this.data.slice(startIndex, endIndex))
+			this.updateLiveItems(this.data.slice(this.startIndex, endIndex))
 		}
 		else {
-			this.updateLiveItems(await this.requestGroupedDataBetweens(startIndex, endIndex))
+			this.updateLiveItems(await this.requestGroupedData(this.startIndex, endIndex))
 		}
 
-		this.updatePlaceholderHeights()
+		if (this.averageItemHeight) {
+			this.updateSliderPosition()
+		}
 
-		
-		let startPlaceholder = this.startPlaceholder
-		startPlaceholder.before(this.startPlaceholder = startPlaceholder.cloneNode() as HTMLElement)
-		startPlaceholder.remove()
-
-		// `onRenderComplete` is absolutely required,
+		// `renderComplete` is absolutely required,
 		// we can makesure that the component are rendered only after inserted into document,
 		// but directive may be still in fragment when was initialized using `render`.
-		onRenderComplete(() => {
-			if (!this.averageItemHeight) {
-				this.measureSizes()
-			}
+		await renderComplete()
 
-			if (this.startIndexApplied) {
-				this.adjustScrollPosition(offsetTopOfLastVisibleElement)
-			}
-			else {
-				this.scroller.scrollTop = this.startPlaceholder.offsetHeight
-				this.startIndexApplied = true
-			}
-		})
-	}
-
-	private updateLiveItems(items: T[] | null[]) {
-		// There is a big issue here:
-		// When no child nodes moved in scroller,
-		// updating height of placeholders will cause `scrollTop` of scroller changed.
-		this.updateItems(items)
-	}
-
-	private limitIndex(index: number): number {
-		if (this.data && index > this.data.length) {
-			index = this.data.length
+		if (!this.averageItemHeight) {
+			this.measureAverageItemHeight()
+			this.updateSliderPosition()
 		}
 
-		if (this.dataCount >= 0 && index > this.dataCount) {
-			index = this.dataCount
+		if (this.mayDoubleRenderGroupCount()) {
+			this.updateAfterStartIndexPrepared()
+		}
+		else {
+			if (this.startIndexApplied) {
+				this.adjustScrollPosition()
+			}
+			else if (this.averageItemHeight){
+				this.scroller.scrollTop = this.averageItemHeight * this.startIndex || 0
+				this.startIndexApplied = true
+			}
+		}
+	}
+
+	private willUpdateItems: boolean = false
+	private toUpdateItems: (T | null)[] | null = null
+
+	private updateLiveItems(items: (T | null)[]) {
+		// If you use two placeholder elements but not margin to specify the position of `slider`,
+		// There will be a big issue:
+		// When no child nodes moved in scroller, expecially when rendering placeholder values [null, ...].
+		// updating height of placeholder elements will cause `scroller.scrollTop` reset.
+		this.toUpdateItems = items
+
+		if (!this.willUpdateItems) {
+			Promise.resolve().then(() => {
+				this.updateItems(this.toUpdateItems!)
+				this.willUpdateItems = false
+				this.toUpdateItems = null
+			})
+			
+			this.willUpdateItems = true
+		}
+	}
+
+	private limitEndIndex(index: number): number {
+		let maxCount = this.data ? this.data.length : this.dataCount
+
+		if (maxCount >= 0 && index > maxCount) {
+			index = maxCount
 		}
 
 		return index
 	}
 
-	private requestGroupedDataBetweens(startIndex: number, endIndex: number): null[] {
-		let dataGetter = this.dataGetter!
-		let startGroupIndex = Math.floor(startIndex / this.groupSize)	//49 -> 0, 50 -> 1
-		let endGroupIndex = Math.floor((endIndex - 1) / this.groupSize) + 1	// 50 -> 1, 51 -> 2
-		let promises: Promise<Iterable<T>>[] = []
-
-		for (let i = startGroupIndex; i < endGroupIndex; i++) {
-			let mayAsyncData = dataGetter(i * this.groupSize, this.groupSize)
-			if (mayAsyncData instanceof Promise) {
-				promises.push(mayAsyncData)
-			}
-			else {
-				promises.push(Promise.resolve(mayAsyncData))
-			}
-		}
-		
+	private requestGroupedData(startIndex: number, endIndex: number): null[] {
 		// If can't got all grouped data immediately (at least before micro task queue),
-		// and can render `null` values as placeholders,
-		// We will replace them after data prepared.
-		// Don't worry about promises were resolved immediately,
-		// `liveItems` will be replaced before rendering.
-		let placeholderData: null[] = []
-		for (let i = startIndex; i < endIndex; i++) {
-			placeholderData.push(null)
-		}
-
-		// let dataPromise = new Promise(async (resolve) => {
-		// 	//this.lockRendering = true
-		
-		// 	let dataArray = await Promise.all(promises)
-		// 	let data: T[] = []
-	
-		// 	for (let item of dataArray) {
-		// 		data.push(...item)
-		// 	}
-	
-		// 	data = data.slice(
-		// 		startIndex - startGroupIndex * this.groupSize,
-		// 		endIndex - startGroupIndex * this.groupSize
-		// 	)
-	
-		// 	//this.lockRendering = false
-		// 	resolve(data)
-		// }) as Promise<T[]>
-		
-		// dataPromise.then(data => {
-		// 	if (this.items === placeholderData) {
-		// 		this.updateLiveItems(data)
-		// 	}
-		// })
-
-		return placeholderData
+		// we render `null` values as placeholders for not immediately returned data,
+		// and replace them after data prepared.
+		this.loadGroupedData(startIndex, endIndex)
+		return repeatValue(null, endIndex - startIndex)
 	}
 
-	// `items` are prepared now.
-	private updatePlaceholderHeights() {
+	private loadGroupedData(startIndex: number, endIndex: number) {
+		let startGroupIndex = Math.floor(startIndex / this.groupSize)	//49 -> 0, 50 -> 1
+		let endGroupIndex = Math.floor((endIndex - 1) / this.groupSize) + 1	// 50 -> 1, 51 -> 2
+		let dataArray: (T | null)[][] = []
+
+		for (let i = startGroupIndex; i < endGroupIndex; i++) {
+			dataArray.push(repeatValue(null, this.groupSize))
+		}
+
+		for (let i = startGroupIndex; i < endGroupIndex; i++) {
+			let promise = this.loadOneGroupData(i * this.groupSize, this.groupSize)
+			promise.then(groupdata => {
+				dataArray[i - startGroupIndex] = [...groupdata]
+
+				let data: (T | null)[] = []
+				for (let item of dataArray) {
+					data.push(...item)
+				}
+
+				data = data.slice(
+					startIndex - startGroupIndex * this.groupSize,
+					endIndex - startGroupIndex * this.groupSize
+				)
+
+				if (startIndex === this.startIndex) {
+					this.updateLiveItems(data)
+				}
+			})
+		}
+	}
+	
+	/** Cache grouped data requesting promises by their start index. */
+	private dataRequestMap: Map<number, Promise<Iterable<T>>> = new Map()
+
+	// It's very often that you load one page of data, and then still load this page after scrolled.
+	// So we need to cache requests for pages before it returned.
+	private async loadOneGroupData(start: number, count: number): Promise<Iterable<T>> {
+		if (this.dataRequestMap.has(start)) {
+			return this.dataRequestMap.get(start)!
+		}
+
+		let dataGetter = this.dataGetter!
+		let promise = dataGetter(start, count)
+
+		if (promise instanceof Promise) {
+			this.dataRequestMap.set(start, promise)
+			let data = await promise
+			this.dataRequestMap.delete(start)
+			return data
+		}
+		else {
+			return promise
+		}
+	}
+
+	private updateSliderPosition() {
 		if (!this.averageItemHeight) {
 			return
 		}
 
 		let countBeforeStart = this.startIndex
-		let endIndex = this.startIndex + this.items.length
+		let endIndex = this.limitEndIndex(this.startIndex + this.groupSize * this.renderGroupCount)
 		let countAfterEnd = 0
 
 		if (this.data) {
@@ -342,11 +370,11 @@ export class LiveRepeatDirective<T> extends RepeatDirective<T | null> {
 			countAfterEnd = Math.max(0, this.dataCount - endIndex)
 		}
 
-		this.startPlaceholder.style.height = this.averageItemHeight * countBeforeStart + 'px'
-		this.endPlaceholder.style.height = this.averageItemHeight * countAfterEnd + 'px'
+		this.slider.style.marginTop = this.averageItemHeight * countBeforeStart + 'px'
+		this.slider.style.marginBottom = this.averageItemHeight * countAfterEnd + 'px'
 	}
 
-	private measureSizes() {
+	private measureAverageItemHeight() {
 		if (this.items.length === 0) {
 			return
 		}
@@ -354,41 +382,46 @@ export class LiveRepeatDirective<T> extends RepeatDirective<T | null> {
 		// Here it is not 100% right when `groupSize` is not big enough.
 		// Assume that there is only one `30px` height item with `10px` margin,
 		// You will got wrong value 50, not right value 40.
-		let startPlaceholderBottom = this.startPlaceholder.offsetTop - this.startPlaceholder.offsetHeight
-		let endPlaceHolderTop = this.endPlaceholder.offsetTop
-		let totalHeight = endPlaceHolderTop - startPlaceholderBottom
-		if (totalHeight <= 0) {
+		let sliderHeight = this.slider.offsetHeight
+		if (sliderHeight <= 0) {
 			return
 		}
 
-		let scrollerHeight = this.scroller.clientHeight
-		let needsRerender = false
-
-		this.averageItemHeight = Math.round(totalHeight / this.items.length)
-
-		while (totalHeight < scrollerHeight) {
-			this.renderGroupCount *= 2
-			totalHeight *= 2
-			needsRerender = true
-		}
-
-		this.updatePlaceholderHeights()
-
-		if (needsRerender) {
-			this.checkRenderingRange()
-		}
+		this.averageItemHeight = Math.round(sliderHeight / this.items.length)
 	}
 
-	private adjustScrollPosition(oldOffsetTop: number | undefined) {
-		if (this.lastVisibleElement) {
-			let newOffsetTop = 0
-			let scrollTopDiff = oldOffsetTop! - newOffsetTop
+	private mayDoubleRenderGroupCount(): boolean {
+		if (!this.averageItemHeight) {
+			return false
+		}
 
-			// If all items have same height, `scrollTopDiff` will always be `0`.
-			// Never update `scroller.scrollTop`, it will cause unexpected scrolling,
-			// because scroll events works on a `passive` mode.
-			if (scrollTopDiff !== 0) {
-				//this.startPlaceholder.style.height = this.startPlaceholder.offsetHeight + scrollTopDiff + 'px'
+		let sliderHeight = this.slider.offsetHeight
+		let scrollerHeight = this.scroller.clientHeight
+		let changed = false
+
+		while (sliderHeight < scrollerHeight) {
+			this.renderGroupCount *= 2
+			sliderHeight *= 2
+			changed = true
+		}
+
+		return changed
+	}
+
+	private adjustScrollPosition() {
+		let oldTop = this.topOfKeepPositionElement
+
+		if (this.indexToKeepPosition !== -1 && oldTop !== -1) {
+			let newTop = this.getTopOfKeepPositionElement()
+			if (newTop !== undefined) {
+				let topDiff = oldTop - newTop
+				
+				// If all items have same height, `topDiff` will always be `0`.
+				// Never update `scroller.scrollTop`, it will cause unexpected scrolling,
+				// because scroll events works on a `passive` mode.
+				if (topDiff !== 0) {
+					this.slider.style.marginTop = this.averageItemHeight * this.startIndex + topDiff + 'px'
+				}
 			}
 		}
 
@@ -398,25 +431,44 @@ export class LiveRepeatDirective<T> extends RepeatDirective<T | null> {
 		// The only short is that when scrolled up for a little later, it will trigger another `update('up')`.
 	}
 
+	private getTopOfKeepPositionElement(): number | undefined {
+		if (this.indexToKeepPosition === -1) {
+			return undefined
+		}
+
+		let wtem = this.wtems[this.indexToKeepPosition - this.startIndex]
+		if (wtem) {
+			let el = wtem.template.range.getFirstElement()
+			if (el) {
+				return el.offsetTop
+			}
+		}
+
+		return undefined
+	}
+
 	private onScroll() {
 		this.checkRenderingRange()
 	}
 
 	private checkRenderingRange() {
 		let scrollerRect = new ScrollerClientRect(this.scroller)
+		let sliderRect = this.slider.getBoundingClientRect()
 		
-		if (!scrollerRect.isRectAbove(this.startPlaceholder.getBoundingClientRect())) {
-			this.update('up')
+		if (scrollerRect.rect.top < sliderRect.top) {
+			this.updateToCover('up')
 		}
-		else if (!scrollerRect.isRectBelow(this.endPlaceholder.getBoundingClientRect())) {
-			this.update('down')
+		else if (scrollerRect.rect.bottom > sliderRect.bottom) {
+			this.updateToCover('down')
 		}
 	}
 
 	// Direction means where we render new items, and also the direction the value of `startIndex` will change to.
-	private update(direction: 'up' | 'down') {
+	private updateToCover(direction: 'up' | 'down') {
 		let endIndex = -1
-		this.lastVisibleElement = null
+
+		this.indexToKeepPosition = -1
+		this.topOfKeepPositionElement = -1
 
 		if (direction === 'up') {
 			endIndex = this.findLastVisibleIndex()
@@ -438,10 +490,10 @@ export class LiveRepeatDirective<T> extends RepeatDirective<T | null> {
 			}
 		}
 
-		endIndex = this.limitIndex(endIndex)
+		endIndex = this.limitEndIndex(endIndex)
 
 		this.startIndex = Math.max(0, endIndex - this.groupSize * this.renderGroupCount)
-		this.updateLiveProperties()
+		this.updateAfterStartIndexPrepared()
 	}
 
 	// Partial visible is OK too.
@@ -475,8 +527,8 @@ export class LiveRepeatDirective<T> extends RepeatDirective<T | null> {
 		let firstElement = wtem.template.range.getFirstElement()!
 
 		if (scrollerRect.isRectIn(firstElement.getBoundingClientRect())) {
-			this.lastVisibleElement = firstElement
-			return this.startIndex + index
+			this.topOfKeepPositionElement = firstElement.offsetTop
+			return this.indexToKeepPosition = this.startIndex + index
 		}
 		
 		return -1
@@ -513,17 +565,14 @@ export class LiveRepeatDirective<T> extends RepeatDirective<T | null> {
 		let firstElement = wtem.template.range.getFirstElement()!
 
 		if (scrollerRect.isRectIn(firstElement.getBoundingClientRect())) {
-			this.lastVisibleElement = firstElement
-			return this.startIndex + index
+			this.topOfKeepPositionElement = firstElement.offsetTop
+			return this.indexToKeepPosition =this.startIndex + index
 		}
 
 		return -1
 	}
 
 	remove() {
-		this.startPlaceholder.remove()
-		this.endPlaceholder.remove()
-
 		for (let wtem of this.wtems) {
 			wtem.remove()
 		}

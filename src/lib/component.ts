@@ -133,7 +133,7 @@ export function updateComponents() {
 
 // You can easily know when these events are triggered.
 //   created: just get component and do something.
-//   firstUpdated: watch properties using in `render` for once.
+//   ready: watch properties using in `render` for once.
 //   updated: watch properties using in `render`.
 //   connected: in where element was inserted into document.
 //   disconnedted: in where element was removed.

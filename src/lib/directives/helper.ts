@@ -85,3 +85,27 @@ export class ScrollerClientRect {
 		return !this.isRectAbove(rect) && !this.isRectBelow(rect)
 	}
 }
+
+
+/** Used to throttle scroll event to trigger at most once in each animation frame. */
+export function ThrottleByAnimationFrame<F extends (...args: any) => void>(fn: F): F {
+	let frameId: number | null = null
+
+	return function(...args: any) {
+		if (!frameId) {
+			frameId = requestAnimationFrame(() => {
+				frameId = null
+			})
+			fn(...args)
+		}
+	} as F
+}
+
+
+export function repeatValue<T>(value: T, count: number): T[] {
+	let values: T[] = []
+	for (let i = 0; i < count; i++) {
+		values.push(value)
+	}
+	return values
+}
