@@ -466,19 +466,27 @@ export class LiveRepeatDirective<T> extends RepeatDirective<T | null> {
 	// Direction means where we render new items, and also the direction the value of `startIndex` will change to.
 	private updateToCover(direction: 'up' | 'down') {
 		let endIndex = -1
-
-		this.indexToKeepPosition = -1
-		this.topOfKeepPositionElement = -1
+		let visibleIndex = -1
 
 		if (direction === 'up') {
-			endIndex = this.findLastVisibleIndex()
+			endIndex = visibleIndex = this.locateLastVisibleIndex()
 		}
 		else {
-			let startIndex = this.findFirstVisibleIndex()
+			let startIndex = visibleIndex = this.locateFirstVisibleIndex()
 			if (startIndex > -1) {
 				endIndex = startIndex + this.groupSize * this.renderGroupCount
 			}
 		}
+
+		this.indexToKeepPosition = visibleIndex
+
+		// Must get this value here,
+		// later we will lost current `startIndex` and can't locate the element.
+		// Otherwise cache the element is not work,
+		// It may be moved after `updateItems`.
+		this.topOfKeepPositionElement = visibleIndex > -1
+			? this.wtems[visibleIndex - this.startIndex].template.range.getFirstElement()!.offsetTop
+			: -1
 		
 		if (endIndex === -1) {
 			if (direction === 'up') {
@@ -496,8 +504,7 @@ export class LiveRepeatDirective<T> extends RepeatDirective<T | null> {
 		this.updateAfterStartIndexPrepared()
 	}
 
-	// Partial visible is OK too.
-	private findFirstVisibleIndex(): number {
+	private locateFirstVisibleIndex(): number {
 		let scrollerRect = new ScrollerClientRect(this.scroller)
 
 		let index = binaryFindIndexToInsert(this.wtems as WatchedTemplate<T>[], (wtem) => {
@@ -527,15 +534,13 @@ export class LiveRepeatDirective<T> extends RepeatDirective<T | null> {
 		let firstElement = wtem.template.range.getFirstElement()!
 
 		if (scrollerRect.isRectIn(firstElement.getBoundingClientRect())) {
-			this.topOfKeepPositionElement = firstElement.offsetTop
-			return this.indexToKeepPosition = this.startIndex + index
+			return this.startIndex + index
 		}
 		
 		return -1
 	}
 
-	// Partial visible is OK too.
-	private findLastVisibleIndex(): number {
+	private locateLastVisibleIndex(): number {
 		let scrollerRect = new ScrollerClientRect(this.scroller)
 
 		let index = binaryFindIndexToInsert(this.wtems as WatchedTemplate<T>[], (wtem) => {
@@ -565,8 +570,7 @@ export class LiveRepeatDirective<T> extends RepeatDirective<T | null> {
 		let firstElement = wtem.template.range.getFirstElement()!
 
 		if (scrollerRect.isRectIn(firstElement.getBoundingClientRect())) {
-			this.topOfKeepPositionElement = firstElement.offsetTop
-			return this.indexToKeepPosition =this.startIndex + index
+			return this.startIndex + index
 		}
 
 		return -1
