@@ -6,7 +6,7 @@ import {on} from '../dom-event'
 import {Watcher} from '../watcher'
 import {TemplateResult} from '../parts'
 import {RepeatDirective} from './repeat'
-import {onRenderComplete, renderComplete} from '../queue'
+import {onRenderComplete} from '../queue'
 import {binaryFindIndexToInsert, ScrollerClientRect, ThrottleByAnimationFrame, repeatValue} from './helper'
 
 
@@ -83,6 +83,9 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item | null> {
 	* Set this value only if you can makesure `1` is not enough and don't want the rerendering at the beginning.
 	*/
 	private renderGroupCount: number = 1
+
+	// Only multiple `renderGroupCount` for at most once since it will cause additional relayout.
+	private renderGroupCountChecked: boolean = false
 
 	/** Specify whole data or an promise function to get grouped data */
 	private data: Item[] | null = null
@@ -249,17 +252,18 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item | null> {
 		// `renderComplete` is absolutely required,
 		// we can makesure that the component are rendered only after inserted into document,
 		// but directive may be still in fragment when was initialized using `render`.
-		await renderComplete()
+		onRenderComplete(() => {
+			if (!this.renderGroupCountChecked && this.mayDoubleRenderGroupCount()) {
+				this.renderGroupCountChecked = true
+				this.updateAfterStartIndexPrepared()
+				return
+			}
 
-		if (!this.averageItemHeight) {
-			this.measureAverageItemHeight()
-			this.updateSliderPosition()
-		}
+			if (!this.averageItemHeight) {
+				this.measureAverageItemHeight()
+				this.updateSliderPosition()
+			}
 
-		if (this.mayDoubleRenderGroupCount()) {
-			this.updateAfterStartIndexPrepared()
-		}
-		else {
 			if (this.startIndexApplied) {
 				this.adjustScrollPosition()
 			}
@@ -267,7 +271,7 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item | null> {
 				this.scroller.scrollTop = this.averageItemHeight * this.startIndex || 0
 				this.startIndexApplied = true
 			}
-		}
+		})
 	}
 
 	private willUpdateItems: boolean = false
