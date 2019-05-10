@@ -6,15 +6,15 @@ import {NodeAnchor} from '../node-helper'
 import {observe} from '../observer'
 
 
-export class RepeatDirective<T> implements Directive {
+export class RepeatDirective<Item> implements Directive {
 
 	protected anchor: NodeAnchor
 	protected context: Context
-	protected templateFn: TemplateFn<T>
+	protected templateFn: TemplateFn<Item>
 	protected transition: DirectiveTransition
-	protected items: T[] = []
-	protected wtems: WatchedTemplate<T>[] = []
-	protected itemsWatcher: Watcher<T[]> | null = null
+	protected items: Item[] = []
+	protected wtems: WatchedTemplate<Item>[] = []
+	protected itemsWatcher: Watcher<Item[]> | null = null
 	protected firstlyUpdated: boolean = false
 
 	/** 
@@ -23,7 +23,7 @@ export class RepeatDirective<T> implements Directive {
 	 */
 	protected startIndex: number = 0
 
-	constructor(anchor: NodeAnchor, context: Context, items: Iterable<T> | null, templateFn: TemplateFn<T>, transitionOptions?: DirectiveTransitionOptions) {
+	constructor(anchor: NodeAnchor, context: Context, items: Iterable<Item> | null, templateFn: TemplateFn<Item>, transitionOptions?: DirectiveTransitionOptions) {
 		this.anchor = anchor		
 		this.context = context
 		this.templateFn = templateFn
@@ -31,11 +31,11 @@ export class RepeatDirective<T> implements Directive {
 		this.initItems(items)
 	}
 
-	protected initItems(items: Iterable<T> | null) {
+	protected initItems(items: Iterable<Item> | null) {
 		this.watchAndUpdateItems(items)
 	}
 
-	private watchAndUpdateItems(items: Iterable<T> | null) {
+	private watchAndUpdateItems(items: Iterable<Item> | null) {
 		if (!items) {
 			return
 		}
@@ -49,7 +49,7 @@ export class RepeatDirective<T> implements Directive {
 			return [...items]
 		}
 
-		let onUpdate = (items: T[]) => {
+		let onUpdate = (items: Item[]) => {
 			this.updateItems(items)
 		}
 
@@ -57,11 +57,11 @@ export class RepeatDirective<T> implements Directive {
 		this.updateItems(this.itemsWatcher.value)
 	}
 
-	canMergeWith(_items: Iterable<T>, templateFn: TemplateFn<T>): boolean {
+	canMergeWith(_items: Iterable<Item>, templateFn: TemplateFn<Item>): boolean {
 		return templateFn.toString() === this.templateFn.toString()
 	}
 
-	merge(items: Iterable<T> | null, _templateFn: TemplateFn<T>, options?: DirectiveTransitionOptions) {
+	merge(items: Iterable<Item> | null, _templateFn: TemplateFn<Item>, options?: DirectiveTransitionOptions) {
 		this.transition.setOptions(options)
 		this.watchAndUpdateItems(items)
 	}
@@ -81,10 +81,10 @@ export class RepeatDirective<T> implements Directive {
 	//   matched: same item, no need to update item. if duplicate items exist, only the first one match.
 	//   reuse: reuse not in use item and update item on it.
 
-		protected updateItems(items: T[]) {
+		protected updateItems(items: Item[]) {
 		// Old
 		let oldItems = this.items
-		let oldItemIndexMap: Map<T, number> = new Map()
+		let oldItemIndexMap: Map<Item, number> = new Map()
 		let oldWtems = this.wtems
 		
 
@@ -93,7 +93,7 @@ export class RepeatDirective<T> implements Directive {
 		// so we need to observe each item manually,
 		// then later we can generate templates and automatically update them when properties of item changed.
 		let newItems = this.items = items.map(observe)
-		let newItemSet: Set<T> = new Set(this.items)
+		let newItemSet: Set<Item> = new Set(this.items)
 		this.wtems = []
 
 		
@@ -202,9 +202,9 @@ export class RepeatDirective<T> implements Directive {
 			)
 		}
 
-		// Should not follow `willRemoveIndexSet` here:
+		// Should not follow `notInUseIndexSet` here:
 		// e.g., two same items exist, and only first one reused, 
-		// the second one needs to be removed but not in `willRemoveIndexSet`.
+		// the second one needs to be removed but not in `notInUseIndexSet`.
 		if (usedIndexSet.size < oldItems.length) {
 			for (let i = 0; i < oldItems.length; i++) {
 				if (!usedIndexSet.has(i)) {
@@ -216,17 +216,17 @@ export class RepeatDirective<T> implements Directive {
 		this.firstlyUpdated = true
 	}
 
-	private useMatched(wtem: WatchedTemplate<T>, index: number) {
+	private useMatched(wtem: WatchedTemplate<Item>, index: number) {
 		wtem.updateIndex(index + this.startIndex)
 		this.wtems.push(wtem)
 	}
 
-	private reuse(wtem: WatchedTemplate<T>, item: T, index: number) {
+	private reuse(wtem: WatchedTemplate<Item>, item: Item, index: number) {
 		wtem.update(item, index + this.startIndex)
 		this.wtems.push(wtem)
 	}
 
-	private move(wtem: WatchedTemplate<T>, nextOldWtem: WatchedTemplate<T> | null) {
+	private move(wtem: WatchedTemplate<Item>, nextOldWtem: WatchedTemplate<Item> | null) {
 		let fragment = wtem.template.range.getFragment()
 
 		if (nextOldWtem) {
@@ -237,7 +237,7 @@ export class RepeatDirective<T> implements Directive {
 		}
 	}
 
-	private create(item: T, index: number, nextOldWtem: WatchedTemplate<T> | null): WatchedTemplate<T> {
+	private create(item: Item, index: number, nextOldWtem: WatchedTemplate<Item> | null): WatchedTemplate<Item> {
 		let wtem = new WatchedTemplate(this.context, this.templateFn, item, index + this.startIndex)
 		let template = wtem.template
 		let fragment = template.range.getFragment()
@@ -261,7 +261,7 @@ export class RepeatDirective<T> implements Directive {
 		return wtem
 	}
 
-	private delete(wtem: WatchedTemplate<T>) {
+	private delete(wtem: WatchedTemplate<Item>) {
 		let template = wtem.template
 
 		if (this.transition.shouldPlay()) {
