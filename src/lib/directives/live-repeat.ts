@@ -458,7 +458,7 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item | null> {
 	}
 
 	private getTopOfElement(el: HTMLElement) {
-		if (el.parentElement === this.slider) {
+		if (el.offsetParent === this.slider) {
 			return el.offsetTop + this.averageItemHeight * this.startIndex
 		}
 		else {
