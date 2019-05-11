@@ -201,7 +201,7 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item | null> {
 				throw new Error()
 			}
 		}
-		catch {
+		catch (_err) {
 			throw new Error(`The "templateFn" must can render "null" to a template result or string when using async data`)
 		}
 	}

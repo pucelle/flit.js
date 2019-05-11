@@ -197,14 +197,14 @@ namespace StyleParser {
 	
 	function combineNestingNames(oldNames: string[], parentNames: string[]): string[] {
 		// Has sass reference `&` if match
-		let re = /(?<=^|[\s+>~])&/g
+		let re = /(^|[\s+>~])&/g  // `/(?<=^|[\s+>~])&/g` should be better, but Firefox not support it.
 
 		let names: string[] = []
 
 		for (let oldName of oldNames) {
 			if (re.test(oldName)) {
 				for (let parentName of parentNames) {
-					names.push(oldName.replace(re, parentName))
+					names.push(oldName.replace(re, '$1' + parentName))
 				}
 			}
 			else {
