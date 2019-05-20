@@ -1,5 +1,10 @@
 import {Component, ComponentStyle} from './component'
-import {onRenderComplete} from './queue';
+import {onRenderComplete} from './queue'
+
+
+// At beginning, we remove styles when they are no needed, but later we decided to always keep them,
+// because we think that removing style tags will affect rendering performance.
+// Here is a benchmark: https://jsperf.com/is-removing-style-affect-rendering-performance
 
 
 /** Cache `Component` -> {style element, referenced count} */

@@ -33,7 +33,7 @@ defineBinding('model', class ModelBinding implements Binding {
 		}
 
 		if (!context) {
-			throw new Error(`A context must be provided when registering ":model=value" for component`)
+			throw new Error(`A context must be provided when using ":model=property"`)
 		}
 
 		if (modifiers) {

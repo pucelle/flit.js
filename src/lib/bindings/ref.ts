@@ -13,7 +13,7 @@ defineBinding('ref', class RefBinding implements Binding {
 
 	constructor(el: Element, value: unknown, _modifiers: string[] | null, context: Context) {
 		if (!context) {
-			throw new Error(`A context must be provided when registering ":ref"`)
+			throw new Error(`A context must be provided when using ":ref"`)
 		}
 
 		this.el = el

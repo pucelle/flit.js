@@ -25,7 +25,7 @@ export class EventPart implements Part {
 		this.isComEvent = el.localName.includes('-') && name[0] === '@'
 
 		if (this.isComEvent && !context) {
-			throw new Error(`A context must be provided when registering event "${name}"`)
+			throw new Error(`A context must be provided when using "@${name}"`)
 		}
 
 		this.setHandler(handler)
