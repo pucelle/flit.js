@@ -1,6 +1,6 @@
 import {Part, PartType} from './shared'
 import {Component, getComponent, onComponentCreatedAt, Context} from '../component'
-import {on, off} from '../dom-event'
+import {on} from '../dom-event'
 
 
 /**
@@ -16,7 +16,6 @@ export class EventPart implements Part {
 	private handler!: (...args: any) => void
 	private context: Context
 	private isComEvent: boolean
-	private isUpdated: boolean = false
 
 	constructor(el: Element, name: string, handler: (...args: any) => void, context: Context) {
 		this.el = el
@@ -28,36 +27,8 @@ export class EventPart implements Part {
 			throw new Error(`A context must be provided when using "@${name}"`)
 		}
 
-		this.setHandler(handler)
-	}
-
-	private setHandler(newHandler: (...args: any) => void) {
-		let oldHandler = this.handler
-		this.handler = newHandler
-
-		if (this.isComEvent) {
-			let com = getComponent(this.el as HTMLElement)
-			if (com) {
-				if (oldHandler) {
-					com.off(this.name, oldHandler, this.context as Component)
-				}
-				this.setComHandler(com)
-			}
-			else if (!this.isUpdated) {
-				onComponentCreatedAt(this.el as HTMLElement, this.setComHandler.bind(this))
-			}
-		}
-		else {
-			if (oldHandler) {
-				off(this.el, this.name, oldHandler as (e: Event) => void, this.context as Component)
-			}
-
-			on(this.el, this.name, newHandler as (e: Event) => void, this.context as Component)
-		}
-	}
-
-	setComHandler(com: Component) {
-		com.on(this.name, this.handler, this.context as Component)
+		this.update(handler)
+		this.bindListener()
 	}
 
 	update(handler: (...args: any) => void) {
@@ -65,8 +36,34 @@ export class EventPart implements Part {
 			throw new Error(`Failed to register listener at "<${this.el.localName} @${this.name}='${handler}'">, the listener is not a function`)
 		}
 
-		this.setHandler(handler)
-		this.isUpdated = true
+		// Should here compare handler `toString` result and not update if they are the same?
+		// This sames required, because it's frequently to meet handlers like `() => ...`.
+		// But the truth is that we must update the handler,
+		// because the scoped variables that called in these handlers may changed.
+		this.handler = handler
+	}
+
+	private bindListener() {
+		if (this.isComEvent) {
+			let com = getComponent(this.el as HTMLElement)
+			if (com) {
+				this.bindComListener(com)
+			}
+			else {
+				onComponentCreatedAt(this.el as HTMLElement, this.bindComListener.bind(this))
+			}
+		}
+		else {
+			on(this.el, this.name, this.triggerHandler, this)
+		}
+	}
+
+	private bindComListener(com: Component) {
+		com.on(this.name, this.triggerHandler, this)
+	}
+
+	private triggerHandler(...args: any[]) {
+		this.handler.call(this.context, ...args)
 	}
 
 	// If element was removed, it implies that the component was removed too.
