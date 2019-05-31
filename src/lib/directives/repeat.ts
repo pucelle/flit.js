@@ -12,9 +12,9 @@ export class RepeatDirective<Item> implements Directive {
 	protected context: Context
 	protected templateFn: TemplateFn<Item>
 	protected transition: DirectiveTransition
-	protected items: Item[] = []
+	protected data: Item[] = []
 	protected wtems: WatchedTemplate<Item>[] = []
-	protected itemsWatcher: Watcher<Item[]> | null = null
+	protected dataWatcher: Watcher<Item[]> | null = null
 	protected firstlyUpdated: boolean = false
 
 	/** 
@@ -23,47 +23,49 @@ export class RepeatDirective<Item> implements Directive {
 	 */
 	protected startIndex: number = 0
 
-	constructor(anchor: NodeAnchor, context: Context, items: Iterable<Item> | null, templateFn: TemplateFn<Item>, transitionOptions?: DirectiveTransitionOptions) {
+	constructor(anchor: NodeAnchor, context: Context, data: Iterable<Item> | null, templateFn: TemplateFn<Item>, transitionOptions?: DirectiveTransitionOptions) {
 		this.anchor = anchor		
 		this.context = context
 		this.templateFn = templateFn
 		this.transition = new DirectiveTransition(context, transitionOptions)
-		this.initItems(items)
+		this.initData(data)
 	}
 
-	protected initItems(items: Iterable<Item> | null) {
-		this.watchAndUpdateItems(items)
+	protected initData(data: Iterable<Item> | null) {
+		this.watchAndUpdateData(data)
 	}
 
-	private watchAndUpdateItems(items: Iterable<Item> | null) {
-		if (!items) {
+	private watchAndUpdateData(data: Iterable<Item> | null) {
+		if (!data) {
 			return
 		}
 
-		if (this.itemsWatcher) {
-			this.itemsWatcher.disconnect()
+		if (this.dataWatcher) {
+			this.dataWatcher.disconnect()
 		}
 
 		// Here need to read each item of the `Iterable<T>` so we can observe changes like `a[i] = xxx`.
 		let watchFn = () => {
-			return [...items]
+			return [...data]
 		}
 
-		let onUpdate = (items: Item[]) => {
-			this.updateItems(items)
+		let onUpdate = (data: Item[]) => {
+			this.updateData(data)
 		}
 
-		this.itemsWatcher = new Watcher(watchFn, onUpdate)
-		this.updateItems(this.itemsWatcher.value)
+		this.dataWatcher = new Watcher(watchFn, onUpdate)
+		this.updateData(this.dataWatcher.value)
 	}
 
-	canMergeWith(_items: Iterable<Item>, templateFn: TemplateFn<Item>): boolean {
+	canMergeWith(_data: Iterable<Item>, templateFn: TemplateFn<Item>): boolean {
 		return templateFn.toString() === this.templateFn.toString()
 	}
 
-	merge(items: Iterable<Item> | null, _templateFn: TemplateFn<Item>, options?: DirectiveTransitionOptions) {
+	merge(data: Iterable<Item> | null, _templateFn: TemplateFn<Item>, options?: DirectiveTransitionOptions) {
 		this.transition.setOptions(options)
-		this.watchAndUpdateItems(items)
+
+		// May be we should compare the data firstly, and do nothing if equals.
+		this.watchAndUpdateData(data)
 	}
 
 	// We want to reduce moving times, the best way is here:
@@ -81,9 +83,9 @@ export class RepeatDirective<Item> implements Directive {
 	//   matched: same item, no need to update item. if duplicate items exist, only the first one match.
 	//   reuse: reuse not in use item and update item on it.
 
-		protected updateItems(items: Item[]) {
+		protected updateData(data: Item[]) {
 		// Old
-		let oldItems = this.items
+		let oldData = this.data
 		let oldItemIndexMap: Map<Item, number> = new Map()
 		let oldWtems = this.wtems
 		
@@ -92,8 +94,8 @@ export class RepeatDirective<Item> implements Directive {
 		// Here it's not in updating and we can't capture dependencies,
 		// so we need to observe each item manually,
 		// then later we can generate templates and automatically update them when properties of item changed.
-		let newItems = this.items = items.map(observe)
-		let newItemSet: Set<Item> = new Set(this.items)
+		let newData = this.data = data.map(observe)
+		let newItemSet: Set<Item> = new Set(this.data)
 		this.wtems = []
 
 		
@@ -101,8 +103,8 @@ export class RepeatDirective<Item> implements Directive {
 		let notInUseIndexSet: Set<number> = new Set()
 		let usedIndexSet: Set<number> = new Set()
 
-		for (let i = 0; i < oldItems.length; i++) {
-			let oldItem = oldItems[i]
+		for (let i = 0; i < oldData.length; i++) {
+			let oldItem = oldData[i]
 
 			// Duplicate item or placeholder item, which should not in use.
 			if (oldItem === null || oldItemIndexMap.has(oldItem)) {
@@ -122,22 +124,22 @@ export class RepeatDirective<Item> implements Directive {
 		// When we reuse other elements, we move it before "next matched index",
 		// such than when we meet the "next matched index" later, we don't need to move the elements.
 		function getNextMatchedOldIndex(startIndex: number): number {
-			for (let i = startIndex; i < oldItems.length; i++) {
-				let oldItem = oldItems[i]
+			for (let i = startIndex; i < oldData.length; i++) {
+				let oldItem = oldData[i]
 				if (newItemSet.has(oldItem) && oldItemIndexMap.get(oldItem) === i) {
 					return i
 				}
 			}
 
-			return oldItems.length
+			return oldData.length
 		}
 
 		let lastMatchedOldIndex = -1
 		let nextMatchedOldIndex = getNextMatchedOldIndex(0)
 
 
-		for (let index = 0; index < newItems.length; index++) {
-			let item = newItems[index]
+		for (let index = 0; index < newData.length; index++) {
+			let item = newData[index]
 
 			// May reuse
 			if (oldItemIndexMap.has(item)) {
@@ -162,7 +164,7 @@ export class RepeatDirective<Item> implements Directive {
 				}
 
 				if (reuseIndex > -1) {
-					this.move(oldWtems[reuseIndex], nextMatchedOldIndex < oldItems.length ? oldWtems[nextMatchedOldIndex]: null)
+					this.move(oldWtems[reuseIndex], nextMatchedOldIndex < oldData.length ? oldWtems[nextMatchedOldIndex]: null)
 					this.useMatched(oldWtems[reuseIndex], index)
 					usedIndexSet.add(reuseIndex)
 					continue
@@ -184,7 +186,7 @@ export class RepeatDirective<Item> implements Directive {
 
 				if (reuseIndex === -1) {
 					reuseIndex = notInUseIndexSet.keys().next().value
-					this.move(oldWtems[reuseIndex], nextMatchedOldIndex < oldItems.length ? oldWtems[nextMatchedOldIndex]: null)
+					this.move(oldWtems[reuseIndex], nextMatchedOldIndex < oldData.length ? oldWtems[nextMatchedOldIndex]: null)
 				}
 				
 				this.reuse(oldWtems[reuseIndex], item, index)
@@ -197,7 +199,7 @@ export class RepeatDirective<Item> implements Directive {
 				this.create(
 					item,
 					index,
-					nextMatchedOldIndex < oldItems.length ? oldWtems[nextMatchedOldIndex]: null
+					nextMatchedOldIndex < oldData.length ? oldWtems[nextMatchedOldIndex]: null
 				)
 			)
 		}
@@ -205,8 +207,8 @@ export class RepeatDirective<Item> implements Directive {
 		// Should not follow `notInUseIndexSet` here:
 		// e.g., two same items exist, and only first one reused, 
 		// the second one needs to be removed but not in `notInUseIndexSet`.
-		if (usedIndexSet.size < oldItems.length) {
-			for (let i = 0; i < oldItems.length; i++) {
+		if (usedIndexSet.size < oldData.length) {
+			for (let i = 0; i < oldData.length; i++) {
 				if (!usedIndexSet.has(i)) {
 					this.delete(oldWtems[i])
 				}
@@ -243,7 +245,7 @@ export class RepeatDirective<Item> implements Directive {
 		let fragment = template.range.getFragment()
 		let firstElement: HTMLElement | null = null
 
-		if (this.transition.shouldPlayEnterMayAtStart(this.firstlyUpdated)) {
+		if (this.transition.shouldPlayEnter(this.firstlyUpdated)) {
 			firstElement = fragment.firstElementChild as HTMLElement
 		}
 

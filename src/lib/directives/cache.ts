@@ -34,7 +34,7 @@ class CacheDirective implements Directive {
 		let fragment = template.range.getFragment()
 		this.anchor.insert(fragment)
 
-		if (this.transition.shouldPlayEnterMayAtStart(firstTime)) {
+		if (this.transition.shouldPlayEnter(firstTime)) {
 			this.playEnterTransition(template)
 		}
 

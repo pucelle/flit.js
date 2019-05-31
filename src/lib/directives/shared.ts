@@ -27,7 +27,7 @@ export class DirectiveTransition {
 		this.setOptions(options)
 	}
 
-	shouldPlayEnterMayAtStart(atStart: boolean): boolean {
+	shouldPlayEnter(atStart: boolean): boolean {
 		return !!this.options && (atStart && this.enterAtStart || !atStart)
 	}
 

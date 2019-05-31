@@ -2,7 +2,7 @@ import {TemplateResult, text} from './template-result'
 import {Part, PartType} from './shared'
 import {NodeAnchor} from "../node-helper";
 import {Template} from './template'
-import {DirectiveResult, Directive, getDirectiveConstructor} from '../directives'
+import {DirectiveResult, Directive, createDirectiveFromResult} from '../directives'
 import {Context} from '../component'
 
 
@@ -98,9 +98,7 @@ export class NodePart implements Part {
 			}
 		}
 		
-		let Dir = getDirectiveConstructor(directiveResult.id)
-		let directive = new Dir(this.anchor, this.context as any, ...directiveResult.args)
-		this.directive = directive
+		this.directive = createDirectiveFromResult(this.anchor, this.context as any, directiveResult)
 	}
 
 	private becomeTemplateResults(array: unknown[]): TemplateResult[] {

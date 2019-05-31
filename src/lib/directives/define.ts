@@ -16,11 +16,6 @@ export interface Directive<Args extends any[] = any[]> {
 let seed = 0
 const directiveMap: Map<number, DirectiveConstructor<any>> = new Map()
 
-/** get defined directive constructor from a the id the directive result. */
-export function getDirectiveConstructor(id: number): DirectiveConstructor<any> {
-	return directiveMap.get(id)!
-}
-
 
 /** Define a new directive from a class which implements `Directive`. */
 export function defineDirective<Args extends any[] = any[]>(Dir: DirectiveConstructor<Args>) {
@@ -45,4 +40,13 @@ export class DirectiveResult<Args extends any[] = any[]> {
 		this.id = id
 		this.args = args
 	}
+}
+
+
+/** Create directive from directive result. used in `node.ts` */
+export function createDirectiveFromResult(anchor: NodeAnchor, context: Context, result: DirectiveResult): Directive {
+	let Dir = directiveMap.get(result.id)!
+	let directive = new Dir(anchor, context, ...result.args)
+
+	return directive
 }
