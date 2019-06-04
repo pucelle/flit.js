@@ -88,7 +88,7 @@ export class ScrollerClientRect {
 
 
 /** Used to throttle scroll event to trigger at most once in each animation frame. */
-export function ThrottleByAnimationFrame<F extends (...args: any) => void>(fn: F): F {
+export function throttleByAnimationFrame<F extends (...args: any) => void>(fn: F): F {
 	let frameId: number | null = null
 
 	return function(...args: any) {

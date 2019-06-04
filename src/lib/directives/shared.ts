@@ -1,12 +1,15 @@
 import {TransitionOptions, ShortTransitionOptions, formatShortTransitionOptions, Transition} from '../transition'
 import {Context} from '../component'
-import {Template, TemplateResult, text} from '../parts';
+import {Template, TemplateResult} from '../parts';
 import {Watcher} from '../watcher';
 
 
 export type DirectiveTransitionOptions = DirectiveTransitionAtStartOptions | ShortTransitionOptions
 
 export type TransitionTypedCallback = (type: 'enter' | 'leave', finish: boolean) => void
+
+// Used to exclude `Directive` properties which used in inner when exporting `LiveAsyncRepeatDirective`
+export type ExcludeProperties<T, U> = {[key in Exclude<keyof T, keyof U>]: T[key]}
 
 export interface DirectiveTransitionAtStartOptions {
 	transition: ShortTransitionOptions
@@ -22,12 +25,12 @@ export class DirectiveTransition {
 	private enterAtStart: boolean = false
 	private onend: TransitionTypedCallback | null = null
 
-	constructor(context: Context, options: DirectiveTransitionOptions | undefined) {
+	constructor(context: Context, options?: DirectiveTransitionOptions) {
 		this.context = context
 		this.setOptions(options)
 	}
 
-	shouldPlayEnter(atStart: boolean): boolean {
+	shouldPlayEnterMayAtStart(atStart: boolean): boolean {
 		return !!this.options && (atStart && this.enterAtStart || !atStart)
 	}
 
@@ -74,7 +77,7 @@ export class DirectiveTransition {
 
 
 
-export type TemplateFn<T> = (item: T, index: number) => TemplateResult | string
+export type TemplateFn<T> = (item: T, index: number) => TemplateResult
 
 /** Used to watch and update template result generated from `templateFn`. */
 export class WatchedTemplate<T> {
@@ -99,9 +102,6 @@ export class WatchedTemplate<T> {
 
 		let watchFn = () => {
 			let result = templateFn(this.item, this.index)
-			if (typeof result === 'string') {
-				result = text`${result}`
-			}
 			return result
 		}
 	
