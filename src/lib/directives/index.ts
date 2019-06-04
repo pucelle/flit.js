@@ -2,3 +2,4 @@ export {defineDirective, DirectiveResult, Directive, createDirectiveFromResult} 
 export {cache} from './cache'
 export {repeat} from './repeat'
 export {liveRepeat} from './live-repeat'
+export {liveAsyncRepeat} from './live-async-repeat'

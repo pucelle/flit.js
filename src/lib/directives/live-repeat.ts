@@ -1,41 +1,24 @@
-import {defineDirective, DirectiveResult} from './define'
+import {defineDirective, DirectiveResult, Directive} from './define'
 import {Context} from '../component'
-import {DirectiveTransitionOptions, WatchedTemplate} from './shared'
+import {DirectiveTransitionOptions, WatchedTemplate, TemplateFn, ExcludeProperties} from './shared'
 import {NodeAnchor} from '../node-helper'
 import {on} from '../dom-event'
 import {Watcher} from '../watcher'
-import {TemplateResult} from '../parts'
 import {RepeatDirective} from './repeat'
-import {onRenderComplete} from '../queue'
-import {binaryFindIndexToInsert, ScrollerClientRect, ThrottleByAnimationFrame, repeatValue} from './helper'
+import {onRenderComplete, renderComplete} from '../queue'
+import {binaryFindIndexToInsert, ScrollerClientRect, throttleByAnimationFrame} from './helper'
 
-
-interface LiveDataOptions<Item> {
-	groupSize: number
-	renderGroupCount?: number
-	data: Iterable<Item>
-	averageItemHeight?: number
-}
 
 interface LiveOptions<Item> {
-	groupSize: number
-	renderGroupCount?: number
-	data?: Iterable<Item>
-	dataCount?: number | Promise<number> | (() => (number | Promise<number>))
-	dataGetter?: GroupDataGetter<Item>
-	averageItemHeight?: number
-	version?: number
+	pageSize?: number			// Not updatable
+	renderPageCount?: number	// Not updatable
+	averageItemHeight?: number	// Not updatable
+	ref?: (dir: ExcludeProperties<LiveRepeatDirective<Item>, Directive>) => void	// Not updatable
+	data: Iterable<Item> | null
 }
 
-type GroupDataGetter<Item> = (start: number, size: number) => Promise<Iterable<Item>> | Iterable<Item>
 
-type TemplateFn<Item> = (item: Item, index: number) => TemplateResult
-
-// Compare to `TempalteFn`, the `item` can accpet `null` as argument when data is still loading.
-type LiveTemplateFn<Item> = (item: Item | null, index: number) => TemplateResult
-
-
-// Benchmark about static layout or absolute layout: https://jsperf.com/is-absolute-layout-faster
+// Benchmark about using static layout or absolute layout: https://jsperf.com/is-absolute-layout-faster
 
 // The `liveRepeat` only support render one item in one line.
 // At beginning, we supported rendering several items in one line (works like photo album).
@@ -47,7 +30,7 @@ type LiveTemplateFn<Item> = (item: Item | null, index: number) => TemplateResult
 // So finally we plan to implement a component to support rendering several items in one line.
 
 // There is still a potential issue here:
-// We may can't cover viewport if page was resized,
+// We may can't cover viewport if page was resized.
 
 export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 
@@ -64,38 +47,24 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 	* Normally 50 would be enough since minimal lineHeight is `24` and `24 * 50 = 1200` can cover most screens.
 	* If the render result can't cover the viewport, it will be double until it can and rerender.
 	*/
-	private groupSize: number = 50
+	protected pageSize: number = 50
 
 	/**
-	* How many groups to render each time.
+	* How many pages to render each time.
 	* If the render result can't cover viewport, will double this value.
 	* Normally you don't need to set this, it's value will be automatically detected.
 	* Set this value only if you can makesure `1` is not enough and don't want the rerendering at the beginning.
 	*/
-	private renderGroupCount: number = 1
+	protected renderPageCount: number = 1
 
-	// Only multiple `renderGroupCount` for at most once since it will cause additional relayout.
-	private renderGroupCountChecked: boolean = false
+	// Only multiple `renderPageCount` for at most once since it will cause additional relayout.
+	private renderPageCountChecked: boolean = false
 
 	/** Whole data from options. */
 	private rawData: Item[] | null = null
 
-	private dataCount: number | Promise<number> | (() => (number | Promise<number>)) | null = null
-
-	/**
-	 * Whole data count when using `dataGetter`.
-	 * `-1` means the total count is not determinated yet.
-	 * We will try to get the data count value when assigning render options.
-	 */
-	private knownDataCount: number = -1
-
-	// Doesn't implement a data cacher, because data may changed,
-	// but here it's only a simple directive,
-	// we have no way to manage the whole life cycle of data.
-	private dataGetter: GroupDataGetter<Item> | null = null
-
 	/** `startIndex` can only be set for once from `options`. */
-	private startIndexApplied: boolean = false
+	private needToApplyStartIndex: boolean = false
 
 	/** 
 	 * Average item height value, it is used to calculate the position of the `slider`.
@@ -110,30 +79,10 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 	private indexToKeepPosition: number = -1
 	private lastTopOfKeepPositionElement: number = -1
 
-	/** Cache grouped data requesting promises by their start index. */
-	private dataRequestMap: Map<number, Promise<Iterable<Item>>> = new Map()
-
-	/** Cache requested data by page number. */
-	private cache: Map<number, Iterable<Item>> = new Map()
-
-	/** When version upgrade, it clears all cache, and update data count. */
-	private version: number = -1
-
-	constructor(
-		anchor: NodeAnchor,
-		context: Context,
-		options: LiveOptions<Item>,
-		templateFn: LiveTemplateFn<Item>,
-		transitionOptions?: DirectiveTransitionOptions
-	) {
-		super(anchor, context, null, templateFn, transitionOptions)
-
+	constructor(anchor: NodeAnchor, context: Context) {
+		super(anchor, context)
 		this.initElements()
-		this.initRenderOptions(options)
-		this.updateAfterStartIndexPrepared()
 	}
-
-	protected initData() {}
 
 	private initElements() {
 		this.slider = this.anchor.el.parentElement as HTMLElement
@@ -149,7 +98,7 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 			"`)
 		}
 
-		on(this.scroller, 'scroll.passive', ThrottleByAnimationFrame(this.onScroll.bind(this)))
+		on(this.scroller, 'scroll.passive', throttleByAnimationFrame(this.onScroll.bind(this)))
 
 		onRenderComplete(() => {
 			if (!['scroll', 'auto'].includes(getComputedStyle(this.scroller).overflowY!)) {
@@ -158,69 +107,61 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 		})
 	}
 
-	private initRenderOptions(options: LiveOptions<Item>) {
-		if (options.renderGroupCount) {
-			this.renderGroupCount = options.renderGroupCount
-		}
-
-		this.updateRenderOptions(options)
-
-		if (!options.version) {
-			this.updateDataCount()
-		}
+	canMergeWith(_options: any, templateFn: TemplateFn<Item>): boolean {
+		return templateFn.toString() === this.templateFn.toString()
 	}
 
-	private updateRenderOptions(options: LiveOptions<Item>) {
+	merge(options: any, templateFn: TemplateFn<Item>, transitionOptions?: DirectiveTransitionOptions) {
+		if (this.firstlyMerge) {
+			this.initRenderOptions(options)
+
+			if (options.ref) {
+				options.ref(this)
+			}
+		}
+
+		this.templateFn = templateFn
+		this.updateDataOptions(options as LiveOptions<Item>)
+		this.transition.setOptions(transitionOptions)
+		this.update()
+		this.firstlyMerge = false
+	}
+
+	protected initRenderOptions(options: LiveOptions<Item>) {
+		if (options.pageSize !== undefined && options.pageSize > 0) {
+			this.pageSize = options.pageSize
+		}
+
+		if (options.renderPageCount) {
+			this.renderPageCount = options.renderPageCount
+		}
+
 		if (options.averageItemHeight) {
 			this.averageItemHeight = options.averageItemHeight
 		}
+	}
 
-		if (options.groupSize <= 0) {
-			throw new Error(`"groupSize" value for "liveRepeat" must be greater than 0`)
-		}
-
-		this.groupSize = options.groupSize
-
-		if (!options.data && !options.dataGetter) {
-			throw new Error(`Either "data" or "dataGetter" must be specified in "liveRepeat" options`)
-		}
-
-		if (options.data) {
-			// May be we should compare the data firstly, and do nothing if equals.
+	// Only `data` is updatable
+	protected updateDataOptions(options: LiveOptions<Item>) {
+		if (options.data !== undefined) {
 			this.watchAndAssignRawData(options.data)
 		}
-		else {
-			this.dataGetter = options.dataGetter!
-			this.ensureCanRenderNull()
-		}
-
-		if (options.dataCount !== undefined) {
-			this.dataCount = options.dataCount
-		}
-
-		if (options.version && options.version > this.version) {
-			this.updateDataCount()
-			this.clearCache()
-		}
 	}
 
-	private ensureCanRenderNull() {
-		let templateFn = this.templateFn
-
-		try {
-			let result = templateFn(null as any, 0)
-			if (!(result instanceof TemplateResult)) {
-				throw new Error()
-			}
+	private watchAndAssignRawData(data: Iterable<Item> | null) {
+		if (data === this.lastData) {
+			return
 		}
-		catch (_err) {
-			throw new Error(`The "templateFn" must can render "null" to a template result or string when using async data`)
-		}
-	}
 
-	private watchAndAssignRawData(data: Iterable<Item>) {
+		this.lastData = data
+
 		if (this.dataWatcher) {
 			this.dataWatcher.disconnect()
+		}
+
+		if (!data) {
+			this.rawData = []
+			return
 		}
 
 		let watchFn = () => {
@@ -229,74 +170,35 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 
 		let onUpdate = (data: Item[]) => {
 			this.rawData = data
-			this.updateAfterStartIndexPrepared()
+			this.update()
 		}
 
 		this.dataWatcher = new Watcher(watchFn, onUpdate)
 		this.rawData = this.dataWatcher.value
 	}
 
-	private updateDataCount() {
-		if (!this.dataCount) {
-			return
-		}
-
-		let dataCount: number | Promise<number>
-		if (typeof this.dataCount === 'function') {
-			dataCount = this.dataCount()
-		}
-		else {
-			dataCount = this.dataCount
-		}
-		
-		if (dataCount instanceof Promise) {
-			dataCount.then((count) => {
-				this.knownDataCount = count
-			})
-		}
-		else {
-			this.knownDataCount = dataCount
-		}
+	protected async update() {
+		let endIndex = this.limitEndIndex(this.startIndex + this.pageSize * this.renderPageCount)
+		let data = this.rawData ? this.rawData.slice(this.startIndex, endIndex) : []
+		await this.updateData(data)
 	}
 
-	private clearCache() {
-		if (this.cache.size > 0) {
-			this.cache = new Map()
-		}
-	}
-
-	canMergeWith(_options: any, templateFn: TemplateFn<Item>): boolean {
-		return templateFn.toString() === this.templateFn.toString()
-	}
-
-	merge(options: any, _templateFn: TemplateFn<Item>, transitionOptions?: DirectiveTransitionOptions) {
-		this.updateRenderOptions(options as LiveOptions<Item>)
-		this.transition.setOptions(transitionOptions)
-		this.updateAfterStartIndexPrepared()
-	}
-
-	// The `startIndex` is prepared now.
-	private updateAfterStartIndexPrepared() {
-		let endIndex = this.limitEndIndex(this.startIndex + this.groupSize * this.renderGroupCount)
-
-		if (this.rawData) {
-			this.updateLiveItems(this.rawData.slice(this.startIndex, endIndex))
-		}
-		else {
-			this.updateLiveItems(this.getGroupedData(this.startIndex, endIndex))
-		}
+	protected async updateData(data: Item[]) {
+		super.updateData(data)
 
 		if (this.averageItemHeight) {
 			this.updateSliderPosition()
 		}
 
-		// `onRenderComplete` is absolutely required,
-		// we can makesure that the component are rendered only after inserted into document,
-		// but directive may be still in fragment when was initialized using `render`.
-		onRenderComplete(() => {
-			if (!this.renderGroupCountChecked && this.mayDoubleRenderGroupCount()) {
-				this.renderGroupCountChecked = true
-				this.updateAfterStartIndexPrepared()
+		if (data.length > 0) {
+			// `renderComplete` is absolutely required,
+			// we can makesure that the component are rendered only after inserted into document,
+			// but directive may be still in fragment when was initialized using `render`.
+			await renderComplete()
+
+			if (!this.renderPageCountChecked && this.mayDoubleRenderPageCount()) {
+				this.renderPageCountChecked = true
+				this.update()
 				return
 			}
 
@@ -305,40 +207,18 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 				this.updateSliderPosition()
 			}
 
-			if (this.startIndexApplied) {
+			if (this.needToApplyStartIndex && this.averageItemHeight) {
+				this.scroller.scrollTop = this.averageItemHeight * this.startIndex || 0
+				this.needToApplyStartIndex = false
+			}
+			else {
 				this.adjustScrollPosition()
 			}
-			else if (this.averageItemHeight){
-				this.scroller.scrollTop = this.averageItemHeight * this.startIndex || 0
-				this.startIndexApplied = true
-			}
-		})
-	}
-
-	private willUpdateItems: boolean = false
-	private toUpdateItems: Item[] | null = null
-
-	private updateLiveItems(items: Item[]) {
-		// If you use two placeholder elements but not margin to specify the position of `slider`,
-		// There will be a big issue:
-		// When no child nodes moved in scroller, expecially when rendering placeholder values [null, ...].
-		// updating height of placeholder elements will cause `scroller.scrollTop` reset.
-		this.toUpdateItems = items
-
-		if (!this.willUpdateItems) {
-			Promise.resolve().then(() => {
-				this.updateData(this.toUpdateItems!)
-				this.willUpdateItems = false
-				this.toUpdateItems = null
-			})
-			
-			this.willUpdateItems = true
 		}
 	}
 
-	private limitEndIndex(index: number): number {
-		let maxCount = this.rawData ? this.rawData.length : this.knownDataCount
-
+	protected limitEndIndex(index: number): number {
+		let maxCount = this.getTotalDataCount()
 		if (maxCount >= 0 && index > maxCount) {
 			index = maxCount
 		}
@@ -346,88 +226,31 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 		return index
 	}
 
-	private getGroupedData(startIndex: number, endIndex: number): Item[] {
-		// If can't got all grouped data immediately (at least before micro task queue),
-		// we render `null` values as placeholders for not immediately returned data,
-		// and replace them after data prepared.
-		return this.loadGroupedData(startIndex, endIndex)
-	}
-
-	private loadGroupedData(startIndex: number, endIndex: number) {
-		let startGroupIndex = Math.floor(startIndex / this.groupSize)	//49 -> 0, 50 -> 1
-		let endGroupIndex = Math.floor((endIndex - 1) / this.groupSize) + 1	// 50 -> 1, 51 -> 2
-		let dataArray: Item[][] = []
-
-		let getData = () => {
-			let data: Item[] = []
-			for (let item of dataArray) {
-				data.push(...item)
-			}
-
-			return data.slice(
-				startIndex - startGroupIndex * this.groupSize,
-				endIndex - startGroupIndex * this.groupSize
-			)
-		}
-
-		for (let i = startGroupIndex; i < endGroupIndex; i++) {
-			if (this.cache.has(i)) {
-				dataArray.push([...this.cache.get(i)!])
-				continue
-			}
-
-			dataArray.push(repeatValue(null as any, this.groupSize))
-			let promise = this.loadOneGroupData(i * this.groupSize, this.groupSize)
-			promise.then(groupdata => {
-				dataArray[i - startGroupIndex] = [...groupdata]
-
-				if (startIndex === this.startIndex) {
-					this.updateLiveItems(getData())
-				}
-			})
-		}
-
-		return getData()
-	}
-
-	// It's very often that you load one page of data, and then still load this page after scrolled.
-	// So we need to cache requests for pages before it returned.
-	private async loadOneGroupData(start: number, count: number): Promise<Iterable<Item>> {
-		if (this.dataRequestMap.has(start)) {
-			return this.dataRequestMap.get(start)!
-		}
-
-		let dataGetter = this.dataGetter!
-		let promise = dataGetter(start, count)
-		let data: Iterable<Item>
-
-		if (promise instanceof Promise) {
-			this.dataRequestMap.set(start, promise)
-			data = await promise
-			this.dataRequestMap.delete(start)
+	protected getTotalDataCount(): number {
+		if (this.rawData) {
+			return this.rawData.length
 		}
 		else {
-			data = promise
+			return 0
 		}
-
-		this.cache.set(start / this.groupSize, data)
-		return data
 	}
 
-	private updateSliderPosition() {
+	// If you use two placeholder elements but not top and bottom margin to specify the position of `slider`,
+	// There will be a big issue:
+	// When no child nodes moved in scroller, expecially when rendering placeholder values [null, ...].
+	// updating height of placeholder elements will cause `scroller.scrollTop` reset.
+	protected updateSliderPosition() {
 		if (!this.averageItemHeight) {
 			return
 		}
 
 		let countBeforeStart = this.startIndex
-		let endIndex = this.limitEndIndex(this.startIndex + this.groupSize * this.renderGroupCount)
+		let endIndex = this.limitEndIndex(this.startIndex + this.pageSize * this.renderPageCount)
 		let countAfterEnd = 0
+		let totalCount = this.getTotalDataCount()
 
-		if (this.rawData) {
-			countAfterEnd = Math.max(0, this.rawData.length - endIndex)
-		}
-		else if (this.knownDataCount > -1) {
-			countAfterEnd = Math.max(0, this.knownDataCount - endIndex)
+		if (totalCount >= 0) {
+			countAfterEnd = Math.max(0, totalCount - endIndex)
 		}
 
 		this.slider.style.marginTop = this.averageItemHeight * countBeforeStart + 'px'
@@ -439,7 +262,7 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 			return
 		}
 
-		// Here it is not 100% right when `groupSize` is not big enough.
+		// Here it is not 100% right when `pageSize` is not big enough.
 		// Assume that there is only one `30px` height item with `10px` margin,
 		// You will got wrong value 50, not right value 40.
 		let sliderHeight = this.slider.offsetHeight
@@ -450,7 +273,7 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 		this.averageItemHeight = Math.round(sliderHeight / this.data.length)
 	}
 
-	private mayDoubleRenderGroupCount(): boolean {
+	private mayDoubleRenderPageCount(): boolean {
 		if (!this.averageItemHeight) {
 			return false
 		}
@@ -460,7 +283,7 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 		let changed = false
 
 		while (sliderHeight < scrollerHeight) {
-			this.renderGroupCount *= 2
+			this.renderPageCount *= 2
 			sliderHeight *= 2
 			changed = true
 		}
@@ -532,7 +355,7 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 		}
 	}
 
-	// Direction means where we render new items, and also the direction the value of `startIndex` will change to.
+	// Direction means where we render new items, and also the direction that the value of `startIndex` will change to.
 	private updateToCover(direction: 'up' | 'down') {
 		let endIndex = -1
 		let visibleIndex = -1
@@ -543,7 +366,7 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 		else {
 			let startIndex = visibleIndex = this.locateFirstVisibleIndex()
 			if (startIndex > -1) {
-				endIndex = startIndex + this.groupSize * this.renderGroupCount
+				endIndex = startIndex + this.pageSize * this.renderPageCount
 			}
 		}
 
@@ -563,14 +386,14 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 			}
 			else {
 				endIndex = Math.floor(this.scroller.scrollTop / this.averageItemHeight)
-						 + this.groupSize * this.renderGroupCount
+						 + this.pageSize * this.renderPageCount
 			}
 		}
 
 		endIndex = this.limitEndIndex(endIndex)
 
-		this.startIndex = Math.max(0, endIndex - this.groupSize * this.renderGroupCount)
-		this.updateAfterStartIndexPrepared()
+		this.startIndex = Math.max(0, endIndex - this.pageSize * this.renderPageCount)
+		this.update()
 	}
 
 	private locateFirstVisibleIndex(): number {
@@ -595,7 +418,7 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 			}
 		})
 
-		if (index === this.wtems.length) {
+		if (index === this.data.length) {
 			return -1
 		}
 
@@ -631,7 +454,7 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 			}
 		})
 
-		if (index === this.wtems.length) {
+		if (index === this.data.length) {
 			return -1
 		}
 
@@ -650,6 +473,58 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 			wtem.remove()
 		}
 	}
+
+	/** Set `startIndex`, and the item in which index will be at the top start position of the viewport. */
+	async setStartIndex(index: number) {
+		this.startIndex = this.limitEndIndex(index)
+		this.needToApplyStartIndex = true
+		await this.update()
+	}
+
+	/** Adjust `startIndex` and scroll position to make item in the specified index becomes visible if it's not. */
+	async scrollToViewIndex(index: number) {
+		// Only adjust scroll position
+		if (this.isIndexRendered(index)) {
+			this.scrollToViewRenderedIndex(index)
+		}
+		else {
+			if (index < this.startIndex) {
+				await this.setStartIndex(index)
+			}
+			else {
+				let startIndex = Math.max(0, (index + 1) - Math.ceil(this.scroller.clientHeight / this.averageItemHeight))
+				await this.setStartIndex(startIndex)
+
+				if (this.isIndexRendered(index)) {
+					this.scrollToViewRenderedIndex(index)
+				}
+			}
+		}
+	}
+
+	private isIndexRendered(index: number) {
+		return index >= this.startIndex && index < this.startIndex + this.data.length
+	}
+
+	private scrollToViewRenderedIndex(index: number) {
+		let el = this.wtems[index - this.startIndex].template.range.getFirstElement()!
+		let rect = el.getBoundingClientRect()
+		let scrollerRect = new ScrollerClientRect(this.scroller)
+
+		// Below it, need to scroll up
+		if (rect.bottom > scrollerRect.rect.bottom) {
+			this.scroller.scrollTop = this.scroller.scrollTop + (scrollerRect.rect.bottom - rect.bottom)
+		}
+		// Above it, need to scroll down
+		else if (rect.top < scrollerRect.rect.top) {
+			this.scroller.scrollTop = this.scroller.scrollTop + (scrollerRect.rect.top - rect.top)
+		}
+	}
+
+	/** Get currently rendered item in index. */
+	getItem(index: number): Item | null {
+		return this.rawData ? this.rawData[index] || null : null
+	}
 }
 
 /**
@@ -659,9 +534,9 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
  * @param templateFn The fucntion which will return a template from one iterable data and index position.
  * @param transitionOptions The transition options, it can be a transition name, property or properties, or {transition, enterAtStart}.
  */
-export const liveRepeat = defineDirective(LiveRepeatDirective) as <T, O extends LiveDataOptions<T> | LiveOptions<T>>(
-	options: O,
-	templateFn: O extends LiveDataOptions<T> ? TemplateFn<T> : LiveTemplateFn<T>,
+export const liveRepeat = defineDirective(LiveRepeatDirective) as <Item>(
+	options: LiveOptions<Item>,
+	templateFn: TemplateFn<Item>,
 	transitionOptions?: DirectiveTransitionOptions
 ) => DirectiveResult
 

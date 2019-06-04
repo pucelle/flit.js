@@ -10,12 +10,13 @@ export class RepeatDirective<Item> implements Directive {
 
 	protected anchor: NodeAnchor
 	protected context: Context
-	protected templateFn: TemplateFn<Item>
-	protected transition: DirectiveTransition
+	protected templateFn!: TemplateFn<Item>
+	protected transition!: DirectiveTransition
 	protected data: Item[] = []
+	protected lastData: Iterable<Item> | null = null
 	protected wtems: WatchedTemplate<Item>[] = []
 	protected dataWatcher: Watcher<Item[]> | null = null
-	protected firstlyUpdated: boolean = false
+	protected firstlyMerge: boolean = true
 
 	/** 
 	 * For `liveRepeat`, specify the the start index of first item in the whole data.
@@ -23,25 +24,26 @@ export class RepeatDirective<Item> implements Directive {
 	 */
 	protected startIndex: number = 0
 
-	constructor(anchor: NodeAnchor, context: Context, data: Iterable<Item> | null, templateFn: TemplateFn<Item>, transitionOptions?: DirectiveTransitionOptions) {
+	constructor(anchor: NodeAnchor, context: Context) {
 		this.anchor = anchor		
 		this.context = context
-		this.templateFn = templateFn
-		this.transition = new DirectiveTransition(context, transitionOptions)
-		this.initData(data)
-	}
-
-	protected initData(data: Iterable<Item> | null) {
-		this.watchAndUpdateData(data)
+		this.transition = new DirectiveTransition(context)
 	}
 
 	private watchAndUpdateData(data: Iterable<Item> | null) {
-		if (!data) {
+		if (data === this.lastData) {
 			return
 		}
 
+		this.lastData = data
+
 		if (this.dataWatcher) {
 			this.dataWatcher.disconnect()
+		}
+
+		if (!data) {
+			this.updateData([])
+			return
 		}
 
 		// Here need to read each item of the `Iterable<T>` so we can observe changes like `a[i] = xxx`.
@@ -61,11 +63,11 @@ export class RepeatDirective<Item> implements Directive {
 		return templateFn.toString() === this.templateFn.toString()
 	}
 
-	merge(data: Iterable<Item> | null, _templateFn: TemplateFn<Item>, options?: DirectiveTransitionOptions) {
+	merge(data: Iterable<Item> | null, templateFn: TemplateFn<Item>, options?: DirectiveTransitionOptions) {
+		this.templateFn = templateFn
 		this.transition.setOptions(options)
-
-		// May be we should compare the data firstly, and do nothing if equals.
 		this.watchAndUpdateData(data)
+		this.firstlyMerge = false
 	}
 
 	// We want to reduce moving times, the best way is here:
@@ -214,8 +216,6 @@ export class RepeatDirective<Item> implements Directive {
 				}
 			}
 		}
-
-		this.firstlyUpdated = true
 	}
 
 	private useMatched(wtem: WatchedTemplate<Item>, index: number) {
@@ -245,7 +245,7 @@ export class RepeatDirective<Item> implements Directive {
 		let fragment = template.range.getFragment()
 		let firstElement: HTMLElement | null = null
 
-		if (this.transition.shouldPlayEnter(this.firstlyUpdated)) {
+		if (this.transition.shouldPlayEnterMayAtStart(this.firstlyMerge)) {
 			firstElement = fragment.firstElementChild as HTMLElement
 		}
 
