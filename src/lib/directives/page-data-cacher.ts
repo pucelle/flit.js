@@ -166,19 +166,20 @@ export class PageDataCacher<Item> {
 		}
 	}
 
-	// The part that less than `minIndex` will all filled by `null`
-	private generateNewCacheItem(pageIndex: number, index: number, minIndex: number, fixedIndex: number): boolean {
-		let startPageIndex = Math.floor(fixedIndex / this.pageSize)
+	// The value whose index less than `nullStartIndex` will be set by `null`.
+	// Will copy values whose index less than `moveStartIndex` to the generated items.
+	private generateNewCacheItem(pageIndex: number, index: number, nullStartIndex: number, moveStartIndex: number): boolean {
+		let startPageIndex = Math.floor(moveStartIndex / this.pageSize)
 
 		// Must can generate for `pageIndex = startPageIndex`
-		if (index + this.pageSize <= minIndex && pageIndex !== startPageIndex) {
+		if (index + this.pageSize <= nullStartIndex && pageIndex !== startPageIndex) {
 			return false
 		}
 
 		let newItems: (Item | null)[]
 
-		if (index < minIndex) {
-			newItems = [...repeatValue(null, minIndex - index), ...this.getExistingData(minIndex, index + this.pageSize)]
+		if (index < nullStartIndex) {
+			newItems = [...repeatValue(null, nullStartIndex - index), ...this.getExistingData(nullStartIndex, index + this.pageSize)]
 		}
 		else {
 			newItems = this.getExistingData(index, index + this.pageSize)
@@ -186,9 +187,9 @@ export class PageDataCacher<Item> {
 
 		// If is the first page, move start fix items into new items.
 		if (pageIndex === startPageIndex) {
-			let indexToSlice = fixedIndex - startPageIndex * this.pageSize
+			let indexToSlice = moveStartIndex - startPageIndex * this.pageSize
 			newItems = [
-				...this.getExistingData(startPageIndex * this.pageSize, fixedIndex),
+				...this.getExistingData(startPageIndex * this.pageSize, moveStartIndex),
 				...newItems.slice(indexToSlice)
 			]
 		}
@@ -201,7 +202,7 @@ export class PageDataCacher<Item> {
 		return true
 	}
 
-	// `count` < 0
+	// `count` > 0
 	private moveDataLeft(index: number, count: number) {
 		let pageIndex = Math.floor(index / this.pageSize)
 		let keys = Object.keys(this.map).map(Number)

@@ -1,5 +1,5 @@
-import {defineDirective, DirectiveResult, Directive} from './define'
-import {DirectiveTransitionOptions, ExcludeProperties} from './shared'
+import {defineDirective, DirectiveResult} from './define'
+import {DirectiveTransitionOptions} from './shared'
 import {TemplateResult} from '../parts'
 import {LiveRepeatDirective} from './live-repeat'
 import {PageDataGetter, PageDataCacher} from './page-data-cacher'
@@ -9,7 +9,7 @@ interface LiveAsyncOptions<Item> {
 	pageSize?: number			// Not updatable
 	renderPageCount?: number	// Not updatable
 	averageItemHeight?: number	// Not updatable
-	ref?: (dir: ExcludeProperties<LiveAsyncRepeatDirective<Item>, Directive>) => void	// Not updatable
+	ref?: (dir: LiveAsyncRepeatDirective<Item>) => void	// Not updatable
 	dataGetter: PageDataGetter<Item>
 	dataCount: number | Promise<number> | (() => (number | Promise<number>))
 	key?: keyof Item
@@ -50,6 +50,18 @@ export class LiveAsyncRepeatDirective<Item> extends LiveRepeatDirective<Item> {
 
 	private dataCacher!: PageDataCacher<Item>
 	private updateId: number = 0
+
+	protected validateTemplateFn(templateFn: LiveTemplateFn<Item> | any) {
+		try {
+			let result = templateFn(null, 0)
+			if (!(result instanceof TemplateResult)) {
+				throw new Error()
+			}
+		}
+		catch (err) {
+			throw new Error(`Please makesure "${templateFn.toString()}" can render "null" value`)
+		}
+	}
 
 	protected initRenderOptions(options: LiveAsyncOptions<Item> | any) {
 		this.dataCacher = new PageDataCacher(this.pageSize)
@@ -146,15 +158,26 @@ export class LiveAsyncRepeatDirective<Item> extends LiveRepeatDirective<Item> {
 		return this.knownDataCount
 	}
 
-	/** When data changed, and you need to keep scroll position. */ 
+	/** When data ordering changed and you want to keep scroll position, e.g., after sorting by columns. */ 
 	async reload() {
 		this.dataCacher.clear()
 		this.updateDataCount()
 		await this.update()
 	}
 
+	/** When data changed completely and you want to move to start scroll position, e.g., after data type changed. */ 
+	async reset() {
+		this.dataCacher.clear()
+		this.updateDataCount()
+		await this.setStartIndex(0)
+	}
+
+	getItem(index: number): Item | null {
+		return this.dataCacher.getExistingData(index, index + 1)[0]
+	}
+
 	/** Get currently rendered item in index. */
-	getLiveItem(index: number): Item | null {
+	getRenderedItem(index: number): Item | null {
 		let isRendered = index >= this.startIndex && index < this.startIndex + this.data.length
 		if (isRendered) {
 			return this.data[index - this.startIndex]

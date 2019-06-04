@@ -1,15 +1,12 @@
 import {TransitionOptions, ShortTransitionOptions, formatShortTransitionOptions, Transition} from '../transition'
 import {Context} from '../component'
-import {Template, TemplateResult} from '../parts';
-import {Watcher} from '../watcher';
+import {Template, TemplateResult} from '../parts'
+import {Watcher} from '../watcher'
 
 
 export type DirectiveTransitionOptions = DirectiveTransitionAtStartOptions | ShortTransitionOptions
 
 export type TransitionTypedCallback = (type: 'enter' | 'leave', finish: boolean) => void
-
-// Used to exclude `Directive` properties which used in inner when exporting `LiveAsyncRepeatDirective`
-export type ExcludeProperties<T, U> = {[key in Exclude<keyof T, keyof U>]: T[key]}
 
 export interface DirectiveTransitionAtStartOptions {
 	transition: ShortTransitionOptions

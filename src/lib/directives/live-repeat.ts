@@ -1,6 +1,6 @@
-import {defineDirective, DirectiveResult, Directive} from './define'
+import {defineDirective, DirectiveResult} from './define'
 import {Context} from '../component'
-import {DirectiveTransitionOptions, WatchedTemplate, TemplateFn, ExcludeProperties} from './shared'
+import {DirectiveTransitionOptions, WatchedTemplate, TemplateFn} from './shared'
 import {NodeAnchor} from '../node-helper'
 import {on} from '../dom-event'
 import {Watcher} from '../watcher'
@@ -13,7 +13,7 @@ interface LiveOptions<Item> {
 	pageSize?: number			// Not updatable
 	renderPageCount?: number	// Not updatable
 	averageItemHeight?: number	// Not updatable
-	ref?: (dir: ExcludeProperties<LiveRepeatDirective<Item>, Directive>) => void	// Not updatable
+	ref?: (dir: LiveRepeatDirective<Item>) => void	// Not updatable
 	data: Iterable<Item> | null
 }
 
@@ -114,6 +114,7 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 	merge(options: any, templateFn: TemplateFn<Item>, transitionOptions?: DirectiveTransitionOptions) {
 		if (this.firstlyMerge) {
 			this.initRenderOptions(options)
+			this.validateTemplateFn(templateFn)
 
 			if (options.ref) {
 				options.ref(this)
@@ -126,6 +127,8 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 		this.update()
 		this.firstlyMerge = false
 	}
+
+	protected validateTemplateFn(_templateFn: TemplateFn<Item>) {}
 
 	protected initRenderOptions(options: LiveOptions<Item>) {
 		if (options.pageSize !== undefined && options.pageSize > 0) {
@@ -521,7 +524,7 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 		}
 	}
 
-	/** Get currently rendered item in index. */
+	/** Get item in index. */
 	getItem(index: number): Item | null {
 		return this.rawData ? this.rawData[index] || null : null
 	}

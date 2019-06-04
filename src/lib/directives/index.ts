@@ -1,5 +1,5 @@
 export {defineDirective, DirectiveResult, Directive, createDirectiveFromResult} from './define'
 export {cache} from './cache'
 export {repeat} from './repeat'
-export {liveRepeat} from './live-repeat'
-export {liveAsyncRepeat} from './live-async-repeat'
+export {liveRepeat, LiveRepeatDirective} from './live-repeat'
+export {liveAsyncRepeat, LiveAsyncRepeatDirective} from './live-async-repeat'
