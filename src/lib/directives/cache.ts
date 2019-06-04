@@ -14,32 +14,10 @@ class CacheDirective implements Directive {
 	private templates: Template[] = []
 	private currentTemplate: Template | null = null
 
-	constructor(anchor: NodeAnchor, context: Context, result: TemplateResult | string, transitionOptions?: DirectiveTransitionOptions) {
+	constructor(anchor: NodeAnchor, context: Context) {
 		this.anchor = anchor
 		this.context = context
-		this.transition = new DirectiveTransition(context, transitionOptions)
-		this.context = context
-
-		if (result) {
-			this.initResult(result, true)
-		}
-	}
-
-	private initResult(result: TemplateResult | string, firstTime: boolean = false) {
-		if (typeof result === 'string') {
-			result = text`${result}`
-		}
-		
-		let template = new Template(result, this.context)
-		let fragment = template.range.getFragment()
-		this.anchor.insert(fragment)
-
-		if (this.transition.shouldPlayEnter(firstTime)) {
-			this.playEnterTransition(template)
-		}
-
-		this.currentTemplate = template
-		this.templates.push(template)
+		this.transition = new DirectiveTransition(context)
 	}
 
 	private async playEnterTransition(template: Template) {
@@ -49,7 +27,7 @@ class CacheDirective implements Directive {
 		}
 	}
 
-	canMergeWith(): boolean {
+	canMergeWith(_result: TemplateResult | string): boolean {
 		return true
 	}
 
@@ -86,6 +64,24 @@ class CacheDirective implements Directive {
 				this.cacheCurrentTemplate()
 			}
 		}
+	}
+	
+	private initResult(result: TemplateResult | string) {
+		if (typeof result === 'string') {
+			result = text`${result}`
+		}
+		
+		let isFirstTime = this.templates.length === 0
+		let template = new Template(result, this.context)
+		let fragment = template.range.getFragment()
+		this.anchor.insert(fragment)
+
+		if (this.transition.shouldPlayEnterMayAtStart(isFirstTime)) {
+			this.playEnterTransition(template)
+		}
+
+		this.currentTemplate = template
+		this.templates.push(template)
 	}
 
 	private async cacheCurrentTemplate() {

@@ -3,7 +3,7 @@ import {NodeAnchor} from '../node-helper'
 
 
 interface DirectiveConstructor<Args extends any[]> {
-	new(anchor: NodeAnchor, context: Context, ...args: Args): Directive<Args>
+	new(anchor: NodeAnchor, context: Context): Directive<Args>
 }
 
 export interface Directive<Args extends any[] = any[]> {
@@ -46,7 +46,8 @@ export class DirectiveResult<Args extends any[] = any[]> {
 /** Create directive from directive result. used in `node.ts` */
 export function createDirectiveFromResult(anchor: NodeAnchor, context: Context, result: DirectiveResult): Directive {
 	let Dir = directiveMap.get(result.id)!
-	let directive = new Dir(anchor, context, ...result.args)
+	let directive = new Dir(anchor, context)
+	directive.merge(...result.args)
 
 	return directive
 }
