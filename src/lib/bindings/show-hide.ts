@@ -35,7 +35,7 @@ class ShowBinding implements Binding {
 	update(value: boolean | ShowHideBindingOptions) {
 		let newValue: boolean
 
-		if (value && typeof value === 'object') {
+		if (value && typeof value === 'object' && value.hasOwnProperty('when')) {
 			newValue = value.when
 			this.enterAtStart = !!value.enterAtStart
 			this.leaveAtStart = !!value.leaveAtStart
@@ -43,7 +43,7 @@ class ShowBinding implements Binding {
 			this.initTransitionOptions(value.transition)
 		}
 		else {
-			newValue = value
+			newValue = !!value
 			this.enterAtStart = false
 			this.leaveAtStart = false
 			this.onend = null
