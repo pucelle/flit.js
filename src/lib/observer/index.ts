@@ -3,7 +3,7 @@
 // Proxy can't apply any compile optimizing, it equals always call a dynamic function.
 
 
-export {observe} from './shared'
+export {observe, observeTarget} from './shared'
 export {observeComTarget} from './observe-com'
 export {startUpdating, endUpdating, clearDependencies, clearAsDependency} from './dependency'
 

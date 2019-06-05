@@ -1,3 +1,6 @@
+import {observeTarget} from "./observer"
+
+
 type EventListener = (...args: any) => void
 
 interface EventItem {
@@ -129,5 +132,22 @@ export class Emitter<Events = any> {
 	/** Remove all event listeners */
 	removeAllListeners() {
 		this.__events = {}
+	}
+}
+
+
+/** Returns an observed emitter class, changes it's sub properties will cause the components depend on them to update. */
+export class ObservedEmitter<Events = any> extends Emitter<Events> {
+	constructor() {
+		super()
+		return observeTarget(this)
+	}
+}
+
+
+/** Returns an observed base class, changes it's sub properties will cause the components depend on them to update. */
+export class Observer {
+	constructor() {
+		return observeTarget(this)
 	}
 }

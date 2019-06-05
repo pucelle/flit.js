@@ -1,4 +1,4 @@
-export {Emitter} from './lib/emitter'
+export {Observer, ObservedEmitter} from './lib/emitter'
 export {define} from './lib/element'
 export {addGlobalStyle, updateStyles} from './lib/style'
 export {render, renderAndWatch, renderComponent, appendTo} from './lib/render'

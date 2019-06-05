@@ -66,19 +66,19 @@ export function observe<T>(value: T): T {
 }
 
 
-export function observeTarget(obj: object): object {
+export function observeTarget<T extends object>(obj: T): T {
 	let str = originalToString.call(obj)
 
 	if (str === '[object Array]') {
-		return observeArrayTarget(obj as unknown[])
+		return observeArrayTarget(obj as unknown[]) as T
 	}
 	
 	if (str === '[object Object]') {
-		return observePlainObjectTarget(obj)
+		return observePlainObjectTarget(obj) as T
 	}
 
 	if (str === '[object Set]' || str === '[object Map]') {
-		return observeMapOrSetTarget(obj as any)
+		return observeMapOrSetTarget(obj as any) as T
 	}
 
 	return obj

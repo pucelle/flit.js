@@ -22,11 +22,7 @@ export class EventPart implements Part {
 		this.name = name[0] === '@' ? name.slice(1) : name
 		this.context = context
 		this.isComEvent = el.localName.includes('-') && name[0] === '@'
-
-		if (this.isComEvent && !context) {
-			throw new Error(`A context must be provided when using "@${name}"`)
-		}
-
+		
 		this.update(handler)
 		this.bindListener()
 	}
