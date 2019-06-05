@@ -103,13 +103,12 @@ export class LiveAsyncRepeatDirective<Item> extends LiveRepeatDirective<Item> {
 
 	protected async update() {
 		let endIndex = this.limitEndIndex(this.startIndex + this.pageSize * this.renderPageCount)
-		let data = this.dataCacher.getExistingData(this.startIndex, endIndex)
-		let hasNull = data.some(item => item === null)
+		let {data, stale} = this.dataCacher.getExistingData(this.startIndex, endIndex)
 		let promise1 = this.updateData(data as Item[])
 		let promise2: Promise<void> | undefined
 		let updateId = this.updateId += 1
 
-		if (hasNull) {
+		if (stale) {
 			promise2 = this.dataCacher.getFreshData(this.startIndex, endIndex).then((data: Item[]) => {
 				if (updateId === this.updateId) {
 					return this.updateData(data)
@@ -160,20 +159,20 @@ export class LiveAsyncRepeatDirective<Item> extends LiveRepeatDirective<Item> {
 
 	/** When data ordering changed and you want to keep scroll position, e.g., after sorting by columns. */ 
 	async reload() {
-		this.dataCacher.clear()
+		this.dataCacher.beStale()
 		this.updateDataCount()
 		await this.update()
 	}
 
 	/** When data changed completely and you want to move to start scroll position, e.g., after data type changed. */ 
 	async reset() {
-		this.dataCacher.clear()
+		this.dataCacher.beStale()
 		this.updateDataCount()
 		await this.setStartIndex(0)
 	}
 
 	getItem(index: number): Item | null {
-		return this.dataCacher.getExistingData(index, index + 1)[0]
+		return this.dataCacher.getExistingData(index, index + 1).data[0]
 	}
 
 	/** Get currently rendered item in index. */

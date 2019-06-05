@@ -29,10 +29,15 @@ export class PageDataCacher<Item> {
 		let endPageIndex = Math.floor((endIndex - 1) / this.pageSize)	// 50 -> 0, 51 -> 1
 		let data: (Item | null)[] = []
 		let nullValues: null[] | undefined
+		let stale = false
 
 		for (let i = startPageIndex; i <= endPageIndex; i++) {
 			let cacheItem = this.map[i]
 			let items = cacheItem ? cacheItem.items : nullValues || (nullValues = repeatValue(null, this.pageSize))
+
+			if (cacheItem && !cacheItem.fresh) {
+				stale = true
+			}
 
 			if (i === startPageIndex && i === endPageIndex ) {
 				data.push(...items.slice(startIndex - startPageIndex * this.pageSize, endIndex - endPageIndex * this.pageSize))
@@ -48,7 +53,9 @@ export class PageDataCacher<Item> {
 			}
 		}
 
-		return data
+		stale = stale || !!nullValues
+
+		return {data, stale}
 	}
 
 	async getFreshData(startIndex: number, endIndex: number): Promise<Item[]> {
@@ -64,7 +71,7 @@ export class PageDataCacher<Item> {
 		}
 
 		await Promise.all(promises)
-		return this.getExistingData(startIndex, endIndex) as Item[]
+		return this.getExistingData(startIndex, endIndex).data as Item[]
 	}
 
 	// It's very often that you load one page of data, and then still load this page after scrolled.
@@ -179,17 +186,17 @@ export class PageDataCacher<Item> {
 		let newItems: (Item | null)[]
 
 		if (index < nullStartIndex) {
-			newItems = [...repeatValue(null, nullStartIndex - index), ...this.getExistingData(nullStartIndex, index + this.pageSize)]
+			newItems = [...repeatValue(null, nullStartIndex - index), ...this.getExistingData(nullStartIndex, index + this.pageSize).data]
 		}
 		else {
-			newItems = this.getExistingData(index, index + this.pageSize)
+			newItems = this.getExistingData(index, index + this.pageSize).data
 		}
 
 		// If is the first page, move start fix items into new items.
 		if (pageIndex === startPageIndex) {
 			let indexToSlice = moveStartIndex - startPageIndex * this.pageSize
 			newItems = [
-				...this.getExistingData(startPageIndex * this.pageSize, moveStartIndex),
+				...this.getExistingData(startPageIndex * this.pageSize, moveStartIndex).data,
 				...newItems.slice(indexToSlice)
 			]
 		}
@@ -248,7 +255,15 @@ export class PageDataCacher<Item> {
 		return items.every(item => item !== null)
 	}
 
-	clear() {
-		this.map = {}
+	// clear() {
+	// 	this.map = {}
+	// }
+
+	// Compare to clear all the cache, here it can keep showing old results,
+	// and replace them when data prepared.
+	beStale() {
+		for (let cacheItem of Object.values(this.map)) {
+			cacheItem.fresh = false
+		}
 	}
 }
