@@ -29,14 +29,14 @@ export class PageDataCacher<Item> {
 		let endPageIndex = Math.floor((endIndex - 1) / this.pageSize)	// 50 -> 0, 51 -> 1
 		let data: (Item | null)[] = []
 		let nullValues: null[] | undefined
-		let stale = false
+		let fresh = true
 
 		for (let i = startPageIndex; i <= endPageIndex; i++) {
 			let cacheItem = this.map[i]
 			let items = cacheItem ? cacheItem.items : nullValues || (nullValues = repeatValue(null, this.pageSize))
 
 			if (cacheItem && !cacheItem.fresh) {
-				stale = true
+				fresh = false
 			}
 
 			if (i === startPageIndex && i === endPageIndex ) {
@@ -53,9 +53,11 @@ export class PageDataCacher<Item> {
 			}
 		}
 
-		stale = stale || !!nullValues
+		if (nullValues) {
+			fresh = false
+		}
 
-		return {data, stale}
+		return {data, fresh}
 	}
 
 	async getFreshData(startIndex: number, endIndex: number): Promise<Item[]> {
@@ -115,14 +117,11 @@ export class PageDataCacher<Item> {
 			return
 		}
 
-		let pageIndex = Math.floor(index / this.pageSize)
-		if (this.map[pageIndex]) {
-			if (moveRight > 0) {
-				this.moveDataRight(index, moveRight)
-			}
-			else {
-				this.moveDataLeft(index, -moveRight)
-			}
+		if (moveRight > 0) {
+			this.moveDataRight(index, moveRight)
+		}
+		else {
+			this.moveDataLeft(index, -moveRight)
 		}
 	}
 
@@ -163,9 +162,12 @@ export class PageDataCacher<Item> {
 			lastGeneratedPageIndex = leftPageIndex
 		}
 
+		// Handle rest items in `pageIndex`
 		if (lastGeneratedPageIndex > pageIndex) {
-			this.generateNewCacheItem(pageIndex, pageIndex * this.pageSize - count, index, index)
-			unUsedKeys.delete(pageIndex)
+			let generated = this.generateNewCacheItem(pageIndex, pageIndex * this.pageSize - count, index, index)
+			if (generated) {
+				unUsedKeys.delete(pageIndex)
+			}
 		}
 
 		for(let key of unUsedKeys) {
@@ -173,13 +175,14 @@ export class PageDataCacher<Item> {
 		}
 	}
 
-	// The value whose index less than `nullStartIndex` will be set by `null`.
 	// Will copy values whose index less than `moveStartIndex` to the generated items.
-	private generateNewCacheItem(pageIndex: number, index: number, nullStartIndex: number, moveStartIndex: number): boolean {
+	// The value whose index less than `nullStartIndex` will be set by `null`.
+	private generateNewCacheItem(pageIndex: number, index: number, moveStartIndex: number, nullStartIndex: number): boolean {
 		let startPageIndex = Math.floor(moveStartIndex / this.pageSize)
+		let haveItemsFromMovement = index + this.pageSize > nullStartIndex
+		let haveRestItemsInPageIndex = pageIndex === startPageIndex && this.map[pageIndex] && moveStartIndex > startPageIndex * this.pageSize
 
-		// Must can generate for `pageIndex = startPageIndex`
-		if (index + this.pageSize <= nullStartIndex && pageIndex !== startPageIndex) {
+		if (!haveItemsFromMovement && !haveRestItemsInPageIndex) {
 			return false
 		}
 
@@ -200,13 +203,16 @@ export class PageDataCacher<Item> {
 				...newItems.slice(indexToSlice)
 			]
 		}
-		
-		this.map[pageIndex] = {
-			items: newItems,
-			fresh: this.hasNoNull(newItems)
+
+		if (this.hasAnyItem(newItems)) {
+			this.map[pageIndex] = {
+				items: newItems,
+				fresh: this.hasNoNull(newItems)
+			}
+			return true
 		}
 
-		return true
+		return false
 	}
 
 	// `count` > 0
@@ -229,7 +235,7 @@ export class PageDataCacher<Item> {
 
 			if (leftPageIndex >= 0 && leftPageIndex !== lastGeneratedPageIndex) {
 				let leftPageStartIndex = leftPageIndex * this.pageSize + count
-				let generated = this.generateNewCacheItem(leftPageIndex, leftPageStartIndex, index + count, index)
+				let generated = this.generateNewCacheItem(leftPageIndex, leftPageStartIndex, index, index + count)
 				if (generated) {
 					unUsedKeys.delete(leftPageIndex)
 				}
@@ -237,7 +243,7 @@ export class PageDataCacher<Item> {
 
 			if (rightPageIndex >= 0 && rightPageIndex !== leftPageIndex) {
 				let rightPageStartIndex = rightPageIndex * this.pageSize + count
-				let generated = this.generateNewCacheItem(rightPageIndex, rightPageStartIndex, index + count, index)
+				let generated = this.generateNewCacheItem(rightPageIndex, rightPageStartIndex, index, index + count)
 				if (generated) {
 					unUsedKeys.delete(rightPageIndex)
 				}
@@ -253,6 +259,10 @@ export class PageDataCacher<Item> {
 
 	private hasNoNull(items: (Item | null)[]): boolean {
 		return items.every(item => item !== null)
+	}
+
+	private hasAnyItem(items: (Item | null)[]): boolean {
+		return items.some(item => item !== null)
 	}
 
 	// clear() {

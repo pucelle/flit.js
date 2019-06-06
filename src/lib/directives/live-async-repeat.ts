@@ -103,12 +103,12 @@ export class LiveAsyncRepeatDirective<Item> extends LiveRepeatDirective<Item> {
 
 	protected async update() {
 		let endIndex = this.limitEndIndex(this.startIndex + this.pageSize * this.renderPageCount)
-		let {data, stale} = this.dataCacher.getExistingData(this.startIndex, endIndex)
+		let {data, fresh} = this.dataCacher.getExistingData(this.startIndex, endIndex)
 		let promise1 = this.updateData(data as Item[])
 		let promise2: Promise<void> | undefined
 		let updateId = this.updateId += 1
 
-		if (stale) {
+		if (!fresh) {
 			promise2 = this.dataCacher.getFreshData(this.startIndex, endIndex).then((data: Item[]) => {
 				if (updateId === this.updateId) {
 					return this.updateData(data)
@@ -120,6 +120,7 @@ export class LiveAsyncRepeatDirective<Item> extends LiveRepeatDirective<Item> {
 		}
 
 		await promise1
+		
 		if (promise2) {
 			await promise2
 		}
