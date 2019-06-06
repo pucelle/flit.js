@@ -166,9 +166,9 @@ export class Component<Events = any> extends Emitter<Events> {
 	static style: ComponentStyle | null = null
 
 	/**
-	 * Used to assign very important value type properties,
-	 * Normally used to set the properties that will never changed.
-	 * Can be camel cased or dash cased.
+	 * Used to assign very important and unchanged properties,
+	 * Can be camel cased or dash cased, but assin in HTML element must be dash caces.
+	 * So I would suggest use it for one-word properties.
 	 */
 	static properties: string[] | null = null
 
