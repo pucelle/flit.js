@@ -358,7 +358,7 @@ export class Component<Events = any> extends Emitter<Events> {
 	}
 
 	/** Child class should implement this method, normally returns html`...` or string. */
-	render(): TemplateResult | string | DirectiveResult |  null {
+	protected render(): TemplateResult | string | DirectiveResult |  null {
 		return null
 	}
 
@@ -397,7 +397,7 @@ export class Component<Events = any> extends Emitter<Events> {
 	 * Original child nodes are prepared, but slots are not prepared right now.
 	 * You may changed some data or visit parent nodes or `this.el` and operate here.
 	 */
-	onCreated() {}
+	protected onCreated() {}
 
 	/**
 	 * Called after all the data updated for the first time.
@@ -405,27 +405,27 @@ export class Component<Events = any> extends Emitter<Events> {
 	 * Will keep updating other components, so please don't check computed styles on elements.
 	 * You may visit child nodes or bind events here.
 	 */
-	onReady() {}
+	protected onReady() {}
 
 	/** 
 	 * Called after all the data updated.
 	 * Will keep updating other components, so please don't check computed style on elements.
 	 */
-	onUpdated() {}
+	protected onUpdated() {}
 
 	/** 
 	 * Called when root element was inserted into document again.
 	 * This will be called for each time you insert the element into document.
 	 * If you need to register global listeners, restore them here.
 	 */
-	onReconnected() {}
+	protected onReconnected() {}
 
 	/**
 	 * Called when root element removed from document.
 	 * This will be called for each time you removed the element into document.
 	 * If you registered global listeners, don't forget to unregister them here.
 	 */
-	onDisconnected() {}
+	protected onDisconnected() {}
 
 	/** 
 	 * Add a watcher to connected with current component.
