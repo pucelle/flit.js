@@ -41,7 +41,12 @@ defineBinding('prop', class PropBinding implements Binding {
 
 	updateValue(value: unknown) {
 		if (value && typeof value === 'object') {
-			Object.assign(this.com, value)
+			let com = this.com as any
+			for (let key of Object.keys(value!)) {
+				if (com[key] !== value![key as keyof typeof value]) {
+					com[key] = value![key as keyof typeof value]
+				}
+			}
 		}
 	}
 })
