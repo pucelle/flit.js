@@ -21,15 +21,15 @@ export class EventPart implements Part {
 		this.el = el
 		this.name = name[0] === '@' ? name.slice(1) : name
 		this.context = context
-		this.isComEvent = el.localName.includes('-') && name[0] === '@'
-		
+		this.isComEvent = el.localName.includes('-') && name[0] === '@' || !(('on' + name) in el)
+
 		this.update(handler)
 		this.bindListener()
 	}
 
 	update(handler: (...args: any) => void) {
 		if (typeof handler !== 'function') {
-			throw new Error(`Failed to register listener at "<${this.el.localName} @${this.name}='${handler}'">, the listener is not a function`)
+			throw new Error(`Failed to register listener at "<${this.el.localName} @${this.name}='${handler}'">, listener is not a function`)
 		}
 
 		// Should here compare handler `toString` result and not update if they are the same?
