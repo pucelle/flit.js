@@ -94,10 +94,11 @@ class CacheDirective implements Directive {
 		}
 
 		if (this.transition.shouldPlay() && firstElement) {
-			let finish = await this.transition.playLeaveAt(firstElement)
-			if (finish) {
-				template.range.cacheFragment()
-			}
+			this.transition.playLeaveAt(firstElement).then((finish: boolean) => {
+				if (finish) {
+					template.range.cacheFragment()
+				}
+			})
 		}
 		else {
 			template.range.cacheFragment()

@@ -269,8 +269,11 @@ export class RepeatDirective<Item> implements Directive {
 		if (this.transition.shouldPlay()) {
 			let firstElement = template.range.getFirstElement()
 			if (firstElement) {
-				this.transition.playLeaveAt(firstElement)
-				wtem.remove()
+				this.transition.playLeaveAt(firstElement).then((finish: boolean) => {
+					if (finish) {
+						wtem.remove()
+					}
+				})
 			}
 			else {
 				wtem.remove()
