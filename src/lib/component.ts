@@ -1,10 +1,8 @@
 import {Emitter} from './emitter'
 import {NodePart, TemplateResult} from './parts'
 import {enqueueComponentUpdate} from './queue'
-import {startUpdating, endUpdating, observeComTarget, clearDependencies, clearAsDependency} from './observer'
+import {startUpdating, endUpdating, observeComTarget, clearDependencies, clearAsDependency, restoreAsDependency, targetMap} from './observer'
 import {Watcher, globalWatcherSet} from './watcher'
-import {targetMap} from './observer/shared'
-import {restoreAsDependency} from './observer/dependency'
 import {getScopedClassNameSet} from './style'
 import {NodeAnchorType, NodeAnchor, NodeRange} from "./node-helper"
 import {DirectiveResult} from './directives'
