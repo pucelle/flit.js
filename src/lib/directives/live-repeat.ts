@@ -35,10 +35,10 @@ interface LiveOptions<Item> {
 export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 
 	/** The parent node of `anchorNode`, it will be used as a slider to slide in the scroller element. */
-	private slider!: HTMLElement
+	protected slider!: HTMLElement
 
 	/** The parent node of `slider`, it's `overflow` value must be `auto` or `scroll`. */
-	private scroller!: HTMLElement
+	protected scroller!: HTMLElement
 
 	/**
 	* How many items to render each time.
@@ -58,19 +58,19 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 	protected renderPageCount: number = 1
 
 	// Only multiple `renderPageCount` for at most once since it will cause additional relayout.
-	private renderPageCountChecked: boolean = false
-
-	/** Whole data from options. */
-	private rawData: Item[] | null = null
+	protected renderPageCountChecked: boolean = false
 
 	/** `startIndex` can only be set for once from `options`. */
-	private needToApplyStartIndex: boolean = false
+	protected needToApplyStartIndex: boolean = false
 
 	/** 
 	 * Average item height value, it is used to calculate the position of the `slider`.
 	 * It will be detected automatically from the first rendering if was not initialized.
 	 */
-	private averageItemHeight: number = 0
+	protected averageItemHeight: number = 0
+
+	/** Whole data from options. */
+	private rawData: Item[] | null = null
 
 	/** 
 	 * When we scrolled up or down, we don't know about the height of just inserted or removed elements.
@@ -122,7 +122,7 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 		}
 
 		this.templateFn = templateFn
-		this.updateDataOptions(options as LiveOptions<Item>)
+		this.updateRenderOptions(options as LiveOptions<Item>)
 		this.transition.setOptions(transitionOptions)
 		this.update()
 		this.firstlyMerge = false
@@ -145,7 +145,11 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 	}
 
 	// Only `data` is updatable
-	protected updateDataOptions(options: LiveOptions<Item>) {
+	protected updateRenderOptions(options: LiveOptions<Item>) {
+		if (options.averageItemHeight) {
+			this.averageItemHeight = options.averageItemHeight
+		}
+
 		if (options.data !== undefined) {
 			this.watchAndAssignRawData(options.data)
 		}

@@ -65,11 +65,15 @@ export class LiveAsyncRepeatDirective<Item> extends LiveRepeatDirective<Item> {
 
 	protected initRenderOptions(options: LiveAsyncOptions<Item> | any) {
 		this.dataCacher = new PageDataCacher(this.pageSize)
-		this.updateDataOptions(options)
+		this.updateRenderOptions(options)
 		this.updateDataCount()
 	}
 
-	protected updateDataOptions(options: LiveAsyncOptions<Item> | any) {
+	protected updateRenderOptions(options: LiveAsyncOptions<Item> | any) {
+		if (options.averageItemHeight) {
+			this.averageItemHeight = options.averageItemHeight
+		}
+
 		this.dataCacher.setDataGetter(options.dataGetter)
 		this.dataCount = options.dataCount
 	}
@@ -101,15 +105,22 @@ export class LiveAsyncRepeatDirective<Item> extends LiveRepeatDirective<Item> {
 		}
 	}
 
-	protected async update() {
+	protected async update(renderPalceholders: boolean = true) {
 		let endIndex = this.limitEndIndex(this.startIndex + this.pageSize * this.renderPageCount)
-		let {data, fresh} = this.dataCacher.getExistingData(this.startIndex, endIndex)
-		let promise1 = this.updateData(data as Item[])
-		let promise2: Promise<void> | undefined
+		let needToRenderWithFreshData = !renderPalceholders
+		let updateImmediatelyPromise: Promise<void> | undefined
+
+		if (renderPalceholders) {
+			let {data, fresh} = this.dataCacher.getExistingData(this.startIndex, endIndex)
+			updateImmediatelyPromise = this.updateData(data as Item[])
+			needToRenderWithFreshData = !fresh
+		}
+		
+		let updateFreshPromise: Promise<void> | undefined
 		let updateId = this.updateId += 1
 
-		if (!fresh) {
-			promise2 = this.dataCacher.getFreshData(this.startIndex, endIndex).then((data: Item[]) => {
+		if (needToRenderWithFreshData) {
+			updateFreshPromise = this.dataCacher.getFreshData(this.startIndex, endIndex).then((data: Item[]) => {
 				if (updateId === this.updateId) {
 					return this.updateData(data)
 				}
@@ -119,10 +130,12 @@ export class LiveAsyncRepeatDirective<Item> extends LiveRepeatDirective<Item> {
 			})
 		}
 
-		await promise1
+		if (updateImmediatelyPromise) {
+			await updateImmediatelyPromise
+		}
 		
-		if (promise2) {
-			await promise2
+		if (updateFreshPromise) {
+			await updateFreshPromise
 		}
 	}
 
@@ -162,14 +175,14 @@ export class LiveAsyncRepeatDirective<Item> extends LiveRepeatDirective<Item> {
 	async reload() {
 		this.dataCacher.beStale()
 		this.updateDataCount()
-		await this.update()
+		await this.update(false)
 	}
 
 	/** When data changed completely and you want to move to start scroll position, e.g., after data type changed. */ 
 	async reset() {
-		this.dataCacher.beStale()
+		this.dataCacher.clear()
 		this.updateDataCount()
-		await this.setStartIndex(0)
+		this.setStartIndex(0)
 	}
 
 	getItem(index: number): Item | null {

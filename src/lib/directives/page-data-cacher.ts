@@ -265,9 +265,9 @@ export class PageDataCacher<Item> {
 		return items.some(item => item !== null)
 	}
 
-	// clear() {
-	// 	this.map = {}
-	// }
+	clear() {
+		this.map = {}
+	}
 
 	// Compare to clear all the cache, here it can keep showing old results,
 	// and replace them when data prepared.
