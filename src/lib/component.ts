@@ -200,7 +200,7 @@ export class Component<Events = any> extends Emitter<Events> {
 	constructor(el: HTMLElement) {
 		super()
 		this.el = el
-		return observeComTarget(this)
+		return observeComTarget(this as any)
 	}
 
 	__emitCreated() {

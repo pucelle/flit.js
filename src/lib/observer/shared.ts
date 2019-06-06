@@ -6,10 +6,10 @@ import {observeMapOrSetTarget} from './observe-set-or-map'
 /** Normal object or array, whose changing will trigger Updatable to update. */
 export type Dependency = object
 
-/** Component instance,  whose property changing will trigger Updatable to update. */
+/** Component instance, whose property changing will trigger Updatable to update. */
 export type Com = {[key: string]: unknown} & Dependency
 
-/** Component instance,  whose property changing will trigger Updatable to update. */
+/** Component instance, whose property changing will trigger Updatable to update. */
 export interface Updatable {
 	update(): void
 }

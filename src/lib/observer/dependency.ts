@@ -81,7 +81,7 @@ export function clearDependencies(updating: Updatable) {
  */
 export function clearAsDependency(dep: Dependency) {
 	depMap.clearFromRight(dep)
-	comPropMap.clearFromRight(dep)
+	comPropMap.clearFromRight(dep as Com)
 }
 
 // when one component or watcher was disconnected and connect again,
@@ -91,7 +91,7 @@ export function clearAsDependency(dep: Dependency) {
 
 /** When one component or watcher connected again, here to restore the what it can update. */
 export function restoreAsDependency(dep: Dependency) {
-	comPropMap.restoreFromRight(dep)
+	comPropMap.restoreFromRight(dep as Com)
 }
 
 // We split adding dependencies to two steps:

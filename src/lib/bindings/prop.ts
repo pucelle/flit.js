@@ -55,11 +55,8 @@ defineBinding('prop', class PropBinding implements Binding {
 	}
 
 	updateValue(value: unknown) {
-		// We didn't compare values in component value setting to trigger update,
-		// Such that here compare it will avoid unnecessary updating.
-		let com = this.com as any
-		if (com[this.property] !== value) {
-			com[this.property] = value
-		}
+		// We did compare values in component value setting to trigger update,
+		// Such that here no need compare again.
+		(this.com as any)[this.property] = value
 	}
 })
