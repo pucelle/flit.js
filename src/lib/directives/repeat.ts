@@ -158,7 +158,7 @@ export class RepeatDirective<Item> implements Directive {
 
 				// It's already in the right position, no need to move.
 				if (nextMatchedOldIndex <= reuseIndex) {
-					this.useMatched(oldWtems[reuseIndex], index)
+					this.useMatchedOne(oldWtems[reuseIndex], index)
 					usedIndexSet.add(reuseIndex)
 					lastMatchedOldIndex = nextMatchedOldIndex
 					nextMatchedOldIndex = getNextMatchedOldIndex(reuseIndex + 1)
@@ -166,8 +166,8 @@ export class RepeatDirective<Item> implements Directive {
 				}
 
 				if (reuseIndex > -1) {
-					this.move(oldWtems[reuseIndex], nextMatchedOldIndex < oldData.length ? oldWtems[nextMatchedOldIndex]: null)
-					this.useMatched(oldWtems[reuseIndex], index)
+					this.moveOne(oldWtems[reuseIndex], nextMatchedOldIndex < oldData.length ? oldWtems[nextMatchedOldIndex]: null)
+					this.useMatchedOne(oldWtems[reuseIndex], index)
 					usedIndexSet.add(reuseIndex)
 					continue
 				}
@@ -188,17 +188,17 @@ export class RepeatDirective<Item> implements Directive {
 
 				if (reuseIndex === -1) {
 					reuseIndex = notInUseIndexSet.keys().next().value
-					this.move(oldWtems[reuseIndex], nextMatchedOldIndex < oldData.length ? oldWtems[nextMatchedOldIndex]: null)
+					this.moveOne(oldWtems[reuseIndex], nextMatchedOldIndex < oldData.length ? oldWtems[nextMatchedOldIndex]: null)
 				}
 				
-				this.reuse(oldWtems[reuseIndex], item, index)
+				this.reuseOne(oldWtems[reuseIndex], item, index)
 				notInUseIndexSet.delete(reuseIndex)
 				usedIndexSet.add(reuseIndex)
 				continue
 			}
 
 			this.wtems.push(
-				this.create(
+				this.createOne(
 					item,
 					index,
 					nextMatchedOldIndex < oldData.length ? oldWtems[nextMatchedOldIndex]: null
@@ -212,23 +212,23 @@ export class RepeatDirective<Item> implements Directive {
 		if (usedIndexSet.size < oldData.length) {
 			for (let i = 0; i < oldData.length; i++) {
 				if (!usedIndexSet.has(i)) {
-					this.delete(oldWtems[i])
+					this.removeOne(oldWtems[i])
 				}
 			}
 		}
 	}
 
-	private useMatched(wtem: WatchedTemplate<Item>, index: number) {
+	private useMatchedOne(wtem: WatchedTemplate<Item>, index: number) {
 		wtem.updateIndex(index + this.startIndex)
 		this.wtems.push(wtem)
 	}
 
-	private reuse(wtem: WatchedTemplate<Item>, item: Item, index: number) {
+	private reuseOne(wtem: WatchedTemplate<Item>, item: Item, index: number) {
 		wtem.update(item, index + this.startIndex)
 		this.wtems.push(wtem)
 	}
 
-	private move(wtem: WatchedTemplate<Item>, nextOldWtem: WatchedTemplate<Item> | null) {
+	private moveOne(wtem: WatchedTemplate<Item>, nextOldWtem: WatchedTemplate<Item> | null) {
 		let fragment = wtem.template.range.getFragment()
 
 		if (nextOldWtem) {
@@ -239,7 +239,7 @@ export class RepeatDirective<Item> implements Directive {
 		}
 	}
 
-	private create(item: Item, index: number, nextOldWtem: WatchedTemplate<Item> | null): WatchedTemplate<Item> {
+	private createOne(item: Item, index: number, nextOldWtem: WatchedTemplate<Item> | null): WatchedTemplate<Item> {
 		let wtem = new WatchedTemplate(this.context, this.templateFn, item, index + this.startIndex)
 		let template = wtem.template
 		let fragment = template.range.getFragment()
@@ -263,7 +263,7 @@ export class RepeatDirective<Item> implements Directive {
 		return wtem
 	}
 
-	private delete(wtem: WatchedTemplate<Item>) {
+	private removeOne(wtem: WatchedTemplate<Item>) {
 		let template = wtem.template
 
 		if (this.transition.shouldPlay()) {
