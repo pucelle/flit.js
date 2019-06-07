@@ -1,4 +1,4 @@
-import {defineComponent, getComponent, Component} from './component'
+import {defineComponent, getComponent, Component, ComponentConstructor} from './component'
 import {ensureComponentStyle} from './style'
 
 
@@ -6,10 +6,10 @@ import {ensureComponentStyle} from './style'
 // Both `connectedCallback` and `disconnectedCallback` may triggered multiple times in DOM removing,
 // so we must delay the component connect and disconnect operation by a queue.
 
-let connectSoonMap: Map<HTMLElement, typeof Component> = new Map()
-let disconnectSoonMap: Map<HTMLElement, typeof Component> = new Map()
+let connectSoonMap: Map<HTMLElement, ComponentConstructor> = new Map()
+let disconnectSoonMap: Map<HTMLElement, ComponentConstructor> = new Map()
 
-function enqueueConnect(el: HTMLElement, Com: typeof Component) {
+function enqueueConnect(el: HTMLElement, Com: ComponentConstructor) {
 	// When append, trigger disconnect and connect soon.
 	if (disconnectSoonMap.has(el)) {
 		disconnectSoonMap.delete(el)
@@ -24,7 +24,7 @@ function enqueueConnect(el: HTMLElement, Com: typeof Component) {
 	}
 }
 
-function enqueueDisconnect(el: HTMLElement, Com: typeof Component) {
+function enqueueDisconnect(el: HTMLElement, Com: ComponentConstructor) {
 	// When inserted into a fragment and then removed.
 	if (connectSoonMap.has(el)) {
 		connectSoonMap.delete(el)
@@ -72,7 +72,7 @@ function update() {
 	}
 }
 
-function connectElement(el: HTMLElement, Com: typeof Component) {
+function connectElement(el: HTMLElement, Com: ComponentConstructor) {
 	ensureComponentStyle(Com, el.localName)
 				
 	let com = getComponent(el)
@@ -84,7 +84,7 @@ function connectElement(el: HTMLElement, Com: typeof Component) {
 }
 
 /** Export for `renderComponent`, which will create component manually. */
-export function createComponent(el: HTMLElement, Com: typeof Component): Component {
+export function createComponent(el: HTMLElement, Com: ComponentConstructor): Component {
 	let com = new Com(el)
 	if (Com.properties && el.attributes.length > 0) {
 		assignProperties(com, Com.properties)
@@ -106,7 +106,7 @@ function disconnectElement(el: HTMLElement) {
  * Returns a define decorator to defined followed class as a component with specified name.
  * @param name The component name.
  */
-export function define(name: string): (Com: typeof Component) => void
+export function define(name: string): (Com: ComponentConstructor) => void
 
 
 /**
@@ -115,16 +115,16 @@ export function define(name: string): (Com: typeof Component) => void
  * @param name The component name.
  * @param Component The Component class definition.
  */
-export function define(name: string, Com: typeof Component): void
+export function define(name: string, Com: ComponentConstructor): void
 
-export function define(name: string, Com?: typeof Component) {
+export function define(name: string, Com?: ComponentConstructor) {
 	if (!name.includes('-')) {
 		throw new Error(`"${name}" can't be defined as custom element, it must contain "-"`)
 	}
 
 	// Used at `@define` decorator.
 	if (!Com) {
-		return function(Com: typeof Component) {
+		return function(Com: ComponentConstructor) {
 			define(name, Com)
 		}
 	}

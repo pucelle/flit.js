@@ -1,7 +1,10 @@
 import {observeTarget} from "./observer"
 
 
-type EventListener = (...args: any) => void
+// This file cloned for https://github.com/pucelle/ff/blob/master/src/lib/emitter.ts
+// You may visit it to find more descriptions about the implemention.
+
+type EventListener = (...args: any[]) => void
 
 interface EventItem {
 	listener: EventListener
@@ -9,29 +12,20 @@ interface EventItem {
 	once: boolean
 }
 
-type FilterListeners<I> = {[K in keyof I]: BeListener<I[K]> }
-type BeListener<V> = V extends (...args: infer Args) => void ? (...args: Args) => void : never
-type KeyOfListeners<I> = keyof FilterListeners<I> & string
-
-// Inspired by `https://stackoverflow.com/questions/55763701`.
-// We meet a problem in inherit event types and giving event arguments limination and auto complete.
-
-// At first, we are trying to merge event listener interfaces but failed,
-// The main reason is when one of the the event listener interface is generic argument,
-// we can't merge two event listener interfaces and infer types of listener arguments for one listener,
-// The type of listener becomes `resolved Listener A & unresolved Listener B`, arguments of it can't be inferred.
-
-// So here we exclude all the keys in Emitter from base class,
-// and then merge with the extended class listener interface.
-// Use it like `class B extends A as ExtendEvents(typeof A, EventsInterface)`
-export type ExtendEvents<BaseConstructor extends new (...args: any) => any, Events>
-	= (new (...a: ConstructorParameters<BaseConstructor>) => Exclude<InstanceType<BaseConstructor>, keyof Emitter> & Emitter<Events>)
-
 
 /** An event emitter to listen and emit events. */
-export class Emitter<Events = any> {
+export class Emitter<Events = any, K = keyof Events> {
 
-	private __events: {[key: string]: EventItem[]} = {}
+	private __events: Map<K, EventItem[]> = new Map()
+
+	private __ensureEvents(name: K): EventItem[] {
+		let events = this.__events.get(name)
+		if (!events) {
+			this.__events.set(name, events = [])
+		}
+
+		return events
+	}
 
 	/**
 	 * Register listener for specified event name.
@@ -39,8 +33,8 @@ export class Emitter<Events = any> {
 	 * @param listener The event listener.
 	 * @param scope The scope will be binded to listener.
 	 */
-	on<K extends KeyOfListeners<Events>>(name: K, listener: FilterListeners<Events>[K], scope?: object) {
-		let events = this.__events[name] || (this.__events[name] = [])
+	on(name: K, listener: EventListener, scope?: object) {
+		let events = this.__ensureEvents(name)
 		
 		events.push({
 			listener,
@@ -55,8 +49,8 @@ export class Emitter<Events = any> {
 	 * @param listener The event listener.
 	 * @param scope The scope will be binded to listener.
 	 */
-	once<K extends KeyOfListeners<Events>>(name: K, listener: FilterListeners<Events>[K], scope?: object) {
-		let events = this.__events[name] || (this.__events[name] = [])
+	once(name: K, listener: EventListener, scope?: object) {
+		let events = this.__ensureEvents(name)
 
 		events.push({
 			listener,
@@ -71,8 +65,8 @@ export class Emitter<Events = any> {
 	 * @param listener The event listener, only matched listener will be removed.
 	 * @param scope The scope binded to listener. If provided, remove listener only when scope match.
 	 */
-	off<K extends KeyOfListeners<Events>>(name: K, listener: FilterListeners<Events>[K], scope?: object) {
-		let events = this.__events[name]
+	off(name: K, listener: EventListener, scope?: object) {
+		let events = this.__events.get(name)
 		if (events) {
 			for (let i = events.length - 1; i >= 0; i--) {
 				let event = events[i]
@@ -90,7 +84,7 @@ export class Emitter<Events = any> {
 	 * @param scope The scope binded to listener. If provided, will additionally check if the scope match.
 	 */
 	hasListener(name: string, listener?: EventListener, scope?: object) {
-		let events = this.__events[name]
+		let events = this.__events.get(name as unknown as K)
 
 		if (!listener) {
 			return !!events && events.length > 0
@@ -113,8 +107,8 @@ export class Emitter<Events = any> {
 	 * @param name The event name.
 	 * @param args The arguments that will be passed to event listeners.
 	 */
-	emit<K extends KeyOfListeners<Events>>(name: K, ...args: Parameters<FilterListeners<Events>[K]>) {
-		let events = this.__events[name]
+	emit(name: K, ...args: any[]) {
+		let events = this.__events.get(name)
 		if (events) {
 			for (let i = 0; i < events.length; i++) {
 				let event = events[i]
@@ -131,12 +125,12 @@ export class Emitter<Events = any> {
 
 	/** Remove all event listeners */
 	removeAllListeners() {
-		this.__events = {}
+		this.__events = new Map()
 	}
 }
 
 
-/** Returns an observed emitter class, changes it's sub properties will cause the components depend on them to update. */
+/** Observed emitter class, changes it's sub properties will cause the components depend on them to update. */
 export class ObservedEmitter<Events = any> extends Emitter<Events> {
 	constructor() {
 		super()
@@ -145,7 +139,7 @@ export class ObservedEmitter<Events = any> extends Emitter<Events> {
 }
 
 
-/** Returns an observed base class, changes it's sub properties will cause the components depend on them to update. */
+/** Observed base class, changes it's sub properties will cause the components depend on them to update. */
 export class Observer {
 	constructor() {
 		return observeTarget(this)

@@ -8,6 +8,12 @@ import {NodeAnchorType, NodeAnchor, NodeRange} from "./node-helper"
 import {DirectiveResult} from './directives'
 
 
+export interface ComponentConstructor {
+	new(...args: any[]): Component
+	style: ComponentStyle | null
+	properties: string[] | null
+}
+
 /** Returns the typeof T[P]. */
 export type ComponentStyle = TemplateResult | string | (() => TemplateResult | string)
 
@@ -16,14 +22,14 @@ export type Context = Component | null
 
 
 /** To cache `name -> component constructor` */
-const componentConstructorMap: Map<string, typeof Component> = new Map()
+const componentConstructorMap: Map<string, ComponentConstructor> = new Map()
 
 /**
  * Define a component with specified name and class, called by `define()`.
  * @param name The component name, same with `define()`.
  * @param Com The component class.
  */
-export function defineComponent(name: string, Com: typeof Component) {
+export function defineComponent(name: string, Com: ComponentConstructor) {
 	if (componentConstructorMap.has(name)) {
 		console.warn(`You are trying to overwrite component definition "${name}"`)
 	}
@@ -46,7 +52,7 @@ export function defineComponent(name: string, Com: typeof Component) {
  * @param name The component name, same with `define()`.
  * @param Com The component class.
  */
-export function getComponentConstructorByName(name: string): typeof Component | undefined {
+export function getComponentConstructorByName(name: string): ComponentConstructor | undefined {
 	return componentConstructorMap.get(name)
 }
 
@@ -143,12 +149,7 @@ export function updateComponents() {
 // E.g., The component updating because the data flow into it from the outer component,
 // according to the `:prop...` in outer `render()` function, then you should do it in outer `onUpdated`.
 
-/**
- * The abstract component class, you can instantiate it from just creating an element and insert in to document.
- * We doesn't declare it as `abstract` because we used `typeof Component`,
- * or we'll need to add `interface ComponentConstructor {new(...args: any): Component, style: ..., properties: ...}`.
- */
-export class Component<Events = any> extends Emitter<Events> {
+export abstract class Component<Events = any> extends Emitter<Events> {
 
 	/**
 	 * The static `style` property contains style text used as styles for current component.
@@ -375,7 +376,7 @@ export class Component<Events = any> extends Emitter<Events> {
 	 * It's very common that you extend a component and define a new custom element,
 	 * So you will be can't find the parent component from the tag name. 
 	 */
-	closest<C extends typeof Component>(Com: C): InstanceType<C> | null {
+	closest<C extends ComponentConstructor>(Com: C): InstanceType<C> | null {
 		let parent = this.el.parentElement
 
 		while (parent && parent instanceof HTMLElement) {
