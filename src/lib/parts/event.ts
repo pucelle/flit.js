@@ -67,7 +67,7 @@ export class EventPart implements Part {
 		this.el = el
 		this.name = name[0] === '@' ? name.slice(1) : name
 		this.context = context
-		this.isComEvent = el.localName.includes('-') && name[0] === '@' || !(NORMAL_ELEMENT_EVENTS.has(this.name))
+		this.isComEvent = el.localName.includes('-') && (name[0] === '@' || !(NORMAL_ELEMENT_EVENTS.has(this.name.replace(/\..+/, ''))))
 
 		this.update(handler)
 		this.bindListener()
