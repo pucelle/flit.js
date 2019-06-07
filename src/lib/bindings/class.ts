@@ -47,7 +47,7 @@ defineBinding('class', class ClassNameBinding implements Binding {
 		}
 	}
 
-	parseClass(value: unknown): string[] {
+	private parseClass(value: unknown): string[] {
 		let o: {[key: string]: boolean} = {}
 
 		if (this.modifiers) {

@@ -48,13 +48,13 @@ defineBinding('style', class StyleBinding implements Binding {
 		}
 	}
 
-	removeStyle(style: StyleObject) {
+	private removeStyle(style: StyleObject) {
 		for (let name of Object.keys(style)) {
 			(this.el.style as any)[name] = ''
 		}
 	}
 
-	addStyle(style: StyleObject) {
+	private addStyle(style: StyleObject) {
 		let unit = this.modifiers ? this.modifiers[1] : ''
 		
 		for (let name of Object.keys(style)) {
@@ -83,7 +83,7 @@ defineBinding('style', class StyleBinding implements Binding {
 		}
 	}
 
-	parseStyle(style: unknown): StyleObject {
+	private parseStyle(style: unknown): StyleObject {
 		let o: StyleObject = {}
 
 		if (this.modifiers) {

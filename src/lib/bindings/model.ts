@@ -106,7 +106,7 @@ defineBinding('model', class ModelBinding implements Binding {
 		}
 	}
 
-	bindCom(com: Component) {
+	private bindCom(com: Component) {
 		// Avoid bind event twice when model changed.
 		if (!this.com) {
 			this.com = com
@@ -122,7 +122,7 @@ defineBinding('model', class ModelBinding implements Binding {
 		this.watchContextModelValue()
 	}
 
-	watchContextModelValue() {
+	private watchContextModelValue() {
 		if (this.unwatch) {
 			this.unwatch()
 		}
@@ -133,7 +133,7 @@ defineBinding('model', class ModelBinding implements Binding {
 		this.unwatch = this.context!.watchImmediately(this.getModelValueFromContext.bind(this), this.setModelValueToTarget.bind(this))
 	}
 
-	getModelValueFromContext(): unknown {
+	private getModelValueFromContext(): unknown {
 		let properties = this.modelName.split('.')
 		let value: unknown = this.context
 
@@ -150,7 +150,7 @@ defineBinding('model', class ModelBinding implements Binding {
 		return value
 	}
 
-	setModelValueToContext(value: unknown) {
+	private setModelValueToContext(value: unknown) {
 		let properties = this.modelName.split('.')
 		let object: object = this.context
 
@@ -171,7 +171,7 @@ defineBinding('model', class ModelBinding implements Binding {
 		}
 	}
 
-	onEventInputOrChange(_e: Event) {
+	private onEventInputOrChange(_e: Event) {
 		let value: unknown
 		let isNumber = this.modifiers && this.modifiers.includes('number')
 
@@ -193,7 +193,7 @@ defineBinding('model', class ModelBinding implements Binding {
 		this.setModelValueToContext(value)
 	}
 
-	setModelValueToTarget(value: unknown) {
+	private setModelValueToTarget(value: unknown) {
 		if (this.isComModel) {
 			let com = this.com as any
 			if (com[this.property] !== value) {
@@ -205,7 +205,7 @@ defineBinding('model', class ModelBinding implements Binding {
 		}
 	}
 
-	setInputValue(value: unknown) {
+	private setInputValue(value: unknown) {
 		if (this.isMultiSelect && !Array.isArray(value)) {
 			throw new Error(`:model="${this.modelName}" of select[multiple] requires an array as value`)
 		}
