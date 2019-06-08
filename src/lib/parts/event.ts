@@ -3,55 +3,10 @@ import {Component, getComponent, onComponentCreatedAt, Context} from '../compone
 import {on} from '../dom-event'
 
 
-const NORMAL_ELEMENT_EVENTS = new Set([
-	"auxclick",
-	"blur",
-	"click",
-	"contextmenu",
-	"dblclick",
-	"drag",
-	"dragend",
-	"dragenter",
-	"dragleave",
-	"dragover",
-	"dragstart",
-	"drop",
-	"error",
-	"focus",
-	"input",	// Not include `change`, will is always used by component
-	"keydown",
-	"keypress",
-	"keyup",
-	"mousedown",
-	"mouseenter",
-	"mouseleave",
-	"mousemove",
-	"mouseout",
-	"mouseover",
-	"mouseup",
-	"mousewheel",
-	"pointercancel",
-	"pointerdown",
-	"pointerenter",
-	"pointerleave",
-	"pointermove",
-	"pointerout",
-	"pointerover",
-	"pointerrawmove",
-	"pointerup",
-	"scroll",
-	"select",
-	"selectionchange",
-	"selectstart",
-	"submit",
-	"unload",
-	"wheel"
-])
-
-
 /**
- * `<component-name @@com-event=${this.onComEvent}>`
- * `<div @click=${this.onClick}>`
+ * `<div @click=${...}>` to register event on element.
+ * `<com @event=${...}>` to register event on component.
+ * `<com @@event=${...}>` to register event always on element.
  */
 export class EventPart implements Part {
 
@@ -67,7 +22,7 @@ export class EventPart implements Part {
 		this.el = el
 		this.name = name[0] === '@' ? name.slice(1) : name
 		this.context = context
-		this.isComEvent = el.localName.includes('-') && (name[0] === '@' || !(NORMAL_ELEMENT_EVENTS.has(this.name.replace(/\..+/, ''))))
+		this.isComEvent = el.localName.includes('-') && name[0] !== '@'
 
 		this.update(handler)
 		this.bindListener()
