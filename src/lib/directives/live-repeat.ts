@@ -9,7 +9,7 @@ import {onRenderComplete, renderComplete} from '../queue'
 import {binaryFindIndexToInsert, ScrollerClientRect, throttleByAnimationFrame} from './helper'
 
 
-interface LiveOptions<Item> {
+export interface LiveRepeatOptions<Item> {
 	pageSize?: number			// Not updatable
 	renderPageCount?: number	// Not updatable
 	averageItemHeight?: number	// Not updatable
@@ -122,7 +122,7 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 		}
 
 		this.templateFn = templateFn
-		this.updateRenderOptions(options as LiveOptions<Item>)
+		this.updateRenderOptions(options as LiveRepeatOptions<Item>)
 		this.transition.setOptions(transitionOptions)
 		this.update()
 		this.firstlyMerge = false
@@ -130,7 +130,7 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 
 	protected validateTemplateFn(_templateFn: TemplateFn<Item>) {}
 
-	protected initRenderOptions(options: LiveOptions<Item>) {
+	protected initRenderOptions(options: LiveRepeatOptions<Item>) {
 		if (options.pageSize !== undefined && options.pageSize > 0) {
 			this.pageSize = options.pageSize
 		}
@@ -145,7 +145,7 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 	}
 
 	// Only `data` is updatable
-	protected updateRenderOptions(options: LiveOptions<Item>) {
+	protected updateRenderOptions(options: LiveRepeatOptions<Item>) {
 		if (options.averageItemHeight) {
 			this.averageItemHeight = options.averageItemHeight
 		}
@@ -542,7 +542,7 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
  * @param transitionOptions The transition options, it can be a transition name, property or properties, or {transition, enterAtStart}.
  */
 export const liveRepeat = defineDirective(LiveRepeatDirective) as <Item>(
-	options: LiveOptions<Item>,
+	options: LiveRepeatOptions<Item>,
 	templateFn: TemplateFn<Item>,
 	transitionOptions?: DirectiveTransitionOptions
 ) => DirectiveResult

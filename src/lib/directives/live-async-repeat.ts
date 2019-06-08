@@ -5,14 +5,14 @@ import {LiveRepeatDirective} from './live-repeat'
 import {PageDataGetter, PageDataCacher} from './page-data-cacher'
 
 
-interface LiveAsyncOptions<Item> {
+export interface LiveAsyncRepeatOptions<Item> {
 	pageSize?: number			// Not updatable
 	renderPageCount?: number	// Not updatable
-	averageItemHeight?: number	// Not updatable
+	averageItemHeight?: number
+	key?: keyof Item
 	ref?: (dir: LiveAsyncRepeatDirective<Item>) => void	// Not updatable
 	dataGetter: PageDataGetter<Item>
 	dataCount: number | Promise<number> | (() => (number | Promise<number>))
-	key?: keyof Item
 }
 
 // Compare to `TempalteFn`, the `item` can accpet `null` as argument when data is still loading.
@@ -63,13 +63,13 @@ export class LiveAsyncRepeatDirective<Item> extends LiveRepeatDirective<Item> {
 		}
 	}
 
-	protected initRenderOptions(options: LiveAsyncOptions<Item> | any) {
+	protected initRenderOptions(options: LiveAsyncRepeatOptions<Item> | any) {
 		this.dataCacher = new PageDataCacher(this.pageSize)
 		this.updateRenderOptions(options)
 		this.updateDataCount()
 	}
 
-	protected updateRenderOptions(options: LiveAsyncOptions<Item> | any) {
+	protected updateRenderOptions(options: LiveAsyncRepeatOptions<Item> | any) {
 		if (options.averageItemHeight) {
 			this.averageItemHeight = options.averageItemHeight
 		}
@@ -224,7 +224,7 @@ export class LiveAsyncRepeatDirective<Item> extends LiveRepeatDirective<Item> {
  * @param transitionOptions The transition options, it can be a transition name, property or properties, or {transition, enterAtStart}.
  */
 export const liveAsyncRepeat = defineDirective(LiveAsyncRepeatDirective) as <Item>(
-	options: LiveAsyncOptions<Item>,
+	options: LiveAsyncRepeatOptions<Item>,
 	templateFn: LiveTemplateFn<Item>,
 	transitionOptions?: DirectiveTransitionOptions
 ) => DirectiveResult

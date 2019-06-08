@@ -4,7 +4,7 @@ import {Context} from '../component'
 
 type TransitionTypedCallback = (type: 'enter' | 'leave', finish: boolean) => void
 
-interface ShowHideBindingOptions {
+export interface ShowHideBindingOptions {
 	when: boolean
 	transition: TransitionOptions
 	enterAtStart?: boolean
