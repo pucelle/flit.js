@@ -194,7 +194,7 @@ export class LiveAsyncRepeatDirective<Item> extends LiveRepeatDirective<Item> {
 	async reset(index: number = 0) {
 		this.dataCacher.clear()
 		this.updateDataCount()
-		this.setStartIndex(index)
+		await this.setStartIndex(index)
 	}
 
 	getItem(index: number): Item | null {
