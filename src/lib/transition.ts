@@ -233,7 +233,7 @@ export class Transition {
 	private cssEnter(onEntered: TransitionCallback) {
 		let startFrame: TransitionFrame = {}
 		for (let property of this.options.properties!) {
-			startFrame[property] = '0'
+			startFrame[property] = property === 'transform' ? 'none' : '0'
 		}
 
 		let {promise, cancel} = animateFrom(this.el, startFrame,
@@ -247,7 +247,7 @@ export class Transition {
 	private cssLeave(onLeaved: TransitionCallback) {
 		let endFrame: TransitionFrame = {}
 		for (let property of this.options.properties!) {
-			endFrame[property] = '0'
+			endFrame[property] = property === 'transform' ? 'none' : '0'
 		}
 
 		let {promise, cancel} = animateTo(this.el, endFrame,
