@@ -46,7 +46,7 @@ export class LiveAsyncRepeatDirective<Item> extends LiveRepeatDirective<Item> {
 	private knownDataCount: number = -1
 
 	/** Need to call `updateSliderPosition` after got `knownDataCount`. */
-	private needToUpdateSliderPositionAfterCountKnown: boolean = false
+	private needToUpdateSliderPositionAfterDataCountKnown: boolean = false
 
 	private dataCacher!: PageDataCacher<Item>
 	private updateId: number = 0
@@ -100,7 +100,7 @@ export class LiveAsyncRepeatDirective<Item> extends LiveRepeatDirective<Item> {
 			this.knownDataCount = dataCount
 		}
 
-		if (this.needToUpdateSliderPositionAfterCountKnown) {
+		if (this.needToUpdateSliderPositionAfterDataCountKnown) {
 			this.updateSliderPosition()
 		}
 	}
@@ -169,11 +169,10 @@ export class LiveAsyncRepeatDirective<Item> extends LiveRepeatDirective<Item> {
 
 	protected updateSliderPosition() {
 		if (this.knownDataCount === -1) {
-			this.needToUpdateSliderPositionAfterCountKnown = true
+			this.needToUpdateSliderPositionAfterDataCountKnown = true
 		}
-		else {
-			super.updateSliderPosition()
-		}
+
+		super.updateSliderPosition()
 	}
 
 	// Returns `-1` when total count is not determinated.
@@ -188,11 +187,14 @@ export class LiveAsyncRepeatDirective<Item> extends LiveRepeatDirective<Item> {
 		await this.update(false)
 	}
 
-	/** When data changed completely and you want to move to start scroll position, e.g., after data type changed. */ 
-	async reset() {
+	/** 
+	 * When data changed completely and you want to move to start scroll position, e.g., after data type changed.
+	 * @param index Specified the start index you want to set by `setStartIndex`.
+	 */ 
+	async reset(index: number = 0) {
 		this.dataCacher.clear()
 		this.updateDataCount()
-		this.setStartIndex(0)
+		this.setStartIndex(index)
 	}
 
 	getItem(index: number): Item | null {

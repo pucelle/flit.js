@@ -69,15 +69,15 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 	 */
 	protected averageItemHeight: number = 0
 
-	/** Whole data from options. */
-	private rawData: Item[] | null = null
-
 	/** 
 	 * When we scrolled up or down, we don't know about the height of just inserted or removed elements.
 	 * So we need this property to specify the element in the index, and keep it's scrolling position by adjusting.
 	 */
-	private indexToKeepPosition: number = -1
-	private lastTopOfKeepPositionElement: number = -1
+	protected indexToKeepPosition: number = -1
+	protected lastTopOfKeepPositionElement: number = -1
+
+	/** Whole data from options. */
+	private rawData: Item[] | null = null
 
 	constructor(anchor: NodeAnchor, context: Context) {
 		super(anchor, context)
@@ -483,6 +483,16 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 		for (let wtem of this.wtems) {
 			wtem.remove()
 		}
+	}
+
+	/** Get `startIndex` property. */
+	getStartIndex() {
+		return this.startIndex
+	}
+
+	/** Get the index of the first visible element, which can be used to restore scrolling position by `setStartIndex`. */
+	getFirstVisibleIndex() {
+		return Math.max(0, this.locateFirstVisibleIndex())
 	}
 
 	/** Set `startIndex`, and the item in which index will be at the top start position of the viewport. */
