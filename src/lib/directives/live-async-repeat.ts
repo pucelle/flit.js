@@ -106,6 +106,8 @@ export class LiveAsyncRepeatDirective<Item> extends LiveRepeatDirective<Item> {
 	}
 
 	protected async update(renderPalceholders: boolean = true) {
+		this.updateSliderPosition()
+
 		let endIndex = this.limitEndIndex(this.startIndex + this.pageSize * this.renderPageCount)
 		let needToRenderWithFreshData = !renderPalceholders
 		let updateImmediatelyPromise: Promise<void> | undefined
@@ -165,6 +167,14 @@ export class LiveAsyncRepeatDirective<Item> extends LiveRepeatDirective<Item> {
 		})
 	}
 
+	protected updateSliderPosition() {
+		if (this.knownDataCount === -1) {
+			this.needToUpdateSliderPositionAfterCountKnown = true
+		}
+		else {
+			super.updateSliderPosition()
+		}
+	}
 
 	// Returns `-1` when total count is not determinated.
 	protected getTotalDataCount(): number {

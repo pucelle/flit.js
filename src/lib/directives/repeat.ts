@@ -1,5 +1,5 @@
 import {defineDirective, Directive, DirectiveResult} from './define'
-import {Watcher} from '../watcher'
+import {Watcher, globalWatcherSet} from '../watcher'
 import {Context} from '../component'
 import {DirectiveTransition, DirectiveTransitionOptions, WatchedTemplate, TemplateFn} from './shared'
 import {NodeAnchor} from '../node-helper'
@@ -37,11 +37,8 @@ export class RepeatDirective<Item> implements Directive {
 
 		this.lastData = data
 
-		if (this.dataWatcher) {
-			this.dataWatcher.disconnect()
-		}
-
 		if (!data) {
+			this.setDataWatcher(null)
 			this.updateData([])
 			return
 		}
@@ -55,8 +52,33 @@ export class RepeatDirective<Item> implements Directive {
 			this.updateData(data)
 		}
 
-		this.dataWatcher = new Watcher(watchFn, onUpdate)
-		this.updateData(this.dataWatcher.value)
+		let watcher = new Watcher(watchFn, onUpdate)
+		this.updateData(watcher.value)
+		this.setDataWatcher(watcher)
+	}
+
+	protected setDataWatcher(watcher: Watcher | null) {
+		if (this.dataWatcher) {
+			this.dataWatcher.disconnect()
+
+			if (this.context) {
+				this.context.__deleteWatcher(this.dataWatcher)
+			}
+			else {
+				globalWatcherSet.delete(this.dataWatcher)
+			}
+		}
+
+		if (watcher) {
+			if (this.context) {
+				this.context.__addWatcher(watcher)
+			}
+			else {
+				globalWatcherSet.add(watcher)
+			}
+		}
+
+		this.dataWatcher = watcher
 	}
 
 	canMergeWith(_data: Iterable<Item>, templateFn: TemplateFn<Item>): boolean {

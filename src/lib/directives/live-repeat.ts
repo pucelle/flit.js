@@ -162,11 +162,8 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 
 		this.lastData = data
 
-		if (this.dataWatcher) {
-			this.dataWatcher.disconnect()
-		}
-
 		if (!data) {
+			this.setDataWatcher(null)
 			this.rawData = []
 			return
 		}
@@ -180,11 +177,14 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 			this.update()
 		}
 
-		this.dataWatcher = new Watcher(watchFn, onUpdate)
-		this.rawData = this.dataWatcher.value
+		let watcher = new Watcher(watchFn, onUpdate)
+		this.rawData = watcher.value
+		this.setDataWatcher(watcher)
 	}
 
 	protected async update() {
+		this.updateSliderPosition()
+
 		let endIndex = this.limitEndIndex(this.startIndex + this.pageSize * this.renderPageCount)
 		let data = this.rawData ? this.rawData.slice(this.startIndex, endIndex) : []
 		await this.updateData(data)
@@ -192,10 +192,6 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 
 	protected async updateData(data: Item[]) {
 		super.updateData(data)
-
-		if (this.averageItemHeight) {
-			this.updateSliderPosition()
-		}
 
 		if (data.length > 0) {
 			// `renderComplete` is absolutely required,
@@ -285,13 +281,21 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 			return false
 		}
 
-		let sliderHeight = this.slider.offsetHeight
+		if (this.data.length === 0) {
+			return false
+		}
+
+		let sliderHeightAfterFullyRendered = this.slider.offsetHeight / this.data.length * this.pageSize
 		let scrollerHeight = this.scroller.clientHeight
 		let changed = false
 
-		while (sliderHeight < scrollerHeight) {
+		if (sliderHeightAfterFullyRendered === 0) {
+			return false
+		}
+
+		while (sliderHeightAfterFullyRendered < scrollerHeight) {
 			this.renderPageCount *= 2
-			sliderHeight *= 2
+			sliderHeightAfterFullyRendered *= 2
 			changed = true
 		}
 

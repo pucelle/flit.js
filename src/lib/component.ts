@@ -118,7 +118,7 @@ export function getComponentAsync(el: HTMLElement): Promise<Component | undefine
 const componentSet: Set<Component> = new Set()
 
 /** Update all components, e.g., when current language changed. */
-export function updateComponents() {
+export function update() {
 	for (let watcher of globalWatcherSet) {
 		watcher.update()
 	}
