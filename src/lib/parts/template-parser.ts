@@ -56,7 +56,7 @@ export function parse(type: TemplateType, strings: TemplateStringsArray, el: HTM
 				sharedResultMap = new Map()
 				parseResultMap.set(scopeName, sharedResultMap)
 			}
-			sharedResult = new ElementParser(type, string, scopeName).parse()
+			sharedResult = new HTMLTemplateParser(type, string, scopeName).parse()
 			sharedResultMap.set(string, sharedResult)
 		}
 
@@ -94,7 +94,7 @@ function createTemplateFromHTML(html: string) {
 }
 
 
-class ElementParser {
+class HTMLTemplateParser {
 
 	private type: TemplateType
 	private string: string
@@ -226,9 +226,9 @@ class ElementParser {
 	}
 
 	parseAttribute(attr: string): string {
-		const attrRE = /(\S+)\s*=\s*(".*?"|'.*?'|\$\{flit\})\s*/g
+		const attrRE = /([.:?@\w-]+)\s*(?:=\s*(".*?"|'.*?'|\$\{flit\})\s*)?/g
 
-		return attr.replace(attrRE, (m0, name: string, value: string) => {
+		return attr.replace(attrRE, (m0, name: string, value: string = '') => {
 			let type: PartType | undefined
 			let markerIndex = value.indexOf(VALUE_MARKER)
 
