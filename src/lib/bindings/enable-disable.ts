@@ -5,7 +5,7 @@ import {Binding, defineBinding} from './define'
  * `:enabled="boolean"`, it's opposite to `:disabled=...`.
  * It can be replaced with `?disabled=!...`, but by the meaning it gives, we should use a direct word `enabled`.
  */
-defineBinding('enabled', class EnableBinding implements Binding {
+defineBinding('enable', class EnableBinding implements Binding {
 
 	private el: HTMLElement
 
@@ -28,7 +28,7 @@ defineBinding('enabled', class EnableBinding implements Binding {
 /**
  * `:disabled="boolean"`, it's same with `?disabled=...`.
  */
-defineBinding('disabled', class DisabledBinding implements Binding {
+defineBinding('disable', class DisabledBinding implements Binding {
 
 	private el: HTMLElement
 
