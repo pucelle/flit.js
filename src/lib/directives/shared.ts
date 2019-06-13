@@ -55,7 +55,11 @@ export class DirectiveTransition {
 		}
 	}
 
-	async playEnterAt(el: HTMLElement): Promise<boolean> {
+	async mayPlayEnterAt(el: HTMLElement): Promise<boolean> {
+		if (!this.options) {
+			return true
+		}
+
 		let finish = await new Transition(el, this.options!).enter()
 		if (this.onend) {
 			this.onend.call(this.context, 'enter', finish)
@@ -63,7 +67,11 @@ export class DirectiveTransition {
 		return finish
 	}
 
-	async playLeaveAt(el: HTMLElement): Promise<boolean> {
+	async mayPlayLeaveAt(el: HTMLElement): Promise<boolean> {
+		if (!this.options) {
+			return true
+		}
+		
 		let finish = await new Transition(el, this.options!).leave()
 		if (this.onend) {
 			this.onend.call(this.context, 'leave', finish)

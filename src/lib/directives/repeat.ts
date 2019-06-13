@@ -279,7 +279,7 @@ export class RepeatDirective<Item> implements Directive {
 		}
 
 		if (firstElement) {
-			this.transition.playEnterAt(firstElement)
+			this.transition.mayPlayEnterAt(firstElement)
 		}
 
 		return wtem
@@ -291,7 +291,7 @@ export class RepeatDirective<Item> implements Directive {
 		if (this.transition.shouldPlay()) {
 			let firstElement = template.range.getFirstElement()
 			if (firstElement) {
-				this.transition.playLeaveAt(firstElement).then((finish: boolean) => {
+				this.transition.mayPlayLeaveAt(firstElement).then((finish: boolean) => {
 					if (finish) {
 						wtem.remove()
 					}

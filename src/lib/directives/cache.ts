@@ -23,7 +23,7 @@ class CacheDirective implements Directive {
 	private async playEnterTransition(template: Template) {
 		let firstElement = template.range.getFirstElement()
 		if (firstElement) {
-			await this.transition.playEnterAt(firstElement)
+			await this.transition.mayPlayEnterAt(firstElement)
 		}
 	}
 
@@ -94,7 +94,7 @@ class CacheDirective implements Directive {
 		}
 
 		if (this.transition.shouldPlay() && firstElement) {
-			this.transition.playLeaveAt(firstElement).then((finish: boolean) => {
+			this.transition.mayPlayLeaveAt(firstElement).then((finish: boolean) => {
 				if (finish) {
 					template.range.cacheFragment()
 				}
