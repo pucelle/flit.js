@@ -3,6 +3,7 @@ import {DirectiveTransitionOptions} from './shared'
 import {TemplateResult} from '../parts'
 import {LiveRepeatDirective} from './live-repeat'
 import {PageDataGetter, PageDataCacher} from './page-data-cacher'
+import {observe} from '../observer'
 
 
 export interface LiveAsyncRepeatOptions<Item> {
@@ -13,6 +14,7 @@ export interface LiveAsyncRepeatOptions<Item> {
 	ref?: (dir: LiveAsyncRepeatDirective<Item>) => void	// Not updatable
 	dataGetter: PageDataGetter<Item>
 	dataCount: number | Promise<number> | (() => (number | Promise<number>))
+	onrendered?: (data: (Item | null)[], index: number) => void
 }
 
 // Compare to `TempalteFn`, the `item` can accpet `null` as argument when data is still loading.
@@ -72,6 +74,10 @@ export class LiveAsyncRepeatDirective<Item> extends LiveRepeatDirective<Item> {
 	protected updateRenderOptions(options: LiveAsyncRepeatOptions<Item> | any) {
 		if (options.averageItemHeight) {
 			this.averageItemHeight = options.averageItemHeight
+		}
+
+		if (options.onrendered) {
+			this.onrendered = options.onrendered
 		}
 
 		this.dataCacher.setDataGetter(options.dataGetter)
@@ -146,6 +152,7 @@ export class LiveAsyncRepeatDirective<Item> extends LiveRepeatDirective<Item> {
 			data = this.uniqueData(data)
 		}
 
+		data = data.map(observe)
 		await super.updateData(data)
 	}
 

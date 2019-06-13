@@ -45,7 +45,7 @@ export class RepeatDirective<Item> implements Directive {
 
 		// Here need to read each item of the `Iterable<T>` so we can observe changes like `a[i] = xxx`.
 		let watchFn = () => {
-			return [...data]
+			return [...data].map(observe)
 		}
 
 		let onUpdate = (data: Item[]) => {
@@ -107,7 +107,7 @@ export class RepeatDirective<Item> implements Directive {
 	//   matched: same item, no need to update item. if duplicate items exist, only the first one match.
 	//   reuse: reuse not in use item and update item on it.
 
-		protected updateData(data: Item[]) {
+	protected updateData(data: Item[]) {
 		// Old
 		let oldData = this.data
 		let oldItemIndexMap: Map<Item, number> = new Map()
@@ -118,7 +118,7 @@ export class RepeatDirective<Item> implements Directive {
 		// Here it's not in updating and we can't capture dependencies,
 		// so we need to observe each item manually,
 		// then later we can generate templates and automatically update them when properties of item changed.
-		let newData = this.data = data.map(observe)
+		let newData = this.data = data
 		let newItemSet: Set<Item> = new Set(this.data)
 		this.wtems = []
 

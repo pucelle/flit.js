@@ -7,6 +7,7 @@ import {Watcher} from '../watcher'
 import {RepeatDirective} from './repeat'
 import {onRenderComplete, renderComplete} from '../queue'
 import {binaryFindIndexToInsert, ScrollerClientRect, throttleByAnimationFrame} from './helper'
+import {observe} from '../observer'
 
 
 export interface LiveRepeatOptions<Item> {
@@ -15,6 +16,7 @@ export interface LiveRepeatOptions<Item> {
 	averageItemHeight?: number	// Not updatable
 	ref?: (dir: LiveRepeatDirective<Item>) => void	// Not updatable
 	data: Iterable<Item> | null
+	onrendered?: (data: Item[], index: number) => void
 }
 
 
@@ -75,6 +77,9 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 	 */
 	protected indexToKeepPosition: number = -1
 	protected lastTopOfKeepPositionElement: number = -1
+
+	/** We may want to do something with the currently rendered results, link loading screenshots... */
+	protected onrendered: ((data: Item[], index: number) => void) | null = null
 
 	/** Whole data from options. */
 	private rawData: Item[] | null = null
@@ -149,6 +154,10 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 		if (options.averageItemHeight) {
 			this.averageItemHeight = options.averageItemHeight
 		}
+		
+		if (options.onrendered) {
+			this.onrendered = options.onrendered
+		}
 
 		if (options.data !== undefined) {
 			this.watchAndAssignRawData(options.data)
@@ -169,7 +178,7 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 		}
 
 		let watchFn = () => {
-			return [...data]
+			return [...data].map(observe)
 		}
 
 		let onUpdate = (data: Item[]) => {
@@ -193,12 +202,16 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 	protected async updateData(data: Item[]) {
 		super.updateData(data)
 
-		if (data.length > 0) {
-			// `renderComplete` is absolutely required,
-			// we can makesure that the component are rendered only after inserted into document,
-			// but directive may be still in fragment when was initialized using `render`.
-			await renderComplete()
+		// `renderComplete` is absolutely required,
+		// we can makesure that the component are rendered only after inserted into document,
+		// but directive may be still in fragment when was initialized using `render`.
+		await renderComplete()
 
+		if (this.onrendered) {
+			this.onrendered(this.data, this.startIndex)
+		}
+
+		if (data.length > 0) {
 			if (!this.renderPageCountChecked && this.mayDoubleRenderPageCount()) {
 				this.renderPageCountChecked = true
 				this.update()
