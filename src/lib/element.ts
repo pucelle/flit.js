@@ -73,8 +73,6 @@ function update() {
 }
 
 function connectElement(el: HTMLElement, Com: ComponentConstructor) {
-	ensureComponentStyle(Com, el.localName)
-				
 	let com = getComponent(el)
 	if (!com) {
 		com = createComponent(el, Com)
@@ -85,6 +83,8 @@ function connectElement(el: HTMLElement, Com: ComponentConstructor) {
 
 /** Export for `renderComponent`, which will create component manually. */
 export function createComponent(el: HTMLElement, Com: ComponentConstructor): Component {
+	ensureComponentStyle(Com, el.localName)
+
 	let com = new Com(el)
 	if (Com.properties && el.attributes.length > 0) {
 		assignProperties(com, Com.properties)
