@@ -82,19 +82,19 @@ export class DirectiveTransition {
 
 
 
-export type TemplateFn<T> = (item: T, index: number) => TemplateResult
+export type TemplateFn<Item> = (item: Item, index: number) => TemplateResult
 
 /** Used to watch and update template result generated from `templateFn`. */
-export class WatchedTemplate<T> {
+export class WatchedTemplate<Item> {
 
 	private context: Context
-	private templateFn: TemplateFn<T>
-	private item: T
+	private templateFn: TemplateFn<Item>
+	private item: Item
 	private index: number
 	private watcher!: Watcher<TemplateResult>
 	template!: Template
 
-	constructor(context: Context, templateFn: TemplateFn<T>, item: T, index: number) {
+	constructor(context: Context, templateFn: TemplateFn<Item>, item: Item, index: number) {
 		this.context = context
 		this.templateFn = templateFn
 		this.item = item
@@ -134,7 +134,7 @@ export class WatchedTemplate<T> {
 		}
 	}
 
-	update(item: T, index: number) {
+	update(item: Item, index: number) {
 		if (item !== this.item || index !== this.index) {
 			this.item = item
 			this.index = index
