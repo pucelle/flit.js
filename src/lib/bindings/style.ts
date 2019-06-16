@@ -12,13 +12,13 @@ const ALLOWED_MODIFIERS = ['px', 'percent', 'url']
  */
 type StyleObject = {[key: string]: unknown}
 
-defineBinding('style', class StyleBinding implements Binding {
+defineBinding('style', class StyleBinding implements Binding<[string | StyleObject]> {
 
 	private el: HTMLElement | SVGElement
 	private modifiers: string[] | null
 	private lastStyle: StyleObject | null = null
 
-	constructor(el: Element, value: unknown, modifiers: string[] | null) {
+	constructor(el: Element, modifiers: string[] | null) {
 		if (modifiers) {
 			if (modifiers.length > 2) {
 				throw new Error(`Modifier "${modifiers.join('.')}" is not allowed, at most two modifiers (as style name property value modifier) can be specified for ":style"`)
@@ -35,10 +35,9 @@ defineBinding('style', class StyleBinding implements Binding {
 
 		this.el = el as HTMLElement | SVGElement
 		this.modifiers = modifiers
-		this.update(value)
 	}
 
-	update(value: unknown) {
+	update(value: string | StyleObject) {
 		if (this.lastStyle) {
 			this.removeStyle(this.lastStyle)
 		}
@@ -112,5 +111,11 @@ defineBinding('style', class StyleBinding implements Binding {
 		}
 
 		return o
+	}
+
+	remove() {
+		if (this.lastStyle) {
+			this.removeStyle(this.lastStyle)
+		}
 	}
 })

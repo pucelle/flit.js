@@ -4,16 +4,19 @@ import {Binding, defineBinding} from './define'
 /**
  * `:html="${HTMLCodes}"`
  */
-defineBinding('html', class HTMLBinding implements Binding {
+defineBinding('html', class HTMLBinding implements Binding<[string]> {
 
 	private el: HTMLElement
 
-	constructor(el: Element, value: unknown) {
+	constructor(el: Element) {
 		this.el = el as HTMLElement
-		this.update(value)
 	}
 
-	update(value: unknown) {
+	update(value: string) {
 		this.el.innerHTML = value === null || value === undefined ? '' : String(value)
+	}
+
+	remove() {
+		this.el.innerHTML = ''
 	}
 })

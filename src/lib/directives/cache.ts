@@ -27,11 +27,11 @@ class CacheDirective implements Directive {
 		}
 	}
 
-	canMergeWith(_result: TemplateResult | string): boolean {
+	canMergeWith(_result: TemplateResult | string | null): boolean {
 		return true
 	}
 
-	merge(result: TemplateResult | string, options?: DirectiveTransitionOptions) {
+	merge(result: TemplateResult | string | null, options?: DirectiveTransitionOptions) {
 		this.transition.setOptions(options)
 
 		if (result) {
@@ -55,7 +55,7 @@ class CacheDirective implements Directive {
 					this.currentTemplate = template
 				}
 				else {
-					this.initResult(result)
+					this.initTrueResult(result)
 				}
 			}
 		}
@@ -66,7 +66,7 @@ class CacheDirective implements Directive {
 		}
 	}
 	
-	private initResult(result: TemplateResult | string) {
+	private initTrueResult(result: TemplateResult | string) {
 		if (typeof result === 'string') {
 			result = text`${result}`
 		}
@@ -119,4 +119,4 @@ class CacheDirective implements Directive {
  * Note that when old rendering result restored, the scroll positions in it will fall back to start position.
  * @param result The html`...` result, can be null or empty string. This value map change when rerendering.
  */
-export const cache = defineDirective(CacheDirective) as (result: TemplateResult | string, options?: DirectiveTransitionOptions) => DirectiveResult
+export const cache = defineDirective(CacheDirective) as (result: TemplateResult | string | null, options?: DirectiveTransitionOptions) => DirectiveResult

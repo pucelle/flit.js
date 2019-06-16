@@ -3,9 +3,9 @@ export enum PartType {
 	Attr,
 	MayAttr,
 	Property,
-	Binding,
 	Event,
-	Directive
+	FixedBinging,
+	Binding
 }
 
 /** Each part to manage one `${...}` expression, which may be a template, templates, attribute... */

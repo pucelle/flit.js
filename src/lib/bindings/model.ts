@@ -12,7 +12,7 @@ const ALLOWED_MODIFIERS = ['lazy', 'number']
  * Supports `:model="a.b"`.
  * Model bind should only handle fixed model name.
  */
-defineBinding('model', class ModelBinding implements Binding {
+defineBinding('model', class ModelBinding implements Binding<[string]> {
 
 	private el: HTMLElement
 	private modifiers: string[] | null
@@ -27,11 +27,7 @@ defineBinding('model', class ModelBinding implements Binding {
 	private com: Component | undefined
 	private unwatch: (() => void) | null = null
 
-	constructor(el: Element, value: unknown, modifiers: string[] | null, context: Context) {
-		if (typeof value !== 'string') {
-			throw new Error('The value of ":model=value" must be string type')
-		}
-
+	constructor(el: Element, modifiers: string[] | null, context: Context) {
 		if (!context) {
 			throw new Error(`A context must be provided when using ":model=property"`)
 		}
@@ -79,13 +75,11 @@ defineBinding('model', class ModelBinding implements Binding {
 				this.eventName = isLazy ? 'blur' : 'input'
 			}
 		}
-
-		this.update(value)
 	}
 
 	// Normally this should only be called for once.
 	update(modelName: string) {
-		if (!modelName) {
+		if (!modelName || typeof modelName !== 'string') {
 			throw new Error(`"${modelName}" is not a valid model name`)
 		}
 
@@ -231,5 +225,9 @@ defineBinding('model', class ModelBinding implements Binding {
 				el[this.property] = value
 			}
 		}
+	}
+
+	remove() {
+		this.setInputValue('')
 	}
 })

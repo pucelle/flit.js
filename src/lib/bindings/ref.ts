@@ -6,22 +6,21 @@ import {Component, Context} from '../component'
  * `:ref="name"`
  * `:ref="${this.onRef}"`
  */
-defineBinding('ref', class RefBinding implements Binding {
+defineBinding('ref', class RefBinding implements Binding<[string | ((el: Element) => void)]> {
 
 	private el: Element
 	private context: Component
 
-	constructor(el: Element, value: unknown, _modifiers: string[] | null, context: Context) {
+	constructor(el: Element, _modifiers: string[] | null, context: Context) {
 		if (!context) {
 			throw new Error(`A context must be provided when using ":ref"`)
 		}
 
 		this.el = el
 		this.context = context
-		this.update(value)
 	}
 
-	update(value: unknown) {
+	update(value: string | ((el: Element) => void)) {
 		if (typeof value === 'string') {
 			this.context.refs[value] = this.el as HTMLElement
 		}
@@ -29,4 +28,6 @@ defineBinding('ref', class RefBinding implements Binding {
 			value.call(this.context, this.el)
 		}
 	}
+
+	remove() {}
 })

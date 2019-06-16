@@ -3,13 +3,17 @@ import {getScopedClassNameSet} from '../style'
 import {Context} from '../component'
 
 
+interface ClassObject {
+	[key: string]: any
+}
+
 /**
  * `:class="'class1 class2'"`
  * `:class="[class1, class2]"`
  * `:class="{class1: value1, class2: value2}"`
  * `:class.class-name="value"`
  */
-defineBinding('class', class ClassNameBinding implements Binding {
+defineBinding('class', class ClassNameBinding implements Binding<[string | ClassObject]> {
 
 	private el: Element
 	private modifiers: string[] | null
@@ -17,7 +21,7 @@ defineBinding('class', class ClassNameBinding implements Binding {
 	private scopeName: string
 	private scopedClassNameSet: Set<string> | undefined
 
-	constructor(el: Element, value: unknown, modifiers: string[] | null, context: Context) {
+	constructor(el: Element, modifiers: string[] | null, context: Context) {
 		if (modifiers) {
 			if (modifiers.length > 1) {
 				throw new Error(`Modifier "${modifiers.join('.')}" is not allowed, at most one modifier as class name can be specified for ":class"`)
@@ -32,11 +36,9 @@ defineBinding('class', class ClassNameBinding implements Binding {
 		this.modifiers = modifiers
 		this.scopeName = context ? context.el.localName : ''
 		this.scopedClassNameSet = this.scopeName ? getScopedClassNameSet(this.scopeName) : undefined
-
-		this.update(value)
 	}
 
-	update(value: unknown) {
+	update(value: string | ClassObject) {
 		if (this.lastClassNames) {
 			this.el.classList.remove(...this.lastClassNames)
 		}
@@ -47,7 +49,7 @@ defineBinding('class', class ClassNameBinding implements Binding {
 		}
 	}
 
-	private parseClass(value: unknown): string[] {
+	private parseClass(value: string | ClassObject): string[] {
 		let o: {[key: string]: boolean} = {}
 
 		if (this.modifiers) {
@@ -86,5 +88,11 @@ defineBinding('class', class ClassNameBinding implements Binding {
 		}
 
 		return names
+	}
+
+	remove() {
+		if (this.lastClassNames) {
+			this.el.classList.remove(...this.lastClassNames)
+		}
 	}
 })

@@ -56,7 +56,7 @@ export function parse(type: TemplateType, strings: TemplateStringsArray, el: HTM
 				sharedResultMap = new Map()
 				parseResultMap.set(scopeName, sharedResultMap)
 			}
-			sharedResult = new HTMLTemplateParser(type, string, scopeName).parse()
+			sharedResult = new HTMLSVGTemplateParser(type, string, scopeName).parse()
 			sharedResultMap.set(string, sharedResult)
 		}
 
@@ -94,7 +94,7 @@ function createTemplateFromHTML(html: string) {
 }
 
 
-class HTMLTemplateParser {
+class HTMLSVGTemplateParser {
 
 	private type: TemplateType
 	private string: string
@@ -226,9 +226,23 @@ class HTMLTemplateParser {
 	}
 
 	parseAttribute(attr: string): string {
-		const attrRE = /([.:?@\w-]+)\s*(?:=\s*(".*?"|'.*?'|\$\{flit\})\s*)?/g
+		const attrRE = /([.:?@\w-]+)\s*(?:=\s*(".*?"|'.*?'|\$\{flit\})\s*)?|(\$\{flit\})\s*/g
 
-		return attr.replace(attrRE, (m0, name: string, value: string = '') => {
+		return attr.replace(attrRE, (m0, name: string, value: string = '', marker: string) => {
+			if (marker) {
+				this.places.push({
+					type: PartType.Binding,
+					name: null,
+					strings: null,
+					holes: 1,
+					nodeIndex: this.nodeIndex
+				})
+
+				this.nodeIndexs.push(this.nodeIndex)
+
+				return ''
+			}
+
 			let type: PartType | undefined
 			let markerIndex = value.indexOf(VALUE_MARKER)
 
@@ -238,7 +252,7 @@ class HTMLTemplateParser {
 					break
 
 				case ':':
-					type = PartType.Binding
+					type = PartType.FixedBinging
 					break
 
 				case '?':
@@ -257,7 +271,7 @@ class HTMLTemplateParser {
 			if (type === undefined && markerIndex > -1) {
 				// `class=${...}` -> `:class=${...}`, so the class value can be scoped.
 				if (name === 'class') {
-					type = PartType.Binding
+					type = PartType.FixedBinging
 				}
 				else {
 					type = PartType.Attr

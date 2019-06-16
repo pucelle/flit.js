@@ -1,12 +1,11 @@
-import {Binding, defineBinding} from './define'
-import {Transition, TransitionOptions} from '../transition'
+import {Binding, defineBinding, BindingResult} from './define'
+import {Transition, ShortTransitionOptions} from '../transition'
 import {Context} from '../component'
 
 type TransitionTypedCallback = (type: 'enter' | 'leave', finish: boolean) => void
 
 export interface ShowHideBindingOptions {
-	when: boolean
-	transition: TransitionOptions
+	transition: ShortTransitionOptions
 	enterAtStart?: boolean
 	leaveAtStart?: boolean
 	onend?: TransitionTypedCallback
@@ -16,44 +15,41 @@ export interface ShowHideBindingOptions {
  * `:show="boolean"`
  * `:show="{when: boolean, transition: TransitionOptions}"`
  */
-class ShowBinding implements Binding {
+class ShowBinding implements Binding<[any, ShowHideBindingOptions | undefined]> {
 
 	private el: HTMLElement
 	private context: Context
 	private value: boolean | undefined = undefined
 	private enterAtStart: boolean = false
 	private leaveAtStart: boolean = false
-	private transitionOptions: TransitionOptions | null = null
+	private transitionOptions: ShortTransitionOptions | null = null
 	private onend: TransitionTypedCallback | null = null
 
-	constructor(el: Element, value: unknown, _modifiers: any, context: Context) {
+	constructor(el: Element, _modifiers: any, context: Context) {
 		this.el = el as HTMLElement
 		this.context = context
-		this.update(value as any)
 	}
 
-	update(value: boolean | ShowHideBindingOptions) {
-		let newValue: boolean
+	update(value: any, options?: ShowHideBindingOptions) {
+		value = !!value
 
-		if (value && typeof value === 'object' && value.hasOwnProperty('when')) {
-			newValue = value.when
-			this.enterAtStart = !!value.enterAtStart
-			this.leaveAtStart = !!value.leaveAtStart
-			this.onend = value.onend || null
-			this.initTransitionOptions(value.transition)
+		if (options) {
+			this.enterAtStart = !!options.enterAtStart
+			this.leaveAtStart = !!options.leaveAtStart
+			this.onend = options.onend || null
+			this.initTransitionOptions(options.transition)
 		}
 		else {
-			newValue = !!value
 			this.enterAtStart = false
 			this.leaveAtStart = false
 			this.onend = null
 			this.initTransitionOptions(undefined)
 		}
 
-		if (newValue !== this.value) {
+		if (value !== this.value) {
 			// Not play transition for the first time by default
-			if (this.transitionOptions && (this.value !== undefined || (newValue && this.enterAtStart || !newValue && this.leaveAtStart))) {
-				if (newValue) {
+			if (this.transitionOptions && (this.value !== undefined || (value && this.enterAtStart || !value && this.leaveAtStart))) {
+				if (value) {
 					this.el.hidden = false
 					new Transition(this.el, this.transitionOptions).enter().then((finish: boolean) => {
 						if (this.onend) {
@@ -75,7 +71,7 @@ class ShowBinding implements Binding {
 				}
 			}
 			else {
-				if (newValue) {
+				if (value) {
 					this.el.hidden = false
 				}
 				else {
@@ -83,11 +79,11 @@ class ShowBinding implements Binding {
 				}
 			}
 
-			this.value = newValue
+			this.value = value
 		}
 	}
 
-	private initTransitionOptions(transitionOptions: TransitionOptions | undefined) {
+	private initTransitionOptions(transitionOptions: ShortTransitionOptions | undefined) {
 		if (transitionOptions) {
 			this.transitionOptions = transitionOptions
 		}
@@ -95,25 +91,24 @@ class ShowBinding implements Binding {
 			this.transitionOptions = null
 		}
 	}
+
+	remove() {
+		this.el.hidden = false
+	}
 }
 
-defineBinding('show', ShowBinding)
+export const show = defineBinding('show', ShowBinding) as (value: any, options?: ShowHideBindingOptions) => BindingResult
 
 
 /**
  * `:hide="boolean"`
  * `:hide="{when: boolean, transition: TransitionOptions}"`
  */
-defineBinding('hide', class HideBinding extends ShowBinding {
+class HideBinding extends ShowBinding {
 
-	update(value: boolean | ShowHideBindingOptions) {
-		if (typeof value === 'object') {
-			value.when = !value.when
-		}
-		else {
-			value = !value
-		}
-
-		super.update(value)
+	update(value: any, options?: ShowHideBindingOptions) {
+		super.update(!value, options)
 	}
-})
+}
+
+export const hide = defineBinding('hide', HideBinding) as (value: any, options?: ShowHideBindingOptions) => BindingResult

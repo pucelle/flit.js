@@ -6,7 +6,7 @@ import {NodePart} from './node'
 import {MayAttrPart} from './may-attr'
 import {EventPart} from './event'
 import {AttrPart} from './attr'
-import {BindingPart} from './bind'
+import {BindingPart, FixedBindingPart} from './binding'
 import {PropertyPart} from './property'
 import {Context} from '../component'
 
@@ -73,14 +73,18 @@ export class Template {
 						;(part as MayStringValuePart).strings = place.strings
 						break
 
-					case PartType.Binding:
-						part = new BindingPart(node as Element, place.name!, join(place.strings, value), this.context)
-						;(part as MayStringValuePart).strings = place.strings
-						break
-
 					case PartType.Property:
 						part = new PropertyPart(node as Element, place.name!, join(place.strings, value))
 						;(part as MayStringValuePart).strings = place.strings
+						break
+	
+					case PartType.FixedBinging:
+						part = new FixedBindingPart(node as Element, place.name!, join(place.strings, value), this.context)
+						;(part as MayStringValuePart).strings = place.strings
+						break
+
+					case PartType.Binding:
+						part = new BindingPart(node as Element, value, this.context)
 						break
 				}
 

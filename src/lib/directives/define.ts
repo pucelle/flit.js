@@ -20,13 +20,11 @@ const directiveMap: Map<number, DirectiveConstructor<any>> = new Map()
 /** Define a new directive from a class which implements `Directive`. */
 export function defineDirective<Args extends any[] = any[]>(Dir: DirectiveConstructor<Args>) {
 	let id = seed++
-
-	let fn = function(...args: Args) {
+	directiveMap.set(id, Dir)
+	
+	return function(...args: Args) {
 		return new DirectiveResult(id, ...args)
 	}
-
-	directiveMap.set(id, Dir)
-	return fn
 }
 
 
