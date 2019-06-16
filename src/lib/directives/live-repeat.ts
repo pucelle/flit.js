@@ -213,7 +213,6 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 
 		if (data.length > 0) {
 			if (!this.renderPageCountChecked && this.mayDoubleRenderPageCount()) {
-				this.renderPageCountChecked = true
 				this.update()
 				return
 			}
@@ -311,6 +310,8 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 			sliderHeightAfterFullyRendered *= 2
 			changed = true
 		}
+
+		this.renderPageCountChecked = true
 
 		return changed
 	}
