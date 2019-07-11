@@ -2,7 +2,7 @@ import {defineDirective, Directive, DirectiveResult} from './define'
 import {TemplateResult, Template} from '../parts'
 import {text} from '../parts/template-result'
 import {Context} from '../component'
-import {NodeAnchorType, NodeAnchor} from "../node-helper"
+import {NodeAnchorType, NodeAnchor} from "../libs/node-helper"
 import {DirectiveTransition, DirectiveTransitionOptions} from './shared'
 
 

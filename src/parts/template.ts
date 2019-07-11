@@ -1,5 +1,5 @@
 import {Part, PartType, MayStringValuePart} from './shared'
-import {NodeAnchor, NodeAnchorType, NodeRange} from "../node-helper"
+import {NodeAnchor, NodeAnchorType, NodeRange} from "../libs/node-helper"
 import {TemplateResult} from './template-result'
 import {parse, Place} from './template-parser'
 import {NodePart} from './node'

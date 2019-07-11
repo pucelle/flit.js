@@ -1,6 +1,6 @@
 import {TemplateResult, text} from './template-result'
 import {Part, PartType} from './shared'
-import {NodeAnchor} from "../node-helper";
+import {NodeAnchor} from "../libs/node-helper";
 import {Template} from './template'
 import {DirectiveResult, Directive, createDirectiveFromResult} from '../directives'
 import {Context} from '../component'

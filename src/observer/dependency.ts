@@ -1,6 +1,6 @@
 import {Updatable, Dependency, Com} from './shared'
-import {Weak2WayMap} from './weak-2way-map'
-import {Weak2WayPropMap} from './weak-2way-prop-map'
+import {Weak2WayMap} from './libs/weak-2way-map'
+import {Weak2WayPropMap} from './libs/weak-2way-prop-map'
 
 
 /**

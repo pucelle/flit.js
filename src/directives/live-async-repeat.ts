@@ -2,7 +2,7 @@ import {defineDirective, DirectiveResult} from './define'
 import {DirectiveTransitionOptions} from './shared'
 import {TemplateResult} from '../parts'
 import {LiveRepeatDirective} from './live-repeat'
-import {PageDataGetter, PageDataCacher} from './page-data-cacher'
+import {PageDataGetter, PageDataCacher} from './libs/page-data-cacher'
 import {observe} from '../observer'
 
 

@@ -1,12 +1,12 @@
 import {defineDirective, DirectiveResult} from './define'
 import {Context} from '../component'
 import {DirectiveTransitionOptions, WatchedTemplate, TemplateFn} from './shared'
-import {NodeAnchor} from '../node-helper'
+import {NodeAnchor} from '../libs/node-helper'
 import {on} from '../dom-event'
 import {Watcher} from '../watcher'
 import {RepeatDirective} from './repeat'
 import {onRenderComplete, renderComplete} from '../queue'
-import {binaryFindIndexToInsert, ScrollerClientRect, throttleByAnimationFrame} from './helper'
+import {binaryFindIndexToInsert, ScrollerClientRect, throttleByAnimationFrame} from './libs/helper'
 import {observe} from '../observer'
 
 

@@ -2,7 +2,7 @@ import {defineDirective, Directive, DirectiveResult} from './define'
 import {Watcher, globalWatcherSet} from '../watcher'
 import {Context} from '../component'
 import {DirectiveTransition, DirectiveTransitionOptions, WatchedTemplate, TemplateFn} from './shared'
-import {NodeAnchor} from '../node-helper'
+import {NodeAnchor} from '../libs/node-helper'
 import {observe} from '../observer'
 
 

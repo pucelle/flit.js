@@ -4,7 +4,7 @@ import {enqueueComponentUpdate} from './queue'
 import {startUpdating, endUpdating, observeComTarget, clearDependencies, clearAsDependency, restoreAsDependency, targetMap} from './observer'
 import {Watcher, globalWatcherSet} from './watcher'
 import {getScopedClassNameSet} from './style'
-import {NodeAnchorType, NodeAnchor, NodeRange} from "./node-helper"
+import {NodeAnchorType, NodeAnchor, NodeRange} from "./libs/node-helper"
 import {DirectiveResult} from './directives'
 
 
