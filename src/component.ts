@@ -6,6 +6,7 @@ import {Watcher, globalWatcherSet} from './watcher'
 import {getScopedClassNameSet} from './style'
 import {NodeAnchorType, NodeAnchor, NodeRange} from "./libs/node-helper"
 import {DirectiveResult} from './directives'
+import {getClosestComponent} from './element'
 
 
 export interface ComponentConstructor {
@@ -359,7 +360,7 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 	}
 
 	/** Child class should implement this method, normally returns html`...` or string. */
-	protected render(): TemplateResult | string | DirectiveResult |  null {
+	protected render(): TemplateResult | string | DirectiveResult | null {
 		return null
 	}
 
@@ -374,23 +375,10 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 	/**
 	 * Get closest ancestor component which instanceof `Com`.
 	 * It's very common that you extend a component and define a new custom element,
-	 * So you will be can't find the parent component from the tag name. 
+	 * So you will can't find the parent component from the tag name. 
 	 */
 	closest<C extends ComponentConstructor>(Com: C): InstanceType<C> | null {
-		let parent = this.el.parentElement
-
-		while (parent && parent instanceof HTMLElement) {
-			if (parent.localName.includes('-')) {
-				let com = getComponent(parent) as Component
-				if (com instanceof Com) {
-					return com as InstanceType<C>
-				}
-			}
-			
-			parent = parent.parentElement
-		}
-
-		return null
+		return getClosestComponent(this.el, Com)
 	}
 
 	/**

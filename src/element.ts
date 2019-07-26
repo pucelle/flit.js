@@ -175,3 +175,26 @@ function assignProperties(com: Component, properties: string[]) {
 		}
 	}
 }
+
+
+/**
+ * Get closest ancestor component which instanceof `Com`.
+ * It's very common that you extend a component and define a new custom element,
+ * So you will can't find the parent component from the tag name. 
+ */
+export function getClosestComponent<C extends ComponentConstructor>(el: Element, Com: C): InstanceType<C> | null {
+	let parent: Element | null = el
+
+	while (parent && parent instanceof HTMLElement) {
+		if (parent.localName.includes('-')) {
+			let com = getComponent(parent) as Component
+			if (com instanceof Com) {
+				return com as InstanceType<C>
+			}
+		}
+		
+		parent = parent.parentElement
+	}
+
+	return null
+}
