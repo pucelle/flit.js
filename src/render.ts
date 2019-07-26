@@ -10,7 +10,7 @@ import {DirectiveResult} from './directives'
  * @param codes The html code piece or html`...` template.
  * @param context The context you used when rendering.
  */
-export function render(codes: TemplateResult | DirectiveResult, context: Context): DocumentFragment
+export function render(codes: TemplateResult | DirectiveResult, context?: Context): DocumentFragment
 
 /**
  * Render template like html`...` returned from `renderFn`, returns the rendered result as an document fragment and the watcher.
@@ -21,11 +21,11 @@ export function render(codes: TemplateResult | DirectiveResult, context: Context
  * @param context The context you used when rendering.
  * @param onUpdate Called when update after referenced data changed. if new result can't merge with old, will pass a new fragment as argument.
  */
-export function render(renderFn: () => TemplateResult | DirectiveResult, context: Context, onUpdate?: () => void): DocumentFragment
+export function render(renderFn: () => TemplateResult | DirectiveResult, context?: Context, onUpdate?: () => void): DocumentFragment
 
 export function render(
 	codesOrRenderFn: TemplateResult | DirectiveResult | (() => TemplateResult | DirectiveResult),
-	context: Context,
+	context: Context = null,
 	onUpdate?: () => void
 ) {
 	if (typeof codesOrRenderFn === 'function') {
