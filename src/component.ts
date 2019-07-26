@@ -315,7 +315,7 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 		else if (result !== null) {
 
 			// It's very import to cache rest nodes here, because child nodes may be removed in their `onCreated`.
-			// If we cache them eraly before they were removed, will restore them in `__fillSlot`.
+			// So here we cache them early before they were removed, so we can restore them in `__fillSlot`.
 			if (this.el.childNodes.length > 0) {
 				this.__initRestSlotRange()
 			}
@@ -384,7 +384,7 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 	/**
 	 * Called when component instance was just created and all properties assigned.
 	 * Original child nodes are prepared, but slots are not prepared right now.
-	 * You may changed some data or visit parent nodes or `this.el` and operate here.
+	 * You may changed some data or visit parent nodes or `this.el` and operate them here.
 	 */
 	protected onCreated() {}
 

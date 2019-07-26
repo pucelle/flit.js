@@ -10,30 +10,7 @@ import {DirectiveResult} from './directives'
  * @param codes The html code piece or html`...` template.
  * @param context The context you used when rendering.
  */
-export function render(codes: TemplateResult | string | DirectiveResult, context: Context = null): DocumentFragment {
-	let fragment: DocumentFragment
-
-	if (codes instanceof DirectiveResult) {
-		codes = html`${codes}`
-	}
-
-	if (codes instanceof TemplateResult) {
-		let template = new Template(codes, context)
-		fragment = template.range.getFragment()
-	}
-	else {
-		let template = document.createElement('template')
-		template.innerHTML = clearWhiteSpaces(codes)
-		fragment = template.content
-	}
-
-	return fragment
-}
-
-function clearWhiteSpaces(htmlCodes: string): string {
-	return htmlCodes.trim().replace(/>\s+/g, '>')
-}
-
+export function render(codes: TemplateResult | DirectiveResult, context: Context): DocumentFragment
 
 /**
  * Render template like html`...` returned from `renderFn`, returns the rendered result as an document fragment and the watcher.
@@ -44,6 +21,32 @@ function clearWhiteSpaces(htmlCodes: string): string {
  * @param context The context you used when rendering.
  * @param onUpdate Called when update after referenced data changed. if new result can't merge with old, will pass a new fragment as argument.
  */
+export function render(renderFn: () => TemplateResult | DirectiveResult, context: Context, onUpdate?: () => void): DocumentFragment
+
+export function render(
+	codesOrRenderFn: TemplateResult | DirectiveResult | (() => TemplateResult | DirectiveResult),
+	context: Context,
+	onUpdate?: () => void
+) {
+	if (typeof codesOrRenderFn === 'function') {
+		return renderAndWatch(codesOrRenderFn, context, onUpdate).fragment
+	}
+	else {
+		return renderCodes(codesOrRenderFn, context)
+	}
+}
+
+function renderCodes(codes: TemplateResult | DirectiveResult, context: Context = null): DocumentFragment {
+	if (codes instanceof DirectiveResult) {
+		codes = html`${codes}`
+	}
+
+	let template = new Template(codes, context)
+	let fragment = template.range.getFragment()
+
+	return fragment
+}
+
 export function renderAndWatch(renderFn: () => TemplateResult | DirectiveResult, context: Context = null, onUpdate?: () => void) {
 	let {fragment, watcher} = watchRenderFn(renderFn, context, onUpdate)
 
