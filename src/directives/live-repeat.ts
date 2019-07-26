@@ -6,7 +6,7 @@ import {on} from '../dom-event'
 import {Watcher} from '../watcher'
 import {RepeatDirective} from './repeat'
 import {onRenderComplete, renderComplete} from '../queue'
-import {binaryFindIndexToInsert, ScrollerClientRect, throttleByAnimationFrame} from './libs/helper'
+import {binaryFindIndexToInsert, ScrollerClientRect, throttleByAnimationFrame} from './libs/util'
 import {observe} from '../observer'
 
 

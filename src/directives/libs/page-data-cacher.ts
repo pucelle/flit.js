@@ -1,4 +1,4 @@
-import {repeatValue} from './helper'
+import {repeatValue} from './util'
 
 
 export type PageDataGetter<Item> = (start: number, size: number) => Promise<Iterable<Item>> | Iterable<Item>
