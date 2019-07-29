@@ -25,7 +25,7 @@ class ShowBinding implements Binding<[any, ShowHideBindingOptions | undefined]> 
 	private transitionOptions: ShortTransitionOptions | null = null
 	private onend: TransitionTypedCallback | null = null
 
-	constructor(el: Element, _modifiers: any, context: Context) {
+	constructor(el: Element, context: Context) {
 		this.el = el as HTMLElement
 		this.context = context
 	}

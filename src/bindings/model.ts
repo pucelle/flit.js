@@ -15,7 +15,7 @@ const ALLOWED_MODIFIERS = ['lazy', 'number']
 defineBinding('model', class ModelBinding implements Binding<[string]> {
 
 	private el: HTMLElement
-	private modifiers: string[] | null
+	private modifiers: string[] | undefined
 	private context: Component
 	private isComModel: boolean
 	private isBooleanValue: boolean = false
@@ -27,7 +27,7 @@ defineBinding('model', class ModelBinding implements Binding<[string]> {
 	private com: Component | undefined
 	private unwatch: (() => void) | null = null
 
-	constructor(el: Element, modifiers: string[] | null, context: Context) {
+	constructor(el: Element, context: Context, modifiers?: string[]) {
 		if (!context) {
 			throw new Error(`A context must be provided when using ":model=property"`)
 		}
@@ -91,7 +91,7 @@ defineBinding('model', class ModelBinding implements Binding<[string]> {
 				this.bindCom(com)
 			}
 			else {
-				onComponentCreatedAt(this.el, this.bindCom)
+				onComponentCreatedAt(this.el, this.bindCom.bind(this))
 			}
 		}
 		else {

@@ -16,12 +16,12 @@ interface ClassObject {
 defineBinding('class', class ClassNameBinding implements Binding<[string | ClassObject]> {
 
 	private el: Element
-	private modifiers: string[] | null
+	private modifiers: string[] | undefined
 	private lastClassNames: string[] | null = null
 	private scopeName: string
 	private scopedClassNameSet: Set<string> | undefined
 
-	constructor(el: Element, modifiers: string[] | null, context: Context) {
+	constructor(el: Element, context: Context, modifiers?: string[]) {
 		if (modifiers) {
 			if (modifiers.length > 1) {
 				throw new Error(`Modifier "${modifiers.join('.')}" is not allowed, at most one modifier as class name can be specified for ":class"`)

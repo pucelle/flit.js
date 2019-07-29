@@ -11,7 +11,7 @@ defineBinding('ref', class RefBinding implements Binding<[string | ((el: Element
 	private el: Element
 	private context: Component
 
-	constructor(el: Element, _modifiers: string[] | null, context: Context) {
+	constructor(el: Element, context: Context) {
 		if (!context) {
 			throw new Error(`A context must be provided when using ":ref"`)
 		}

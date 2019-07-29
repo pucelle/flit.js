@@ -5,7 +5,7 @@ import {BindingResult} from '../bindings/define';
 
 
 /**
- * Transfer arguments to a binding module, for:
+ * Transfer arguments to a fixed type binding module, for:
  * `:class=${...}`, `:style=${...}`, `:props=${...}`.
  */
 export class FixedBindingPart implements MayStringValuePart {
@@ -18,14 +18,14 @@ export class FixedBindingPart implements MayStringValuePart {
 	constructor(el: Element, name: string, value: unknown, context: Context) {
 		let dotIndex = name.indexOf('.')
 		let bindingName = dotIndex > -1 ? name.slice(0, dotIndex) : name
-		let bindingModifiers = dotIndex > -1 ? name.slice(dotIndex + 1).split('.') : null
+		let bindingModifiers = dotIndex > -1 ? name.slice(dotIndex + 1).split('.') : undefined
 		let BindingClass = getDefinedBinding(bindingName)
 
 		if (!BindingClass) {
 			throw new Error(`":${name}" on "<${el.localName}>" is not a registered binding class`)
 		}
 
-		this.binding = new BindingClass(el, bindingModifiers, context)
+		this.binding = new BindingClass(el, context, bindingModifiers)
 		this.update(value)
 	}
 
@@ -37,7 +37,7 @@ export class FixedBindingPart implements MayStringValuePart {
 
 /**
  * Transfer arguments to binding module, used in:
- * `show(...)`, `hide(...)`.
+ * `show(...)`, `hide(...)`, `cache(...)`.
  */
 export class BindingPart implements Part {
 
@@ -55,7 +55,7 @@ export class BindingPart implements Part {
 		if (value instanceof BindingResult) {
 			let name = value.name
 			let BindingClass = getDefinedBinding(name)!
-			this.binding = new BindingClass(el, null, context)
+			this.binding = new BindingClass(el, context)
 			this.binding.update(...value.args)
 		}
 	}
@@ -70,7 +70,7 @@ export class BindingPart implements Part {
 				}
 				else {
 					this.binding.remove()
-					this.binding = new BindingClass(this.el, null, this.context)
+					this.binding = new BindingClass(this.el, this.context)
 					this.binding.update(...value.args)
 				}
 			}

@@ -2,7 +2,7 @@ import {Context} from '../component'
 
 
 interface BindingConstructor<Args extends any[]> {
-	new(el: Element, modifiers: string[] | null, context: Context): Binding<Args>
+	new(el: Element, context: Context, modifiers?: string[]): Binding<Args>
 }
 
 export interface Binding<Args extends any[]> {

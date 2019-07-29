@@ -15,10 +15,10 @@ type StyleObject = {[key: string]: unknown}
 defineBinding('style', class StyleBinding implements Binding<[string | StyleObject]> {
 
 	private el: HTMLElement | SVGElement
-	private modifiers: string[] | null
+	private modifiers: string[] | undefined
 	private lastStyle: StyleObject | null = null
 
-	constructor(el: Element, modifiers: string[] | null) {
+	constructor(el: Element, _context: any, modifiers?: string[]) {
 		if (modifiers) {
 			if (modifiers.length > 2) {
 				throw new Error(`Modifier "${modifiers.join('.')}" is not allowed, at most two modifiers (as style name property value modifier) can be specified for ":style"`)
