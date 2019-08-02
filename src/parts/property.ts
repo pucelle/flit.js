@@ -73,7 +73,7 @@ export class PropertyPart implements MayStringValuePart {
 			this.updateComProperty(value)
 		}
 		else {
-			this.updateComProperty(value)
+			this.updateElementProperty(value)
 		}
 	}
 
