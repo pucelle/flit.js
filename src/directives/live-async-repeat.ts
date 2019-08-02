@@ -1,5 +1,5 @@
 import {defineDirective, DirectiveResult} from './define'
-import {DirectiveTransitionOptions} from './shared'
+import {DirectiveTransitionOptions} from './libs/directive-transition'
 import {TemplateResult} from '../parts'
 import {LiveRepeatDirective} from './live-repeat'
 import {PageDataGetter, PageDataCacher} from './libs/page-data-cacher'

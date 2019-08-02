@@ -7,9 +7,9 @@ export type TransitionProperty = keyof typeof CSS_PROPERTIES
 export type TransitionFrame = {[key in TransitionProperty]?: string}
 export type TransitionPromise = Promise<boolean>
 export type TransitionCallback = (finish: boolean) => void
-export type ShortTransitionOptions = string | TransitionProperty[] | TransitionOptions
+export type TransitionOptions = string | TransitionProperty[] | StandardTransitionOptions
 
-export interface TransitionOptions {
+export interface StandardTransitionOptions {
 	name?: string
 	properties?: TransitionProperty[],
 	duration?: number
@@ -128,7 +128,7 @@ const CSS_PROPERTIES = {
 	transform: true
 }
 
-export function formatShortTransitionOptions(options: ShortTransitionOptions): TransitionOptions {
+export function formatShortTransitionOptions(options: TransitionOptions): StandardTransitionOptions {
 	if (Array.isArray(options)) {
 		return {
 			properties: options
@@ -155,10 +155,10 @@ export function formatShortTransitionOptions(options: ShortTransitionOptions): T
 export class Transition {
 
 	private el: Element
-	private options: TransitionOptions
+	private options: StandardTransitionOptions
 	private cleaner: (() => void) | null = null
 
-	constructor(el: Element, options: ShortTransitionOptions) {
+	constructor(el: Element, options: TransitionOptions) {
 		this.el = el
 		this.options = formatShortTransitionOptions(options)
 

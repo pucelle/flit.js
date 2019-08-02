@@ -1,4 +1,4 @@
-export {DirectiveTransitionOptions} from './shared'
+export {DirectiveTransition, DirectiveTransitionOptions} from './libs/directive-transition'
 export {defineDirective, DirectiveResult, Directive, createDirectiveFromResult} from './define'
 export {cache} from './cache'
 export {repeat} from './repeat'

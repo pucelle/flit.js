@@ -3,7 +3,7 @@ import {TemplateResult, Template} from '../parts'
 import {text} from '../parts/template-result'
 import {Context} from '../component'
 import {NodeAnchorType, NodeAnchor} from "../libs/node-helper"
-import {DirectiveTransition, DirectiveTransitionOptions} from './shared'
+import {DirectiveTransition, DirectiveTransitionOptions} from './libs/directive-transition'
 
 
 class CacheDirective implements Directive {
@@ -23,7 +23,7 @@ class CacheDirective implements Directive {
 	private async playEnterTransition(template: Template) {
 		let firstElement = template.range.getFirstElement()
 		if (firstElement) {
-			await this.transition.mayPlayEnterAt(firstElement)
+			await this.transition.mayPlayEnter(firstElement)
 		}
 	}
 
@@ -71,12 +71,12 @@ class CacheDirective implements Directive {
 			result = text`${result}`
 		}
 		
-		let isFirstTime = this.templates.length === 0
+		let atStart = this.templates.length === 0
 		let template = new Template(result, this.context)
 		let fragment = template.range.getFragment()
 		this.anchor.insert(fragment)
 
-		if (this.transition.shouldPlayEnterMayAtStart(isFirstTime)) {
+		if (this.transition.shouldPlayEnter(atStart)) {
 			this.playEnterTransition(template)
 		}
 
@@ -94,7 +94,7 @@ class CacheDirective implements Directive {
 		}
 
 		if (this.transition.shouldPlay() && firstElement) {
-			this.transition.mayPlayLeaveAt(firstElement).then((finish: boolean) => {
+			this.transition.mayPlayLeave(firstElement).then((finish: boolean) => {
 				if (finish) {
 					template.range.cacheFragment()
 				}

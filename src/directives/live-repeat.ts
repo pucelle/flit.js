@@ -1,6 +1,7 @@
 import {defineDirective, DirectiveResult} from './define'
 import {Context} from '../component'
-import {DirectiveTransitionOptions, WatchedTemplate, TemplateFn} from './shared'
+import {DirectiveTransitionOptions} from './libs/directive-transition'
+import {WatchedTemplate, TemplateFn} from './libs/watched-template'
 import {NodeAnchor} from '../libs/node-helper'
 import {on} from '../dom-event'
 import {Watcher} from '../watcher'

@@ -1,7 +1,8 @@
 import {defineDirective, Directive, DirectiveResult} from './define'
 import {Watcher, globalWatcherSet} from '../watcher'
 import {Context} from '../component'
-import {DirectiveTransition, DirectiveTransitionOptions, WatchedTemplate, TemplateFn} from './shared'
+import {DirectiveTransition, DirectiveTransitionOptions} from './libs/directive-transition'
+import {WatchedTemplate, TemplateFn} from './libs/watched-template'
 import {NodeAnchor} from '../libs/node-helper'
 import {observe} from '../observer'
 
@@ -267,7 +268,7 @@ export class RepeatDirective<Item> implements Directive {
 		let fragment = template.range.getFragment()
 		let firstElement: HTMLElement | null = null
 
-		if (this.transition.shouldPlayEnterMayAtStart(this.firstlyMerge)) {
+		if (this.transition.shouldPlayEnter(this.firstlyMerge)) {
 			firstElement = fragment.firstElementChild as HTMLElement
 		}
 
@@ -279,7 +280,7 @@ export class RepeatDirective<Item> implements Directive {
 		}
 
 		if (firstElement) {
-			this.transition.mayPlayEnterAt(firstElement)
+			this.transition.mayPlayEnter(firstElement)
 		}
 
 		return wtem
@@ -291,7 +292,7 @@ export class RepeatDirective<Item> implements Directive {
 		if (this.transition.shouldPlay()) {
 			let firstElement = template.range.getFirstElement()
 			if (firstElement) {
-				this.transition.mayPlayLeaveAt(firstElement).then((finish: boolean) => {
+				this.transition.mayPlayLeave(firstElement).then((finish: boolean) => {
 					if (finish) {
 						wtem.remove()
 					}
