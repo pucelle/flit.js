@@ -1,6 +1,6 @@
 {
 	"name": "flit",
-	"version": "1.0.0",
+	"version": "0.0.0",
 	"description": "A small JavaScript web component system",
 	"main": "out/index.js",
 	"scripts": {

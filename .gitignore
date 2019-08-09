@@ -1,6 +1,6 @@
 node_modules
-out
-demo
-coverage
-test/*.js
-test/*.js.map
+/out
+/demo
+/coverage
+/test/*.js
+/test/*.js.map
