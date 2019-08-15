@@ -48,7 +48,7 @@ export function parse(type: TemplateType, strings: TemplateStringsArray, el: HTM
 	let scopeName = el ? el.localName : 'global'
 
 	if ((type === 'html' || type === 'svg')) {
-		let string = strings.join(VALUE_MARKER)
+		let string = strings.map(text => trim(text)).join(VALUE_MARKER)
 		let sharedResultMap = parseResultMap.get(scopeName)
 		let sharedResult = sharedResultMap ? sharedResultMap.get(string) : null
 		if (!sharedResult) {
@@ -186,7 +186,7 @@ class HTMLSVGTemplateParser {
 		}
 
 		if (firstTag === 'template') {
-			template = template.content.firstChild as HTMLTemplateElement
+			template = template.content.firstElementChild as HTMLTemplateElement
 			attributes = [...template.attributes].map(({name, value}) => ({name, value}))
 		}
 
@@ -199,7 +199,8 @@ class HTMLSVGTemplateParser {
 	}
 
 	parseText(text: string): string {
-		text = text.trim()
+		text = trim(text)
+		
 		if (!text) {
 			return text
 		}
@@ -320,6 +321,11 @@ class HTMLSVGTemplateParser {
 			return m0
 		})
 	}
+}
+
+
+function trim(text: string) {
+	return text.replace(/^[\r\n\t]+|[\r\n\t]+$/g, '')
 }
 
 
