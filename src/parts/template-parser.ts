@@ -1,6 +1,7 @@
 import {TemplateType} from './template-result'
 import {PartType} from './shared'
 import {getScopedClassNameSet} from '../style'
+import {trim, cloneAttributes} from './libs/util';
 
 
 export interface ParseResult {
@@ -63,7 +64,7 @@ export function parse(type: TemplateType, strings: TemplateStringsArray, el: HTM
 		return cloneParseResult(sharedResult, el)
 	}
 	else if (type === 'css') {
-		let html = `<style>${strings[0].trim()}</style>`
+		let html = `<style>${trim(strings[0])}</style>`
 		let fragment = createTemplateFromHTML(html).content
 
 		return {
@@ -74,7 +75,7 @@ export function parse(type: TemplateType, strings: TemplateStringsArray, el: HTM
 		}
 	}
 	else {
-		let text = strings[0].trim()
+		let text = trim(strings[0])
 		let fragment = document.createDocumentFragment()
 		fragment.append(document.createTextNode(text))
 
@@ -200,7 +201,7 @@ class HTMLSVGTemplateParser {
 
 	parseText(text: string): string {
 		text = trim(text)
-		
+
 		if (!text) {
 			return text
 		}
@@ -324,11 +325,6 @@ class HTMLSVGTemplateParser {
 }
 
 
-function trim(text: string) {
-	return text.replace(/^[\r\n\t]+|[\r\n\t]+$/g, '')
-}
-
-
 /**
  * Clone the result fragment and link it with node indexes from the parsed result.
  */
@@ -385,20 +381,5 @@ function cloneParseResult(sharedResult: SharedParseReulst, el: HTMLElement | nul
 		nodesInPlaces,
 		places,
 		hasSlots,
-	}
-}
-
-function cloneAttributes(el: Element, attributes: {name: string, value: string}[]) {
-	for (let {name, value} of attributes) {
-		if ((name === 'class' || name === 'style') && el.hasAttribute(name)) {
-			if (name === 'style') {
-				value = (el.getAttribute(name) as string) + '; ' + value
-			}
-			else if (name === 'class') {
-				value = (el.getAttribute(name) as string) + ' ' + value
-			}
-		}
-
-		el.setAttribute(name, value)
 	}
 }

@@ -4,6 +4,7 @@ import {NodeAnchor} from "../libs/node-helper";
 import {Template} from './template'
 import {DirectiveResult, Directive, createDirectiveFromResult} from '../directives'
 import {Context} from '../component'
+import {trim} from './libs/util'
 
 
 enum ChildContentType {
@@ -156,7 +157,7 @@ export class NodePart implements Part {
 	}
 
 	private updateText(value: unknown) {
-		let text = value === null || value === undefined ? '' : String(value).trim()
+		let text = value === null || value === undefined ? '' : trim(String(value))
 
 		if (text) {
 			if (this.textNode) {
