@@ -125,7 +125,7 @@ class HTMLSVGTemplateParser {
 		let match: RegExpExecArray | null
 		while (match = tagRE.exec(this.string)) {
 			let code = match[0]
-			codes += this.parseText(this.string.slice(lastIndex, tagRE.lastIndex - code.length))
+			codes += this.parseText(this.string.slice(lastIndex, match.index))
 			lastIndex = tagRE.lastIndex
 			
 			// Ignore existed comment nodes
