@@ -251,10 +251,8 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 	}
 
 	__emitConnected() {
-		let isConnected = this.__connected
-
 		// Not do following things when firstly connected.
-		if (!isConnected) {
+		if (!this.__connected) {
 			// Must restore before updating, because the restored result may be changed when updating.
 			restoreAsDependency(targetMap.get(this)!)
 
@@ -272,11 +270,7 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 		// Then in following micro task, the deleted components's `__connected` becomes false,
 		// and they will not been updated finally as expected.
 		this.update()
-
-		if (!isConnected) {
-			this.onReconnected()
-		}
-
+		this.onConnected()
 		componentSet.add(this)
 	}
 
@@ -403,16 +397,16 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 	protected onUpdated() {}
 
 	/** 
-	 * Called when root element was inserted into document again.
+	 * Called when root element was inserted into document.
 	 * This will be called for each time you insert the element into document.
-	 * If you need to register global listeners, restore them here.
+	 * If you need to register global listeners like `resize` when element in document, restore them here.
 	 */
-	protected onReconnected() {}
+	protected onConnected() {}
 
 	/**
 	 * Called when root element removed from document.
 	 * This will be called for each time you removed the element into document.
-	 * If you registered global listeners, don't forget to unregister them here.
+	 * If you registered global listeners like `resize`, don't forget to unregister them here.
 	 */
 	protected onDisconnected() {}
 
