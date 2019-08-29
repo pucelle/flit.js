@@ -1,4 +1,4 @@
-export {Observer, ObservedEmitter, Emitter} from './emitter'
+export {ObservedBaseClass, ObservedEmitter} from './emitter'
 export {define, getClosestComponent} from './element'
 export {addGlobalStyle, updateStyles} from './style'
 export {render, renderAndWatch, renderComponent, appendTo} from './render'
