@@ -169,11 +169,11 @@ export function appendTo(el: DocumentFragment | Element, target: Element | strin
 
 	if (typeof target === 'string') {
 		let targetEl = document.querySelector(target)
-		if (targetEl && targetEl !== el.parentNode) {
+		if (targetEl && targetEl.lastElementChild !== el) {
 			targetEl.append(el)
 		}
 	}
-	else if (target && target !== el.parentNode) {
+	else if (target && target.lastElementChild !== el) {
 		target.append(el)
 	}
 
