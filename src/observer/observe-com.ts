@@ -16,20 +16,19 @@ const proxyHandler = {
 	get(com: Com, prop: keyof Com & PropertyKey): unknown {
 		let value: any = com[prop]
 
-		if (com.hasOwnProperty(prop)) {
-			mayAddComDependency(com, prop)
+		// It doesn't check if own property exists here.
+		mayAddComDependency(com, prop)
 
-			if (value && typeof value === 'object') {
-				if (proxyMap.has(value)) {
-					return proxyMap.get(value)
-				}
-				// Here means it will only observe more data when updating.
-				// If we choose to always observe every value, so many proxies will be generated.
-				// Only generate new proxy only when updating still have a little problem.
-				// If we cached some not proxy values, modify them will not cause rerender.
-				else if (isUpdating()) {
-					return observeTarget(value)
-				}
+		if (value && typeof value === 'object') {
+			if (proxyMap.has(value)) {
+				return proxyMap.get(value)
+			}
+			// Here means it will only observe more data when updating.
+			// If we choose to always observe every value, so many proxies will be generated.
+			// Only generate new proxy only when updating still have a little problem.
+			// If we cached some not proxy values, modify them will not cause rerender.
+			else if (isUpdating()) {
+				return observeTarget(value)
 			}
 		}
 
