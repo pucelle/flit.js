@@ -335,6 +335,14 @@ function cloneParseResult(sharedResult: SharedParseReulst, el: HTMLElement | nul
 	let fragment = template.content.cloneNode(true) as DocumentFragment
 	let nodesInPlaces: Node[] = []
 
+	if (attributes) {
+		if (!el) {
+			throw new Error('A context must be provided when rendering `<template>...`')
+		}
+
+		cloneAttributes(el, attributes)
+	}
+
 	if (places.length > 0) {
 		let nodeIndex = 0
 		let placeIndex = 0
@@ -343,16 +351,11 @@ function cloneParseResult(sharedResult: SharedParseReulst, el: HTMLElement | nul
 		let end = false
 
 		if (attributes) {
-			if (!el) {
-				throw new Error('A context must be provided when rendering `<template>...`')
-			}
-
 			while (placeIndex < places.length && places[placeIndex].nodeIndex === 0) {
-				nodesInPlaces.push(el)
+				nodesInPlaces.push(el!)
 				placeIndex++
 			}
 			nodeIndex = 1
-			cloneAttributes(el, attributes)
 		}
 
 		if (placeIndex < places.length) {
