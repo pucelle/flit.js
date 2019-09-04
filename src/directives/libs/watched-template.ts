@@ -49,18 +49,14 @@ export class WatchedTemplate<Item> {
 	}
 
 	updateIndex(index: number) {
-		if (index !== this.index) {
-			this.index = index
-			this.watcher.__updateImmediately()
-		}
+		this.index = index
+		this.watcher.__updateImmediately()
 	}
 
 	update(item: Item, index: number) {
-		if (item !== this.item || index !== this.index) {
-			this.item = item
-			this.index = index
-			this.watcher.__updateImmediately()
-		}
+		this.item = item
+		this.index = index
+		this.watcher.__updateImmediately()
 	}
 
 	remove() {

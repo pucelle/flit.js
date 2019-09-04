@@ -112,6 +112,7 @@ export class NodePart implements Part {
 		return array as TemplateResult[]
 	}
 	
+	// One issue when reusing old template, image will keep old appearance until the new image loaded.
 	private updateTemplates(results: TemplateResult[]) {
 		let templates = this.templates!
 		if (!templates) {
