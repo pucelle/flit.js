@@ -309,6 +309,10 @@ export class Transition {
 		el.style.transition = 'none'
 		el.classList.add(className, className + '-from')
 		
+		this.cleaner = () => {
+			canceled = true
+		}
+
 		// Here to makesure rendering complete for current frame,
 		// Then the next `requestAnimationFrame` will be called for a new frame.
 		await renderComplete()
@@ -336,10 +340,6 @@ export class Transition {
 				callback(finish)
 			})
 		})
-
-		this.cleaner = () => {
-			canceled = true
-		}
 	}
 
 	private onceTransitionEnd(onEnd: TransitionCallback) {
@@ -372,7 +372,7 @@ export class Transition {
 		}
 	}
 
-	private clean() {
+	clean() {
 		if (this.cleaner) {
 			this.cleaner()
 			this.cleaner = null
