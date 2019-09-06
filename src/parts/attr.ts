@@ -1,13 +1,10 @@
-import {MayStringValuePart, PartType} from './shared'
+import {Part} from './types'
 
 
 /**
  * `attr=${...}`, set attribute value.
  */
-export class AttrPart implements MayStringValuePart {
-
-	type: PartType = PartType.Attr
-	strings: string[] | null = null
+export class AttrPart implements Part {
 
 	private el: Element
 	private name: string

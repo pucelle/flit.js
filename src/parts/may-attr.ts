@@ -1,12 +1,10 @@
-import {Part, PartType} from './shared'
+import {Part} from './types'
 
 
 /**
  * `?checked=${...}`, remove the attribute if expression returns false.
  */
 export class MayAttrPart implements Part {
-
-	type: PartType = PartType.MayAttr
 
 	private el: Element
 	private name: string

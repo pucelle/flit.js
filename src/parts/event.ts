@@ -1,4 +1,4 @@
-import {Part, PartType} from './shared'
+import {Part} from './types'
 import {Component, getComponent, onComponentCreatedAt, Context} from '../component'
 import {on} from '../dom-event'
 
@@ -9,8 +9,6 @@ import {on} from '../dom-event'
  * `<com @@event=${...}>` to register event always on element.
  */
 export class EventPart implements Part {
-
-	type: PartType = PartType.Event
 
 	private el: Element
 	private name: string

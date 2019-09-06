@@ -1,4 +1,4 @@
-import {MayStringValuePart, PartType} from './shared'
+import {Part} from './types'
 import {Component, getComponent, onComponentCreatedAt} from '../component'
 
 
@@ -7,10 +7,7 @@ import {Component, getComponent, onComponentCreatedAt} from '../component'
  * `.comProperty=${...}` will assign value to component by `com.property = value`.
  * `..property=${...}` to always assign to element.
 */
-export class PropertyPart implements MayStringValuePart {
-
-	type: PartType = PartType.Property
-	strings: string[] | null = null
+export class PropertyPart implements Part {
 
 	private el: Element
 	private name: string

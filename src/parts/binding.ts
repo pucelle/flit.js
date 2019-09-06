@@ -1,17 +1,14 @@
-import {MayStringValuePart, PartType, Part} from './shared'
+import {Part} from './types'
 import {Binding, getDefinedBinding} from '../bindings'
 import {Context} from '../component'
-import {BindingResult} from '../bindings/define';
+import {BindingResult} from '../bindings/define'
 
 
 /**
  * Transfer arguments to a fixed type binding module, for:
  * `:class=${...}`, `:style=${...}`, `:props=${...}`.
  */
-export class FixedBindingPart implements MayStringValuePart {
-
-	type: PartType = PartType.Binding
-	strings: string[] | null = null
+export class FixedBindingPart implements Part {
 
 	private binding: Binding<any[]>
 
@@ -40,9 +37,6 @@ export class FixedBindingPart implements MayStringValuePart {
  * `show(...)`, `hide(...)`, `cache(...)`.
  */
 export class BindingPart implements Part {
-
-	type: PartType = PartType.Binding
-	strings: string[] | null = null
 
 	private el: Element
 	private context: Context

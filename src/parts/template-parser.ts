@@ -1,8 +1,18 @@
-import {TemplateType} from './template-result'
-import {PartType} from './shared'
+import {TemplateType, joinWithOrderedMarkers, containsOrderedMarker, parseOrderedMarkers, splitByOrderedMarkers} from './template-result'
 import {getScopedClassNameSet} from '../style'
-import {trim, cloneAttributes} from './libs/util';
+import {trim, cloneAttributes} from './libs/util'
+import {parseToHTMLTokens, HTMLTokenType} from './libs/html-token'
 
+
+export enum PartType {
+	Node,
+	Attr,
+	MayAttr,
+	Property,
+	Event,
+	FixedBinging,
+	Binding
+}
 
 export interface ParseResult {
 	fragment: DocumentFragment
@@ -15,10 +25,7 @@ export interface Place {
 	type: PartType
 	name: string | null
 	strings: string[] | null
-
-	// Some binds like `:ref="name"`, it needs to be initialized but take no place
-	// it's holes is `0`
-	holes: number
+	valueIndexes: number[] | null	// Some binds like `:ref="name"`, it needs to be initialized but take no place, it's valueIndexes is `0`
 	nodeIndex: number
 }
 
@@ -32,12 +39,6 @@ export interface SharedParseReulst {
 // context name -> template string -> parse result
 const parseResultMap: Map<string, Map<string, SharedParseReulst>> = new Map()
 
-const VALUE_MARKER = '${flit}'
-
-const SELF_CLOSE_TAGS = [
-	'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'param', 'source', 'track', 'wbr'
-]
- 
 
 /**
  * Parse template strings to an fragment and interlations and their related nodes.
@@ -49,7 +50,7 @@ export function parse(type: TemplateType, strings: TemplateStringsArray, el: HTM
 	let scopeName = el ? el.localName : 'global'
 
 	if ((type === 'html' || type === 'svg')) {
-		let string = strings.map(text => trim(text)).join(VALUE_MARKER)
+		let string = joinWithOrderedMarkers(strings.map(text => trim(text)))
 		let sharedResultMap = parseResultMap.get(scopeName)
 		let sharedResult = sharedResultMap ? sharedResultMap.get(string) : null
 		if (!sharedResult) {
@@ -114,67 +115,48 @@ class HTMLSVGTemplateParser {
 
 	// Benchmark: https://jsperf.com/regexp-exec-match-replace-speed
 	parse(): SharedParseReulst {
-		const tagRE = /<!--[\s\S]*?-->|<([\w-]+)([\s\S]*?)>|<\/[\w-]+>/g
-
+		let tokens = parseToHTMLTokens(this.string)
 		let codes = ''
-		let lastIndex = 0
-		let firstTag: string | null = null
-		let svgWrapped = false
 		let hasSlots = false
 
-		let match: RegExpExecArray | null
-		while (match = tagRE.exec(this.string)) {
-			let code = match[0]
-			codes += this.parseText(this.string.slice(lastIndex, match.index))
-			lastIndex = tagRE.lastIndex
+		for (let token of tokens) {
+			switch (token.type) {
+				case HTMLTokenType.StartTag:
+					let tagName = token.tagName!
+					let attributes = token.attributes!
+		
+					if (tagName === 'slot') {
+						hasSlots = true
+					}
+
+					// ` {flit:0}` be at least 
+					if (attributes.length >= 9) {
+						attributes = this.parseAttribute(attributes)
+					}
+		
+					codes += '<' + tagName + attributes + '>'
+					this.nodeIndex++
+					break
+
+				case HTMLTokenType.EndTag:
+					codes += `</${token.tagName}>`
+					break
+
+				case HTMLTokenType.Text:
+					codes += this.parseText(token.text!)
+			}
 			
-			// Ignore existed comment nodes
-			// An issue here: if comment codes includes `${...}`,
-			// We just remove it but not the tempalte values,
-			// So the followed values will be used to fill the wrong holes.
-			if (code[1] === '!') {
-				continue
-			}
-			else if (code[1] === '/') {
-				codes += code
-				continue
-			}
 			
-			let tag = match[1]
-			let attr = match[2]
-
-			if (tag === 'slot') {
-				hasSlots = true
-			}
-
-			if (!firstTag) {
-				firstTag = tag
-
-				if (this.type === 'svg' && tag !== 'svg') {
-					codes = '<svg>' + codes
-					svgWrapped = true
-				}
-			}
-
-			if (attr.length > 5) {
-				attr = this.parseAttribute(attr)
-			}
-
-			codes += '<' + tag + attr + '>'
-
-			//`<tag />` -> `<tag></tag>`
-			// Benchmark: https://jsperf.com/array-includes-vs-object-in-vs-set-has
-			if (code[code.length - 2] === '/' && !SELF_CLOSE_TAGS.includes(tag)) {
-				codes += '</' + tag + '>'
-			}
-
-			this.nodeIndex++
 		}
 
-		codes += this.parseText(this.string.slice(lastIndex))
+		let firstTag = tokens.find(token => token.type === HTMLTokenType.StartTag)
+		let svgWrapped = false
 
-		if (svgWrapped) {
-			codes += '</svg>'
+		if (firstTag) {
+			if (this.type === 'svg' && firstTag.tagName !== 'svg') {
+				codes = '<svg>' + codes + '</svg>'
+				svgWrapped = true
+			}
 		}
 
 		let template = createTemplateFromHTML(codes)
@@ -186,7 +168,8 @@ class HTMLSVGTemplateParser {
 			svg.remove()
 		}
 
-		if (firstTag === 'template') {
+		// We can define some classes or styles on the top element if renders `<template class="...">`.
+		if (firstTag && firstTag.tagName === 'template') {
 			template = template.content.firstElementChild as HTMLTemplateElement
 			attributes = [...template.attributes].map(({name, value}) => ({name, value}))
 		}
@@ -206,47 +189,47 @@ class HTMLSVGTemplateParser {
 			return text
 		}
 
-		if (text.includes(VALUE_MARKER)) {
-			let splitted = text.split(VALUE_MARKER)
-			text = splitted.join('<!---->')
+		if (containsOrderedMarker(text)) {
+			let {strings, valueIndexes} = splitByOrderedMarkers(text)
 
-			for (let i = 1; i < splitted.length; i++) {
+			for (let i = 1; i < strings.length; i++) {
 				this.places.push({
 					type: PartType.Node,
 					name: null,
 					strings: null,
-					holes: 1,
+					valueIndexes: valueIndexes.slice(i - 1, i),
 					nodeIndex: this.nodeIndex
 				})
 
 				this.nodeIndexs.push(this.nodeIndex)
 				this.nodeIndex += 1
 			}
+
+			text = strings.join('<!--->')
 		}
 
 		return text
 	}
 
 	parseAttribute(attr: string): string {
-		const attrRE = /([.:?@\w-]+)\s*(?:=\s*(".*?"|'.*?'|\$\{flit\})\s*)?|(\$\{flit\})\s*/g
+		const attrRE = /([.:?@\w-]+)\s*(?:=\s*(".*?"|'.*?'|\{flit:\d+\})\s*)?|\{flit:(\d+)\}\s*/g
 
-		return attr.replace(attrRE, (m0, name: string, value: string = '', marker: string) => {
-			if (marker) {
+		return attr.replace(attrRE, (m0, name: string, value: string = '', markerId: string) => {
+			if (markerId) {
 				this.places.push({
 					type: PartType.Binding,
 					name: null,
 					strings: null,
-					holes: 1,
+					valueIndexes: [Number(markerId)],
 					nodeIndex: this.nodeIndex
 				})
 
 				this.nodeIndexs.push(this.nodeIndex)
-
 				return ''
 			}
 
 			let type: PartType | undefined
-			let markerIndex = value.indexOf(VALUE_MARKER)
+			let hasMarker = containsOrderedMarker(value)
 
 			switch (name[0]) {
 				case '.':
@@ -270,7 +253,7 @@ class HTMLSVGTemplateParser {
 				name = name.slice(1)
 			}
 
-			if (type === undefined && markerIndex > -1) {
+			if (type === undefined && hasMarker) {
 				// `class=${...}` -> `:class=${...}`, so the class value can be scoped.
 				if (name === 'class') {
 					type = PartType.FixedBinging
@@ -285,17 +268,25 @@ class HTMLSVGTemplateParser {
 					value = value.slice(1, -1)
 				}
 
-				let strings = value === VALUE_MARKER || type === PartType.MayAttr || type === PartType.Event ? null
-					: markerIndex > -1 ? value.split(VALUE_MARKER)
-					: [value]
- 
-				this.places.push({
-					type,
-					name,
-					strings,
-					holes: strings ? strings.length - 1 : 1,
-					nodeIndex: this.nodeIndex
-				})
+				if (hasMarker) {
+					let {strings, valueIndexes} = parseOrderedMarkers(value)
+					this.places.push({
+						type,
+						name,
+						strings,
+						valueIndexes,
+						nodeIndex: this.nodeIndex
+					})
+				}
+				else {
+					this.places.push({
+						type,
+						name,
+						strings: [value],
+						valueIndexes: null,
+						nodeIndex: this.nodeIndex
+					})
+				}
 
 				this.nodeIndexs.push(this.nodeIndex)
 
