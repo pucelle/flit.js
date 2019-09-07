@@ -1,6 +1,6 @@
 import {TemplateType, joinWithOrderedMarkers, containsOrderedMarker, parseOrderedMarkers, splitByOrderedMarkers} from './template-result'
 import {getScopedClassNameSet} from '../style'
-import {trim, cloneAttributes} from './libs/util'
+import {cloneAttributes} from './libs/util'
 import {parseToHTMLTokens, HTMLTokenType} from './libs/html-token'
 
 
@@ -24,8 +24,13 @@ export interface ParseResult {
 export interface Place {
 	type: PartType
 	name: string | null
+
+	// Some holes line ${html``}, it has not strings besides, such that it's strings is `null`.
 	strings: string[] | null
-	valueIndexes: number[] | null	// Some binds like `:ref="name"`, it needs to be initialized but take no place, it's valueIndexes is `0`
+
+	// Some binds like `:ref="name"`, it needs to be initialized but take no place, it's valueIndexes is `null`.
+	valueIndexes: number[] | null
+
 	nodeIndex: number
 }
 
@@ -37,7 +42,7 @@ export interface SharedParseReulst {
 }
 
 // context name -> template string -> parse result
-const parseResultMap: Map<string, Map<string, SharedParseReulst>> = new Map()
+const parseResultCache: Map<string, Map<string, SharedParseReulst>> = new Map()
 
 
 /**
@@ -50,13 +55,14 @@ export function parse(type: TemplateType, strings: TemplateStringsArray, el: HTM
 	let scopeName = el ? el.localName : 'global'
 
 	if ((type === 'html' || type === 'svg')) {
-		let string = joinWithOrderedMarkers(strings.map(text => trim(text)))
-		let sharedResultMap = parseResultMap.get(scopeName)
+		let string = joinWithOrderedMarkers(strings as unknown as string[])
+		let sharedResultMap = parseResultCache.get(scopeName)
 		let sharedResult = sharedResultMap ? sharedResultMap.get(string) : null
+
 		if (!sharedResult) {
 			if (!sharedResultMap) {
 				sharedResultMap = new Map()
-				parseResultMap.set(scopeName, sharedResultMap)
+				parseResultCache.set(scopeName, sharedResultMap)
 			}
 			sharedResult = new HTMLSVGTemplateParser(type, string, scopeName).parse()
 			sharedResultMap.set(string, sharedResult)
@@ -65,7 +71,7 @@ export function parse(type: TemplateType, strings: TemplateStringsArray, el: HTM
 		return cloneParseResult(sharedResult, el)
 	}
 	else if (type === 'css') {
-		let html = `<style>${trim(strings[0])}</style>`
+		let html = `<style>${strings[0]}</style>`
 		let fragment = createTemplateFromHTML(html).content
 
 		return {
@@ -76,7 +82,7 @@ export function parse(type: TemplateType, strings: TemplateStringsArray, el: HTM
 		}
 	}
 	else {
-		let text = trim(strings[0])
+		let text = strings[0]
 		let fragment = document.createDocumentFragment()
 		fragment.append(document.createTextNode(text))
 
@@ -144,9 +150,8 @@ class HTMLSVGTemplateParser {
 
 				case HTMLTokenType.Text:
 					codes += this.parseText(token.text!)
+					break
 			}
-			
-			
 		}
 
 		let firstTag = tokens.find(token => token.type === HTMLTokenType.StartTag)
@@ -183,8 +188,7 @@ class HTMLSVGTemplateParser {
 	}
 
 	parseText(text: string): string {
-		text = trim(text)
-
+		// `text` has already been trimmed here when parsing as tokens.
 		if (!text) {
 			return text
 		}
@@ -192,6 +196,7 @@ class HTMLSVGTemplateParser {
 		if (containsOrderedMarker(text)) {
 			let {strings, valueIndexes} = splitByOrderedMarkers(text)
 
+			// Each hole may be a string, or a `TemplateResult`, so must unique them, but can't join them to a string.
 			for (let i = 1; i < strings.length; i++) {
 				this.places.push({
 					type: PartType.Node,

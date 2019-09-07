@@ -1,3 +1,5 @@
+import {trim} from "./util";
+
 export enum HTMLTokenType {
 	StartTag,
 	EndTag,
@@ -16,8 +18,13 @@ const SELF_CLOSE_TAGS = [
 	'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'param', 'source', 'track', 'wbr'
 ]
 
+
+/**
+ * Parse html codes to tokens.
+ * After parsed, all comment was removed, and `\r\n\t` in text nodes was removed too.
+ */
 export function parseToHTMLTokens(string: string) {
-	const tagRE = /<!--[\s\S]*?-->|<([\w-]+)([\s\S]*?)>|<\/[\w-]+>/g
+	const tagRE = /<!--[\s\S]*?-->|<([\w-]+)([\s\S]*?)\/?>|<\/[\w-]+>/g
 
 	let lastIndex = 0
 	let tokens: HTMLToken[] = []
@@ -27,18 +34,17 @@ export function parseToHTMLTokens(string: string) {
 		let piece = match[0]
 
 		if (match.index > lastIndex) {
-			tokens.push({
-				type: HTMLTokenType.Text,
-				text: string.slice(lastIndex, match.index)
-			})
+			let text = trim(string.slice(lastIndex, match.index))
+			if (text) {
+				tokens.push({
+					type: HTMLTokenType.Text,
+					text
+				})
+			}
 		}
 
 		lastIndex = tagRE.lastIndex
 		
-		// Ignore existed comment nodes
-		// An issue here: if comment codes includes `${...}`,
-		// We just remove it but not the tempalte values,
-		// So the followed values will be used to fill the wrong holes.
 		if (piece[1] === '!') {
 			continue
 		}
@@ -70,11 +76,43 @@ export function parseToHTMLTokens(string: string) {
 	}
 
 	if (lastIndex < string.length) {
-		tokens.push({
-			type: HTMLTokenType.Text,
-			text: string.slice(lastIndex)
-		})
+		let text = trim(string.slice(lastIndex))
+		if (text) {
+			tokens.push({
+				type: HTMLTokenType.Text,
+				text: string.slice(lastIndex)
+			})
+		}
 	}
 
 	return tokens
+}
+
+
+/**
+ * Join tokens that parsed from `parseToHTMLTokens` to HTML codes.
+ */
+export function joinHTMLTokens(tokens: HTMLToken[]): string {
+	let codes = ''
+
+	for (let token of tokens) {
+		switch (token.type) {
+			case HTMLTokenType.StartTag:
+				let tagName = token.tagName!
+				let attributes = token.attributes!
+
+				codes += '<' + tagName + attributes + '>'
+				break
+
+			case HTMLTokenType.EndTag:
+				codes += `</${token.tagName}>`
+				break
+
+			case HTMLTokenType.Text:
+				codes += token.text!
+				break
+		}
+	}
+
+	return codes
 }

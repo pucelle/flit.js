@@ -1,4 +1,11 @@
+import {inheritTemplateResults} from "./template-inherit";
+
 export type TemplateType = 'html' | 'svg' | 'css' | 'text'
+
+export interface StringsAndValueIndexes {
+	strings: string[]
+	valueIndexes: number[]
+}
 
 
 /** HTML template literal that can be used to render or update a component. */
@@ -51,6 +58,30 @@ export class TemplateResult {
 
 		return text
 	}
+
+	/** 
+	 * Used for `TemplateResult` to merge root attributes and slot elements into super.
+	 * Sometimes you want to reuse super rendering result and add some classes and set soem slots,
+	 * but normally this can only work when instantiation, not working inside a new defined component.
+	 * Now using `CurrentRenderingResult.inherit(super.render())`, you can do this.
+	 * 
+	 * At beginning, we decided to implement this by rendering `<super-com>`,
+	 * but every time for every rendered component to update, it need to check the name.
+	 * We should makesure the rendering logic simple and easy to understand,
+	 * so finally we implement a new API `inherit` to call it manually.
+	 */
+	inherit(superResult: TemplateResult): TemplateResult {
+		return inheritTemplateResults(this, superResult)
+	}
+}
+
+
+/**
+ * Get the start tag of a `TemplateResult`.
+ */
+export function getStartTagOfTemplateResult(result: TemplateResult): string | null {
+	let match = result.strings[0].match(/<([\w-]+)/)
+	return match ? match[1] : null
 }
 
 
@@ -78,7 +109,7 @@ export function containsOrderedMarker(string: string): boolean {
 
 
 /**
- * Test if string contains `${flit:id}`.
+ * Test if string is just a `${flit:id}`.
  */
 export function beOrderedMarker(string: string): boolean {
 	return /^\{flit:\d+\}$/.test(string)
@@ -101,9 +132,7 @@ export function parseOrderedMarkers(string: string): {strings: string[] | null, 
 	}
 }
 
-/**
- * Split string contains `${flit:id}` into strings and valueIndexes.
- */
+/** Split string contains `${flit:id}` into strings and valueIndexes. */
 export function splitByOrderedMarkers(string: string): {strings: string[], valueIndexes: number[]} {
 	let re = /\{flit:(\d+)\}/g
 	let match: RegExpExecArray | null
@@ -124,26 +153,3 @@ export function splitByOrderedMarkers(string: string): {strings: string[], value
 		valueIndexes
 	}
 }
-
-
-// /**
-//  * Merge root attributes and slot elements from front result to the later one.
-//  * This is used when one component call super template by rendering `<super-name ...><tag slot="name">`.
-//  * Slot elements in previous result can only be used and processed in current result, not later ones.
-//  */
-// export function mergeTemplateResults(...results: TemplateResult[]): TemplateResult {
-	
-// 	let slots: {[key: string]: TemplateResult} = {}
-// 	for (let result of results) {
-
-// 	}
-// }
-
-// export const FlitOrderMarderRE = /\{flit:\d+\}/g
-
-// function parseTemplateResultToRootPropertiesAndSlots(result: TemplateResult): TemplateResult {
-// 	const VALUE_MARKER = '${flit}'
-
-// 	let string = result.strings.join(VALUE_MARKER)
-// 	let tokens = 
-// }

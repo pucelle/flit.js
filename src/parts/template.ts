@@ -40,7 +40,7 @@ export class Template {
 		this.parseParts(nodesInPlaces, places)
 
 		if (hasSlots && this.context) {
-			this.context.__hasSlotsToBeFilled = true
+			this.context.__foundSlotsWhenRendering()
 		}
 	}
 	
