@@ -1,5 +1,6 @@
 import {TemplateResult, Template, html} from './parts'
-import {Component, Context, getComponentConstructorByName} from './component'
+import {Component, Context} from './component/component'
+import {getComponentConstructorByName} from "./component/define";
 import {Watcher, globalWatcherSet} from './watcher'
 import {createComponent} from './element'
 import {DirectiveResult} from './directives'

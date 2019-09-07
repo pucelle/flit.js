@@ -1,4 +1,5 @@
-import {defineComponent, getComponent, Component, ComponentConstructor} from './component'
+import {} from './component/component'
+import {ComponentConstructor, getComponent, Component, defineComponent} from './component'
 import {ensureComponentStyle} from './style'
 
 

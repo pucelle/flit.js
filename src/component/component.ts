@@ -1,134 +1,19 @@
-import {Emitter} from "./libs/emitter"
-import {NodePart, TemplateResult} from './parts'
-import {enqueueComponentUpdate} from './queue'
-import {startUpdating, endUpdating, observeComTarget, clearDependencies, clearAsDependency, restoreAsDependency, targetMap} from './observer'
-import {Watcher, globalWatcherSet} from './watcher'
-import {getScopedClassNameSet} from './style'
-import {NodeAnchorType, NodeAnchor, NodeRange} from './libs/node-helper'
-import {DirectiveResult} from './directives'
-import {getClosestComponent} from './element'
-
-
-export interface ComponentConstructor {
-	new(...args: any[]): Component
-	style: ComponentStyle | null
-	properties: string[] | null
-}
-
-/** Returns the typeof T[P]. */
-export type ComponentStyle = TemplateResult | string | (() => TemplateResult | string)
+import {Emitter} from '../libs/emitter'
+import {NodePart, TemplateResult} from '../parts'
+import {enqueueComponentUpdate} from '../queue'
+import {startUpdating, endUpdating, observeComTarget, clearDependencies, clearAsDependency, restoreAsDependency, targetMap} from '../observer'
+import {Watcher} from '../watcher'
+import {getScopedClassNameSet} from '../style'
+import {NodeAnchorType, NodeAnchor} from '../libs/node-helper'
+import {DirectiveResult} from '../directives'
+import {getClosestComponent} from '../element'
+import {ComponentConstructor, ComponentStyle} from './define'
+import {setComponentAtElement} from './from-element'
+import {emitComponentCreatedCallbacks, onComponentConnected, onComponentDisconnected} from './life-cycle'
+import {SlotProcesser} from './slot'
 
 /** Context may be `null` when using `render` or `renderAndUpdate` */
 export type Context = Component | null
-
-
-/** To cache `name -> component constructor` */
-const componentConstructorMap: Map<string, ComponentConstructor> = new Map()
-
-/**
- * Define a component with specified name and class, called by `define()`.
- * @param name The component name, same with `define()`.
- * @param Com The component class.
- */
-export function defineComponent(name: string, Com: ComponentConstructor) {
-	if (componentConstructorMap.has(name)) {
-		console.warn(`You are trying to overwrite component definition "${name}"`)
-	}
-
-	// `properties` can be camel cased or dash cased.
-	if (Com.properties) {
-		for (let i = 0; i < Com.properties.length; i++) {
-			let prop = Com.properties[i]
-			if (/[A-Z]/.test(prop)) {
-				Com.properties[i] = prop.replace(/[A-Z]/g, (m0: string) => '-' + m0.toLowerCase())
-			}
-		}
-	}
-
-	componentConstructorMap.set(name, Com)
-}
-
-/**
- * Get component constructor from name, then we can instantiate it.
- * @param name The component name, same with `define()`.
- * @param Com The component class.
- */
-export function getComponentConstructorByName(name: string): ComponentConstructor | undefined {
-	return componentConstructorMap.get(name)
-}
-
-
-/** To cache callbacks after component initialized */
-const componentCreatedMap: WeakMap<HTMLElement, ((com: Component) => void)[]> = new WeakMap()
-
-/** Call callbacks after component instance created. */
-export function onComponentCreatedAt(el: HTMLElement, callback: (com: Component) => void) {
-	let callbacks = componentCreatedMap.get(el)
-	if (!callbacks) {
-		componentCreatedMap.set(el, (callbacks = []))
-	}
-	callbacks.push(callback)
-}
-
-/** may assign properties from `:props`, or bind component events from `@com-event` */
-export function emitComponentCreatedCallbacks(el: HTMLElement, com: Component) {
-	let callbacks = componentCreatedMap.get(el)
-	if (callbacks) {
-		for (let callback of callbacks) {
-			callback(com)
-		}
-		componentCreatedMap.delete(el)
-	}
-}
-
-
-/** To cache `el -> com` map */
-const elementComponentMap: WeakMap<HTMLElement, Component> = new WeakMap()
-
-/**
- * Get component instance from root element.
- * @param el The element to get component instance at.
- */
-export function getComponent(el: HTMLElement): Component | undefined {
-	return elementComponentMap.get(el)
-}
-
-/**
- * Get component instance from root element asynchronously.
- * @param el The element to get component instance at.
- */
-export function getComponentAsync(el: HTMLElement): Promise<Component | undefined> {
-	if (el.localName.includes('-')) {
-		let com = elementComponentMap.get(el)
-		if (com) {
-			return Promise.resolve(com)
-		}
-		else {
-			return new Promise(resolve => {
-				onComponentCreatedAt(el, resolve)
-			})
-		}
-	}
-	else {
-		return Promise.resolve(undefined)
-	}
-}
-
-
-/** To mark all the connected components */
-const componentSet: Set<Component> = new Set()
-
-/** Update all components, e.g., when current language changed. */
-export function update() {
-	for (let watcher of globalWatcherSet) {
-		watcher.update()
-	}
-
-	for (let com of componentSet) {
-		com.update()
-		com.__updateWatchers()
-	}
-}
 
 
 // Why not provide event interfaces to listen to:
@@ -181,21 +66,16 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 	 * or using `:ref=${this.onRef}` to call `this.onRef(refElement)` every time when the reference element updated.
 	 */
 
-	//Should be `Element` type, but in 99% scenarios it's HTMLElement.
+	// Should be `Element` type, but in 99% scenarios it's HTMLElement.
 	refs: {[key: string]: HTMLElement} = {}
 	slots: {[key: string]: HTMLElement[]} = {}
 
-	private __restSlotNodeRange: NodeRange | null = null
+	private __slotProcesser: SlotProcesser | null = null
 	private __rootPart: NodePart | null = null
 	private __updated: boolean = false
 	private __watchers: Set<Watcher> | null = null
 	private __connected: boolean = true
 
-	// When updated inner templates and found there are slots need to be filled, This value will become `true`.
-	// Why not just move slots into template fragment?
-	//   1. It will trigger `connectedCallback` when append into fragment.
-	//   2. To handle all `<slot>` elements in one query would be better.
-	__hasSlotsToBeFilled: boolean = false
 
 	constructor(el: HTMLElement) {
 		super()
@@ -204,13 +84,13 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 	}
 
 	__emitCreated() {
-		elementComponentMap.set(this.el, this)
+		setComponentAtElement(this.el, this)
 		emitComponentCreatedCallbacks(this.el, this)
 		this.onCreated()
 
-		// Must parse here, the slot elements may will be removed soon and use them later,
-		// parse them here will remove slot element so they will not be connected.
-		this.__initSlotNodes()
+		if (this.el.childNodes.length > 0) {
+			this.__slotProcesser = new SlotProcesser(this)
+		}
 
 		// A typescript issue here:
 		// We accept an `Events` and union it with type `ComponentEvents`,
@@ -222,32 +102,6 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 		// But finally this was resolved by a newly defined type `ExtendEvents` in `emitter.ts`.
 		
 		// this.emit('created')
-	}
-
-	// Must cache slot nodes before rendering,
-	// Because it may firstly rendered as text, if we don't cache them,
-	// original child nodes will be removed and can't been restored.
-	// So when new rendering requires slot nodes, error happens.
-	private __initSlotNodes() {
-		if (this.el.children.length > 0) {
-			// We only check `[slot]` in the children, or:
-			// <com1><com2><el slot="for com2"></com2></com1>
-			// it will cause `slot` for `com2` was captured by `com1`.
-			for (let el of [...this.el.children]) {
-				let slotName = el.getAttribute('slot')!
-				if (slotName) {
-					let els = this.slots[slotName]
-					if (!els) {
-						els = this.slots[slotName] = []
-					}
-					els.push(el as HTMLElement)
-
-					// Avoid been treated as slot element again after moved into a component
-					el.removeAttribute('slot')
-					el.remove()
-				}
-			}
-		}
 	}
 
 	__emitConnected() {
@@ -271,7 +125,7 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 		// and they will not been updated finally as expected.
 		this.update()
 		this.onConnected()
-		componentSet.add(this)
+		onComponentConnected(this)
 	}
 
 	__emitDisconnected() {
@@ -289,7 +143,7 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 
 		this.__connected = false
 		this.onDisconnected()
-		componentSet.delete(this)
+		onComponentDisconnected(this)
 	}
 
 	__updateImmediately() {
@@ -299,27 +153,24 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 
 		startUpdating(this)
 		let result = this.render()
+		if (result instanceof TemplateResult) {
+
+		}
 		endUpdating(this)
 
 		if (this.__rootPart) {
 			this.__rootPart.update(result)
 		}
-
-		// You may choose to not overwrite `render()` to keep it returns `null` when you don't want to change it's child nodes.
 		else if (result !== null) {
-
-			// It's very import to cache rest nodes here, because child nodes may be removed in their `onCreated`.
-			// So here we cache them early before they were removed, so we can restore them in `__fillSlot`.
-			if (this.el.childNodes.length > 0) {
-				this.__initRestSlotRange()
+			if (this.__slotProcesser) {
+				this.__slotProcesser.initRestSlotRange()
 			}
 
 			this.__rootPart = new NodePart(new NodeAnchor(this.el, NodeAnchorType.Root), result, this)
 		}
 
-		if (this.__hasSlotsToBeFilled) {
-			this.__fillSlots()
-			this.__hasSlotsToBeFilled = false
+		if (this.__slotProcesser) {
+			this.__slotProcesser.mayFillSlots()
 		}
 
 		let isFirstlyUpdate = !this.__updated
@@ -331,29 +182,17 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 		this.onUpdated()
 	}
 
-	private __initRestSlotRange() {
-		let fragment = document.createDocumentFragment()
-		fragment.append(...this.el.childNodes)
-		this.__restSlotNodeRange = new NodeRange(fragment)
-	}
-
-	private __fillSlots() {
-		let slots = this.el.querySelectorAll('slot')
-
-		for (let slot of slots) {
-			let slotName = slot.getAttribute('name')
-			if (slotName) {
-				if (this.slots && this.slots[slotName]) {
-					slot.replaceWith(...this.slots[slotName]!)
-				}
-			}
-			else if (this.__restSlotNodeRange) {
-				slot.replaceWith(this.__restSlotNodeRange.getFragment())
-			}
+	/** May be called in rendering, so we can avoid checking slot elements when no slot rendered. */
+	__foundSlotsWhenRendering() {
+		if (this.__slotProcesser) {
+			this.__slotProcesser.needToFillSlotsLater()
 		}
 	}
 
-	/** Child class should implement this method, normally returns html`...` or string. */
+	/** 
+	 * Child class should implement this method, normally returns html`...` or string.
+	 * You can choose to not overwrite `render()` to keep it returns `null` when you don't want to render any child nodes.
+	 */
 	protected render(): TemplateResult | string | DirectiveResult | null {
 		return null
 	}

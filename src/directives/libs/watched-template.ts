@@ -1,4 +1,4 @@
-import {Context} from '../../component'
+import {Context} from '../../component/component'
 import {Template, TemplateResult} from '../../parts'
 import {Watcher} from '../../watcher'
 
