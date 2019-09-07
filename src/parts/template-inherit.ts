@@ -134,11 +134,11 @@ function assignRootPropertiesAndSlotsTo(tokens: HTMLToken[], attributes: string,
 }
 
 function outOuterNestingTokens(tokens: HTMLToken[], startTagIndex: number): HTMLToken[] {
-	return tokens.splice(startTagIndex, findEndTagIndex(tokens, startTagIndex) + 1)
+	return tokens.splice(startTagIndex, findEndTagIndex(tokens, startTagIndex) + 1 - startTagIndex)
 }
 
 function outInnerNestingTokens(tokens: HTMLToken[], startTagIndex: number): HTMLToken[] {
-	return tokens.splice(startTagIndex + 1, findEndTagIndex(tokens, startTagIndex))
+	return tokens.splice(startTagIndex + 1, findEndTagIndex(tokens, startTagIndex) - 1 - startTagIndex)
 }
 
 function findEndTagIndex(tokens: HTMLToken[], startTagIndex: number): number {
