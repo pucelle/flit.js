@@ -15,27 +15,16 @@ import {SlotProcesser} from './slot'
 /** Context may be `null` when using `render` or `renderAndUpdate` */
 export type Context = Component | null
 
+export interface ComponentEvents {
+	// created: not supports, you may just get component and do something.
+	ready: () => void
+	updated: () => void
+	connected: () => void
+	disconnected: () => void
+}
 
-// Why not provide event interfaces to listen to:
-// There are event functions like `onCreated` to overwrite,
-// you should implement the logic in them,
-// it's easier to manage since they are inside component's codes.
 
-// You can easily know when these events are triggered.
-//   created: just get component and do something.
-//   ready: watch properties using in `render` for once.
-//   updated: watch properties using in `render`.
-//   connected: in where element was inserted into document.
-//   disconnedted: in where element was removed.
-
-// What about `updated` event?
-// `updated` is not semantic enough, you know it's updated, but not what is truly updated.
-// You may need to do something like adjusting outer component's position,
-// the best way to do so is to know when it should be updated.
-// E.g., The component updating because the data flow into it from the outer component,
-// according to the `:prop...` in outer `render()` function, then you should do it in outer `onUpdated`.
-
-export abstract class Component<Events = any> extends Emitter<Events> {
+export abstract class Component<Events = any> extends Emitter<Events & ComponentEvents> {
 
 	/**
 	 * The static `style` property contains style text used as styles for current component.
@@ -92,7 +81,7 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 			this.__slotProcesser = new SlotProcesser(this)
 		}
 
-		// A typescript issue here:
+		// A typescript issue here if we want to infer emitter arguments:
 		// We accept an `Events` and union it with type `ComponentEvents`,
 		// the returned type for `rendered` property will become `Events['rendered'] & () => void`,
 		// `Parmaters<...>` of it will return the arguments of `Events['rendered']`.
@@ -125,6 +114,7 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 		// and they will not been updated finally as expected.
 		this.update()
 		this.onConnected()
+		this.emit('connected')
 		onComponentConnected(this)
 	}
 
@@ -143,6 +133,7 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 
 		this.__connected = false
 		this.onDisconnected()
+		this.emit('disconnected')
 		onComponentDisconnected(this)
 	}
 
@@ -176,10 +167,12 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 		let isFirstlyUpdate = !this.__updated
 		if (isFirstlyUpdate) {
 			this.onReady()
+			this.emit('ready')
 			this.__updated = true
 		}
 		
 		this.onUpdated()
+		this.emit('updated')
 	}
 
 	/** May be called in rendering, so we can avoid checking slot elements when no slot rendered. */
@@ -273,9 +266,12 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 		}
 	}
 
-	/** Watch return value of function and trigger callback with this value as argument after it changed. */
+	/** 
+	 * Watch return value of function and trigger callback with this value as argument after it changed.
+	 * Will set callback scope as this.
+	 */
 	watch<T>(fn: () => T, callback: (value: T) => void): () => void {
-		let watcher = new Watcher(fn, callback)
+		let watcher = new Watcher(fn, callback.bind(this))
 		this.__addWatcher(watcher)
 
 		return () => {
@@ -284,10 +280,13 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 		}
 	}
 
-	/** Watch return value of function and trigger callback with this value as argument later and after it changed.. */
+	/** 
+	 * Watch return value of function and trigger callback with this value as argument later and after it changed.
+	 * Will set callback scope as this.
+	 */
 	watchImmediately<T>(fn: () => T, callback: (value: T) => void): () => void {
-		let watcher = new Watcher(fn, callback)
-		callback(watcher.value)
+		let watcher = new Watcher(fn, callback.bind(this))
+		callback.call(this, watcher.value)
 		this.__addWatcher(watcher)
 
 		return () => {
@@ -296,10 +295,13 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 		}
 	}
 
-	/** Watch return value of function and trigger callback with this value as argument. Trigger callback for only once. */
+	/** 
+	 * Watch return value of function and trigger callback with this value as argument. Trigger callback for only once.
+	 * Will set callback scope as this.
+	 */
 	watchOnce<T>(fn: () => T, callback: (value: T) => void): () => void {
 		let wrappedCallback = (value: T) => {
-			callback(value)
+			callback.call(this, value)
 			disconnect()
 		}
 
@@ -314,11 +316,14 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 		return disconnect
 	}
 
-	/** Watch return value of function and trigger callback with this value as argument. Trigger callback for only once. */
+	/** 
+	 * Watch return value of function and trigger callback with this value as argument. Trigger callback for only once.
+	 * Will set callback scope as this.
+	 */
 	watchUntil<T>(fn: () => T, callback: () => void): () => void {
 		let wrappedCallback = (value: T) => {
 			if (value) {
-				callback()
+				callback.call(this)
 				disconnect()
 			}
 		}
@@ -328,7 +333,7 @@ export abstract class Component<Events = any> extends Emitter<Events> {
 		let watcher = new Watcher(fn, wrappedCallback)
 		if (watcher.value) {
 			watcher.disconnect()
-			callback()
+			callback.call(this)
 			disconnect = () => {}
 		}
 		else {
