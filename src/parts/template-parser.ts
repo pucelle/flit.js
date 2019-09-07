@@ -1,6 +1,6 @@
 import {TemplateType, joinWithOrderedMarkers, containsOrderedMarker, parseOrderedMarkers, splitByOrderedMarkers} from './template-result'
 import {getScopedClassNameSet} from '../style'
-import {cloneAttributes} from './libs/util'
+import {cloneAttributes, trim} from './libs/util'
 import {parseToHTMLTokens, HTMLTokenType} from './libs/html-token'
 
 
@@ -210,7 +210,7 @@ class HTMLSVGTemplateParser {
 				this.nodeIndex += 1
 			}
 
-			text = strings.join('<!--->')
+			text = strings.map(trim).join('<!--->')
 		}
 
 		return text
