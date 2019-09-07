@@ -17,12 +17,15 @@ const proxyHandler = {
 		let value: any = com[prop]
 
 		// It doesn't check if own property exists here.
+		// It's common that to declare `property!: Type` in Typescript,
+		// Which has no initialize value but still need to be observed.
 		mayAddComDependency(com, prop)
 
 		if (value && typeof value === 'object') {
 			if (proxyMap.has(value)) {
 				return proxyMap.get(value)
 			}
+			
 			// Here means it will only observe more data when updating.
 			// If we choose to always observe every value, so many proxies will be generated.
 			// Only generate new proxy only when updating still have a little problem.
@@ -31,20 +34,6 @@ const proxyHandler = {
 				return observeTarget(value)
 			}
 		}
-
-		// After think more about it, we decided to drop supports for observing getter.
-		// else {
-		// 	// If the name is a getter in obj, calling `obj[name]` will not pass proxy.
-		// 	// so we need to find the getter descriptor firstly.
-		// 	let comProxy = proxyMap.get(com)
-		// 	let descriptor = getPropertyDescriptor(com, prop)
-		// 	if (descriptor && descriptor.get) {
-		// 		value = descriptor.get.call(comProxy)
-		// 	}
-		// 	else {
-		// 		value = com[prop]
-		// 	}
-		// }
 
 		return value
 	},

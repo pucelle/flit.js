@@ -6,4 +6,4 @@
 export {observe, observeTarget, targetMap, proxyMap, } from './shared'
 export {observeComTarget} from './observe-com'
 export {startUpdating, endUpdating, clearDependencies, clearAsDependency, restoreAsDependency} from './dependency'
-
+export {observeGetter} from './observe-getter'
