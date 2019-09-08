@@ -16,10 +16,22 @@ import {SlotProcesser} from './slot'
 export type Context = Component | null
 
 export interface ComponentEvents {
-	// created: not supports, you may just get component and do something.
+	// Not supports, you may just get component and do something.
+	// created: () => void
+	
 	ready: () => void
+
+	// After data updated, and will reander in next tick.
 	updated: () => void
+
+	// After data rendered, you can visit element layouts now.
+	// We dropped the support of it because it equals running `onRenderComplete` or `renderComplete` in `updated`.
+	//rendered: () => void
+
+	// After element been inserted into body, include the first time.
 	connected: () => void
+
+	// After element been removed from body, include the first time.
 	disconnected: () => void
 }
 
@@ -144,9 +156,6 @@ export abstract class Component<Events = any> extends Emitter<Events & Component
 
 		startUpdating(this)
 		let result = this.render()
-		if (result instanceof TemplateResult) {
-
-		}
 		endUpdating(this)
 
 		if (this.__rootPart) {
@@ -173,6 +182,11 @@ export abstract class Component<Events = any> extends Emitter<Events & Component
 		
 		this.onUpdated()
 		this.emit('updated')
+
+		// onRenderComplete(() => {
+		// 	this.onRendered()
+		// 	this.emit('rendered')
+		// })
 	}
 
 	/** May be called in rendering, so we can avoid checking slot elements when no slot rendered. */
@@ -227,6 +241,12 @@ export abstract class Component<Events = any> extends Emitter<Events & Component
 	 * Will keep updating other components, so please don't check computed style on elements.
 	 */
 	protected onUpdated() {}
+
+	/** 
+	 * Called after all the data updated and elements have rendered.
+	 * You can visit elemenet layout properties now.
+	 */
+	protected onRendered() {}
 
 	/** 
 	 * Called when root element was inserted into document.

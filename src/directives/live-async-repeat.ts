@@ -14,7 +14,7 @@ export interface LiveAsyncRepeatOptions<Item> {
 	ref?: (dir: LiveAsyncRepeatDirective<Item>) => void	// Not updatable
 	dataGetter: PageDataGetter<Item>
 	dataCount: number | Promise<number> | (() => (number | Promise<number>))
-	onrendered?: (data: (Item | null)[], index: number) => void
+	onUpdated?: (data: (Item | null)[], index: number) => void
 }
 
 // Compare to `TempalteFn`, the `item` can accpet `null` as argument when data is still loading.
@@ -76,8 +76,8 @@ export class LiveAsyncRepeatDirective<Item> extends LiveRepeatDirective<Item> {
 			this.averageItemHeight = options.averageItemHeight
 		}
 
-		if (options.onrendered) {
-			this.onrendered = options.onrendered
+		if (options.onUpdated) {
+			this.onUpdated = options.onUpdated
 		}
 
 		this.dataCacher.setDataGetter(options.dataGetter)

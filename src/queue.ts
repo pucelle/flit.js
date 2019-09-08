@@ -49,6 +49,7 @@ export function onRenderComplete(callback: () => void) {
 /** 
  * Returns a promise which will be resolved after rendered all the components in micro task queue.
  * Note that it was called in micro task queue, after `onRenderComplete` been called.
+ * So when you are implementing an common component, using `onRenderComplete` would be better.
  * Please don't call `await renderComplete()` for two times,
  * The second one will be called in a new `requestAnimationFrame` and browser will render before it.
  */

@@ -6,7 +6,7 @@ import {NodeAnchor} from '../libs/node-helper'
 import {on} from '../dom-event'
 import {Watcher} from '../watcher'
 import {RepeatDirective} from './repeat'
-import {onRenderComplete, renderComplete} from '../queue'
+import {onRenderComplete} from '../queue'
 import {binaryFindIndexToInsert, ScrollerClientRect, throttleByAnimationFrame} from './libs/util'
 import {observe} from '../observer'
 
@@ -17,7 +17,7 @@ export interface LiveRepeatOptions<Item> {
 	averageItemHeight?: number	// Not updatable
 	ref?: (dir: LiveRepeatDirective<Item>) => void	// Not updatable
 	data: Iterable<Item> | null
-	onrendered?: (data: Item[], index: number) => void
+	onUpdated?: (data: Item[], index: number) => void	// If you want `onRendered`, just using `onRenderComplete` in `onUpdated.`
 }
 
 
@@ -80,7 +80,7 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 	protected lastTopOfKeepPositionElement: number = -1
 
 	/** We may want to do something with the currently rendered results, link loading screenshots... */
-	protected onrendered: ((data: Item[], index: number) => void) | null = null
+	protected onUpdated: ((data: Item[], index: number) => void) | null = null
 
 	/** Whole data from options. */
 	private rawData: Item[] | null = null
@@ -156,8 +156,8 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 			this.averageItemHeight = options.averageItemHeight
 		}
 		
-		if (options.onrendered) {
-			this.onrendered = options.onrendered
+		if (options.onUpdated) {
+			this.onUpdated = options.onUpdated
 		}
 
 		if (options.data !== undefined) {
@@ -203,33 +203,33 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 	protected async updateData(data: Item[]) {
 		super.updateData(data)
 
-		// `renderComplete` is absolutely required,
+		// `onRenderComplete` is absolutely required,
 		// we can makesure that the component are rendered only after inserted into document,
 		// but directive may be still in fragment when was initialized using `render`.
-		await renderComplete()
+		onRenderComplete(() => {
+			if (data.length > 0) {
+				if (!this.renderPageCountChecked && this.mayDoubleRenderPageCount()) {
+					this.update()
+					return
+				}
 
-		if (this.onrendered) {
-			this.onrendered(this.data, this.startIndex)
-		}
+				if (!this.averageItemHeight) {
+					this.measureAverageItemHeight()
+					this.updateSliderPosition()
+				}
 
-		if (data.length > 0) {
-			if (!this.renderPageCountChecked && this.mayDoubleRenderPageCount()) {
-				this.update()
-				return
+				if (this.needToApplyStartIndex && this.averageItemHeight) {
+					this.scroller.scrollTop = this.averageItemHeight * this.startIndex || 0
+					this.needToApplyStartIndex = false
+				}
+				else {
+					this.adjustScrollPosition()
+				}
 			}
+		})
 
-			if (!this.averageItemHeight) {
-				this.measureAverageItemHeight()
-				this.updateSliderPosition()
-			}
-
-			if (this.needToApplyStartIndex && this.averageItemHeight) {
-				this.scroller.scrollTop = this.averageItemHeight * this.startIndex || 0
-				this.needToApplyStartIndex = false
-			}
-			else {
-				this.adjustScrollPosition()
-			}
+		if (this.onUpdated) {
+			this.onUpdated(this.data, this.startIndex)
 		}
 	}
 

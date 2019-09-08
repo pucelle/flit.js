@@ -1,5 +1,5 @@
 import {once, off} from './dom-event'
-import {renderComplete} from './queue'
+import {onRenderComplete} from './queue'
 
 
 export type TransitionEasing = keyof typeof CUBIC_BEZIER_EASINGS | 'linear'
@@ -315,29 +315,29 @@ export class Transition {
 
 		// Here to makesure rendering complete for current frame,
 		// Then the next `requestAnimationFrame` will be called for a new frame.
-		await renderComplete()
+		onRenderComplete(() => {
+			requestAnimationFrame(() => {
+				if (canceled) {
+					el.classList.remove(className, className + '-from')
+					return
+				}
 
-		requestAnimationFrame(() => {
-			if (canceled) {
-				el.classList.remove(className, className + '-from')
-				return
-			}
+				if (duration) {
+					el.style.transitionDuration = ''
+				}
 
-			if (duration) {
-				el.style.transitionDuration = ''
-			}
+				if (easing) {
+					el.style.transitionTimingFunction = ''
+				}
 
-			if (easing) {
-				el.style.transitionTimingFunction = ''
-			}
+				el.style.transition = ''
+				el.classList.remove(className + '-from')
+				el.classList.add(className + '-to')
 
-			el.style.transition = ''
-			el.classList.remove(className + '-from')
-			el.classList.add(className + '-to')
-
-			this.onceTransitionEnd((finish: boolean) => {
-				el.classList.remove(className, className + '-to')
-				callback(finish)
+				this.onceTransitionEnd((finish: boolean) => {
+					el.classList.remove(className, className + '-to')
+					callback(finish)
+				})
 			})
 		})
 	}
