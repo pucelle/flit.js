@@ -21,17 +21,17 @@ export interface ComponentEvents {
 	
 	ready: () => void
 
-	// After data updated, and will reander in next tick.
+	/** After data updated, and will reander in next tick. */
 	updated: () => void
 
 	// After data rendered, you can visit element layouts now.
 	// We dropped the support of it because it equals running `onRenderComplete` or `renderComplete` in `updated`.
-	//rendered: () => void
+	// rendered: () => void
 
-	// After element been inserted into body, include the first time.
+	/** After element been inserted into body, include the first time. */
 	connected: () => void
 
-	// After element been removed from body, include the first time.
+	/** After element been removed from body, include the first time. */
 	disconnected: () => void
 }
 
