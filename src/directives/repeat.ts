@@ -316,7 +316,8 @@ export class RepeatDirective<Item> implements Directive {
 
 /**
  * Gerenate repeat elements, it will reuse elements as much as possible when data changed.
- * Currently the repeat directive uses rendered elements by item object, not by `key`.
+ * Currently the repeat directive reuses rendered elements by repeat data items, not `key` can be specified.
+ * If data items have changed and you do need to reuse elements by a `key`, try repeat the `key` values.
  * @param items The iterable data, each item in it will pass to `templateFn.`
  * @param templateFn The fucntion which will return a template from one iterable data and index position.
  * @param options The transition options, it can be a transition name, property or properties, or {transition, enterAtStart}.

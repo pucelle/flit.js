@@ -20,6 +20,11 @@ export interface LiveRepeatOptions<Item> {
 	onUpdated?: (data: Item[], index: number) => void	// If you want `onRendered`, just using `onRenderComplete` in `onUpdated.`
 }
 
+interface PositionToKepp {
+	index: number
+	lastTop: number
+}
+
 
 // Benchmark about using static layout or absolute layout: https://jsperf.com/is-absolute-layout-faster
 
@@ -63,7 +68,10 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 	// Only multiple `renderPageCount` for at most once since it will cause additional relayout.
 	protected renderPageCountChecked: boolean = false
 
-	/** `startIndex` can only be set for once from `options`. */
+	/** 
+	 * `startIndex` can only be set for once from `options`.
+	 * Otherwise you should call `setStartIndex`, then `needToApplyStartIndex` will be set to true and wait for next rendering.
+	 */
 	protected needToApplyStartIndex: boolean = false
 
 	/** 
@@ -74,10 +82,13 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 
 	/** 
 	 * When we scrolled up or down, we don't know about the height of just inserted or removed elements.
-	 * So we need this property to specify the element in the index, and keep it's scrolling position by adjusting.
+	 * So we need this property to specify the element in the index, and keep it's scrolling position
+	 * by adjusting `marginTop` after new date rendered .
 	 */
-	protected indexToKeepPosition: number = -1
-	protected lastTopOfKeepPositionElement: number = -1
+	protected positionToKeep: PositionToKepp | null = null
+
+	/** How many pxs adding to `marginTop` currently. */
+	protected lastAdjustedTopDiff: number = 0
 
 	/** We may want to do something with the currently rendered results, link loading screenshots... */
 	protected onUpdated: ((data: Item[], index: number) => void) | null = null
@@ -96,8 +107,8 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 		
 		if (!this.slider || !this.scroller || this.scroller.children.length !== 1) {
 			throw new Error(`"liveRepeat" must be contained in the struct like "
-				<div style="overflow: auto | scroll">
-					<div>
+				<div style="overflow: auto | scroll" title="as a scroll parent">
+					<div title="as a scroll slider">
 						\${liveRepeat(...)}
 					</div>
 				</div>
@@ -269,7 +280,7 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 			countAfterEnd = Math.max(0, totalCount - endIndex)
 		}
 
-		this.slider.style.marginTop = this.averageItemHeight * countBeforeStart + 'px'
+		this.slider.style.marginTop = this.averageItemHeight * countBeforeStart + this.lastAdjustedTopDiff + 'px'
 		this.slider.style.marginBottom = this.averageItemHeight * countAfterEnd + 'px'
 	}
 
@@ -318,51 +329,50 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 	}
 
 	private adjustScrollPosition() {
-		let oldTop = this.lastTopOfKeepPositionElement
-
-		if (this.indexToKeepPosition !== -1 && oldTop !== -1) {
-			let newTop = this.getTopOfKeepPositionElement()
-			if (newTop !== undefined) {
-				let topDiff = oldTop - newTop
+		if (this.positionToKeep) {
+			let oldTop = this.positionToKeep.lastTop
+			let newTop = this.getElementTopOfIndex(this.positionToKeep.index)
+			if (newTop > -1) {
+				let topDiffAfterAdjust = oldTop - newTop
 				
-				// If all items have same height, `topDiff` will always be `0` or very close to it.
-				// Never update `scroller.scrollTop`, it will cause unexpected scrolling,
-				// because scroll events works on a `passive` mode.
-				if (topDiff !== 0) {
-					this.slider.style.marginTop = this.averageItemHeight * this.startIndex + topDiff + 'px'
+				// If all items have same height, and `averageItemHeight` was right setted,
+				// `topDiff` will always be `0` or very close to it.
+
+				// But if this now match, we need to adjust scroll position to make it seems
+				// `scrolling smoothly` - no flushing of any elements.
+
+				// Not never update `scroller.scrollTop`, it will cause unexpected scrolling
+				// since scroll events works on a `passive` mode.
+				if (Math.abs(topDiffAfterAdjust) > 10) {
+					let topDiffToAdjust = this.lastAdjustedTopDiff + topDiffAfterAdjust
+					this.lastAdjustedTopDiff = topDiffToAdjust
+					this.slider.style.marginTop = this.averageItemHeight * this.startIndex + topDiffToAdjust + 'px'
+				}
+			}
+
+			this.positionToKeep = null
+		}
+
+		// The rendering result may be 'short' and can't cover viewport, so we need to recheck it.
+		// Here if we adjusted `marginTop`, it will trigger a new `scroll` event and then trigger another `updateToCover`.
+	}
+
+	private getElementTopOfIndex(index: number): number {
+		let wtem = this.wtems[index - this.startIndex]
+		if (wtem) {
+			let el = wtem.template.range.getFirstElement()
+			if (el) {
+				// slider can move, we need to relative to a not always move element
+				if (el.offsetParent === this.slider) {
+					return el.offsetTop + this.slider.offsetTop
+				}
+				else {
+					return el.offsetTop
 				}
 			}
 		}
 
-		// The rendering result may be 'short' and can't cover viewport, so we need to recheck it.
-		// It will trigger a new `scroll` event since we just updated placeholder heights.
-		// E.g., we scrolled up to trigger `update('up')` and newly rendered items can't cover scroller bottom,
-		// The only short is that when scrolled up for a little later, it will trigger another `update('up')`.
-	}
-
-	private getTopOfKeepPositionElement(): number | undefined {
-		if (this.indexToKeepPosition === -1) {
-			return undefined
-		}
-
-		let wtem = this.wtems[this.indexToKeepPosition - this.startIndex]
-		if (wtem) {
-			let el = wtem.template.range.getFirstElement()
-			if (el) {
-				return this.getTopOfElement(el)
-			}
-		}
-
-		return undefined
-	}
-
-	private getTopOfElement(el: HTMLElement) {
-		if (el.offsetParent === this.slider) {
-			return el.offsetTop + this.averageItemHeight * this.startIndex
-		}
-		else {
-			return el.offsetTop
-		}
+		return -1
 	}
 
 	private onScroll() {
@@ -381,31 +391,24 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 		}
 	}
 
-	// Direction means where we render new items, and also the direction that the value of `startIndex` will change to.
+	// `direction` means where we render new items, and also the direction that the value of `startIndex` will change to.
 	private updateToCover(direction: 'up' | 'down') {
-		let endIndex = -1
+		let startIndex = -1
+		let endIndex = -1	// Max value is `rawData.length`, it's a slice index, not true index of data. 
 		let visibleIndex = -1
 
 		if (direction === 'up') {
-			endIndex = visibleIndex = this.locateLastVisibleIndex()
+			visibleIndex = this.locateLastVisibleIndex()
+			endIndex = visibleIndex > -1 ? visibleIndex + 1 : 0
 		}
 		else {
-			let startIndex = visibleIndex = this.locateFirstVisibleIndex()
+			startIndex = visibleIndex = this.locateFirstVisibleIndex()
 			if (startIndex > -1) {
 				endIndex = startIndex + this.pageSize * this.renderPageCount
 			}
 		}
 
-		this.indexToKeepPosition = visibleIndex
-
-		// Must get this value here,
-		// later we will lost current `startIndex` and can't locate the element.
-		// Otherwise cache the element is not work,
-		// It may be moved after `updateItems`.
-		this.lastTopOfKeepPositionElement = visibleIndex > -1
-			? this.getTopOfElement(this.wtems[visibleIndex - this.startIndex].template.range.getFirstElement()!)
-			: -1
-		
+		// In this situation two rendering have no sharing part
 		if (endIndex === -1) {
 			if (direction === 'up') {
 				endIndex = Math.ceil((this.scroller.scrollTop + this.scroller.clientHeight) / this.averageItemHeight)
@@ -417,51 +420,39 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 		}
 
 		endIndex = this.limitEndIndex(endIndex)
+		startIndex = Math.max(0, endIndex - this.pageSize * this.renderPageCount)
 
-		this.startIndex = Math.max(0, endIndex - this.pageSize * this.renderPageCount)
+		// If `startIndex` is 0, no need adjust anything.
+		if (startIndex === 0) {
+			this.lastAdjustedTopDiff = 0
+		}
+		else if (visibleIndex >= startIndex && visibleIndex < endIndex) {
+			// Must get `positionToKeep` here,
+			// later we will lost current `startIndex` and can't locate the element in `visibleIndex`.
+			// Otherwise cache the visible element is not working,
+			// It may be moved after `updateItems` since we will reuse item.
+			this.positionToKeep = {
+				index: visibleIndex,
+				lastTop: this.getElementTopOfIndex(visibleIndex)
+			}
+		}
+
+		this.startIndex = startIndex
 		this.update()
 	}
 
 	private locateFirstVisibleIndex(): number {
-		let scrollerRect = new ScrollerClientRect(this.scroller)
-
-		let index = binaryFindIndexToInsert(this.wtems as WatchedTemplate<Item>[], (wtem) => {
-			let firstElement = wtem.template.range.getFirstElement()
-			if (firstElement) {
-				let rect = firstElement.getBoundingClientRect()
-				if (scrollerRect.isRectAbove(rect)) {
-					return 1
-				}
-				else if (scrollerRect.isRectBelow(rect)) {
-					return -1
-				}
-				else {
-					return -1
-				}
-			}
-			else {
-				return -1
-			}
-		})
-
-		if (index === this.data.length) {
-			return -1
-		}
-
-		let wtem = this.wtems[index]
-		let firstElement = wtem.template.range.getFirstElement()!
-
-		if (scrollerRect.isRectIn(firstElement.getBoundingClientRect())) {
-			return this.startIndex + index
-		}
-		
-		return -1
+		return this.locateVisibleIndex(true)
 	}
 
 	private locateLastVisibleIndex(): number {
+		return this.locateVisibleIndex(false)
+	}
+
+	private locateVisibleIndex(isFirst: boolean): number {
 		let scrollerRect = new ScrollerClientRect(this.scroller)
 
-		let index = binaryFindIndexToInsert(this.wtems as WatchedTemplate<Item>[], (wtem) => {
+		let visibleIndex = binaryFindIndexToInsert(this.wtems as WatchedTemplate<Item>[], (wtem) => {
 			let firstElement = wtem.template.range.getFirstElement()
 			if (firstElement) {
 				let rect = firstElement.getBoundingClientRect()
@@ -472,7 +463,7 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 					return -1
 				}
 				else {
-					return 1
+					return isFirst ? -1 : 1
 				}
 			}
 			else {
@@ -480,15 +471,23 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 			}
 		})
 
-		if (index === this.data.length) {
-			return -1
+		if (visibleIndex === this.data.length) {
+			visibleIndex -= 1
 		}
 
-		let wtem = this.wtems[index]
-		let firstElement = wtem.template.range.getFirstElement()!
+		let firstElement = this.wtems[visibleIndex].template.range.getFirstElement()!
+		let firstElementRect = firstElement.getBoundingClientRect()
 
-		if (scrollerRect.isRectIn(firstElement.getBoundingClientRect())) {
-			return this.startIndex + index
+		// The found index is just an enge index, may the element still outside the visible range.
+		if (scrollerRect.isRectAbove(firstElementRect)) {
+			visibleIndex += 1
+		}
+		else if (scrollerRect.isRectBelow(firstElementRect)) {
+			visibleIndex -= 1
+		}
+
+		if (visibleIndex >= 0 && visibleIndex < this.data.length) {
+			return this.startIndex + visibleIndex
 		}
 
 		return -1
