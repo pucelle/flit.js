@@ -4,7 +4,7 @@ import {DirectiveTransitionOptions} from './libs/directive-transition'
 import {WatchedTemplate, TemplateFn} from './libs/watched-template'
 import {NodeAnchor} from '../libs/node-helper'
 import {on} from '../dom-event'
-import {Watcher} from '../watcher'
+import {globalWatcherGroup} from '../watcher'
 import {RepeatDirective} from './repeat'
 import {onRenderComplete} from '../queue'
 import {binaryFindIndexToInsert, ScrollerClientRect, throttleByAnimationFrame} from './libs/util'
@@ -177,14 +177,10 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 	}
 
 	private watchAndAssignRawData(data: Iterable<Item> | null) {
-		if (data === this.lastData) {
-			return
-		}
-
-		this.lastData = data
-
 		if (!data) {
-			this.setDataWatcher(null)
+			if (this.unwatchData) {
+				this.unwatchData()
+			}
 			this.rawData = []
 			return
 		}
@@ -198,9 +194,7 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 			this.update()
 		}
 
-		let watcher = new Watcher(watchFn, onUpdate)
-		this.rawData = watcher.value
-		this.setDataWatcher(watcher)
+		this.unwatchData = (this.context || globalWatcherGroup).watchImmediately(watchFn, onUpdate)
 	}
 
 	protected async update() {

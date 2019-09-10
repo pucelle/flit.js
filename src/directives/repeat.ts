@@ -1,5 +1,5 @@
 import {defineDirective, Directive, DirectiveResult} from './define'
-import {Watcher, globalWatcherSet} from '../watcher'
+import {globalWatcherGroup} from '../watcher'
 import {Context} from '../component'
 import {DirectiveTransition, DirectiveTransitionOptions} from './libs/directive-transition'
 import {WatchedTemplate, TemplateFn} from './libs/watched-template'
@@ -14,9 +14,8 @@ export class RepeatDirective<Item> implements Directive {
 	protected templateFn!: TemplateFn<Item>
 	protected transition!: DirectiveTransition
 	protected data: Item[] = []
-	protected lastData: Iterable<Item> | null = null
 	protected wtems: WatchedTemplate<Item>[] = []
-	protected dataWatcher: Watcher<Item[]> | null = null
+	protected unwatchData: (() => void) | null = null
 	protected firstlyMerge: boolean = true
 
 	/** 
@@ -32,14 +31,13 @@ export class RepeatDirective<Item> implements Directive {
 	}
 
 	private watchAndUpdateData(data: Iterable<Item> | null) {
-		if (data === this.lastData) {
-			return
-		}
-
-		this.lastData = data
+		// Here if `data` eauqls `lastData`, we still must update watchers.
+		// Bacause the old watcher may trigger another update and cause update for twice. 
 
 		if (!data) {
-			this.setDataWatcher(null)
+			if (this.unwatchData) {
+				this.unwatchData()
+			}
 			this.updateData([])
 			return
 		}
@@ -53,33 +51,7 @@ export class RepeatDirective<Item> implements Directive {
 			this.updateData(data)
 		}
 
-		let watcher = new Watcher(watchFn, onUpdate)
-		this.updateData(watcher.value)
-		this.setDataWatcher(watcher)
-	}
-
-	protected setDataWatcher(watcher: Watcher | null) {
-		if (this.dataWatcher) {
-			this.dataWatcher.disconnect()
-
-			if (this.context) {
-				this.context.__deleteWatcher(this.dataWatcher)
-			}
-			else {
-				globalWatcherSet.delete(this.dataWatcher)
-			}
-		}
-
-		if (watcher) {
-			if (this.context) {
-				this.context.__addWatcher(watcher)
-			}
-			else {
-				globalWatcherSet.add(watcher)
-			}
-		}
-
-		this.dataWatcher = watcher
+		this.unwatchData = (this.context || globalWatcherGroup).watchImmediately(watchFn, onUpdate)
 	}
 
 	canMergeWith(_data: Iterable<Item>, templateFn: TemplateFn<Item>): boolean {
