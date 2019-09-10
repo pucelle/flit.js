@@ -6,84 +6,6 @@ export type WatchFn = () => unknown
 export type WatcherCallback<T> = (value: T) => void
 
 
-/** A set to cache global watchers which not belongs to any  */
-export const globalWatcherSet: Set<Watcher> = new Set()
-
-
-/** Watch return value of function and trigger callback with this value as argument. */
-export function watch<T>(fn: () => T, callback: (value: T) => void): () => void {
-	let watcher = new Watcher(fn, callback)
-	globalWatcherSet.add(watcher)
-
-	return () => {
-		watcher.disconnect()
-		globalWatcherSet.delete(watcher)
-	}
-}
-
-
-/** Watch return value of function and trigger callback with this value as argument. */
-export function watchImmediately<T>(fn: () => T, callback: (value: T) => void): () => void {
-	let watcher = new Watcher(fn, callback)
-	callback(watcher.value)
-	globalWatcherSet.add(watcher)
-
-	return () => {
-		watcher.disconnect()
-		globalWatcherSet.delete(watcher)
-	}
-}
-
-
-/** Watch return value of function and trigger callback with this value as argument. Run callback for only once. */
-export function watchOnce<T>(fn: () => T, callback: (value: T) => void): () => void {
-	let wrappedCallback = (value: T) => {
-		callback(value)
-		unwatch()
-	}
-
-	let watcher = new Watcher(fn, wrappedCallback)
-	globalWatcherSet.add(watcher)
-
-	let unwatch = () => {
-		watcher.disconnect()
-		globalWatcherSet.delete(watcher)
-	}
-
-	return unwatch
-}
-
-
-/** Watch returned values of function and trigger callback if it becomes true. */
-export function watchUntil(fn: () => any, callback: () => void): () => void {
-	let wrappedCallback = (value: unknown) => {
-		if (value) {
-			callback()
-			unwatch
-		}
-	}
-
-	let unwatch: () => void
-
-	let watcher = new Watcher(fn, wrappedCallback)
-	if (watcher.value) {
-		watcher.disconnect()
-		callback()
-		unwatch = () => {}
-	}
-	else {
-		globalWatcherSet.add(watcher)
-
-		unwatch = () => {
-			watcher.disconnect()
-			globalWatcherSet.delete(watcher)
-		}
-	}
-
-	return unwatch
-}
-
-
 /** You need to know that when calling callback, the Watch doesn't ensure the watched datas are truly changed. */
 export class Watcher<T = any> {
 
@@ -146,7 +68,8 @@ export class Watcher<T = any> {
 	//   3. Update and then disconnect.
 	//
 	// So this will not happen.
-	// But we still need to avoid it by adding a `connected` property, because once update after disconnect, the watcher will have new dependencies and be reconnected. 
+	// But we still need to avoid it by adding a `connected` property,
+	// because once update after disconnect, the watcher will have new dependencies and be reconnected. 
 	disconnect() {
 		clearDependencies(this)
 		this.connected = false
@@ -158,3 +81,128 @@ export class Watcher<T = any> {
 		this.update()
 	}
 }
+
+
+/** 
+ * Used to manage several watchers that binded to a context or as global watchers.
+ * By this class, you can easily connect, disconnect, update all the watchers related.
+ */
+export class WatcherGroup {
+
+	private watchers: Set<Watcher> = new Set()
+
+	add(watcher: Watcher) {
+		this.watchers.add(watcher)
+	}
+
+	delete(watcher: Watcher) {
+		watcher.disconnect()
+		this.watchers!.delete(watcher)
+	}
+
+	connect() {
+		for (let watcher of this.watchers) {
+			watcher.connect()
+		}
+	}
+
+	disconnect() {
+		for (let watcher of this.watchers) {
+			watcher.disconnect()
+		}
+	}
+
+	update() {
+		if (this.watchers) {
+			for (let watcher of this.watchers) {
+				watcher.update()
+			}
+		}
+	}
+
+	watch<T>(fn: () => T, callback: (value: T) => void): () => void {
+		let watcher = new Watcher(fn, callback)
+		this.add(watcher)
+
+		return () => {
+			this.delete(watcher)
+		}
+	}
+
+	watchImmediately<T>(fn: () => T, callback: (value: T) => void): () => void {
+		let watcher = new Watcher(fn, callback)
+		callback.call(this, watcher.value)
+		this.add(watcher)
+
+		return () => {
+			this.delete(watcher)
+		}
+	}
+
+	watchOnce<T>(fn: () => T, callback: (value: T) => void): () => void {
+		let wrappedCallback = (value: T) => {
+			callback(value)
+			unwatch()
+		}
+
+		let watcher = new Watcher(fn, wrappedCallback)
+		this.add(watcher)
+
+		let unwatch = () => {
+			this.delete(watcher)
+		}
+
+		return unwatch
+	}
+
+	watchUntil<T>(fn: () => T, callback: () => void): () => void {
+		let wrappedCallback = (value: T) => {
+			if (value) {
+				callback()
+				unwatch()
+			}
+		}
+
+		let unwatch: () => void
+		let watcher = new Watcher(fn, wrappedCallback)
+
+		if (watcher.value) {
+			watcher.disconnect()
+			callback.call(this)
+			unwatch = () => {}
+		}
+		else {
+			this.add(watcher)
+
+			unwatch = () => {
+				this.delete(watcher)
+			}
+		}
+
+		return unwatch
+	}
+}
+
+export const globalWatcherGroup = new WatcherGroup()
+
+
+/** Watch return value of function and trigger callback with this value as argument. */
+export function watch<T>(fn: () => T, callback: (value: T) => void): () => void {
+	return globalWatcherGroup.watch(fn, callback)
+}
+
+/** Watch return value of function and trigger callback with this value as argument. */
+export function watchImmediately<T>(fn: () => T, callback: (value: T) => void): () => void {
+	return globalWatcherGroup.watchImmediately(fn, callback)
+}
+
+/** Watch return value of function and trigger callback with this value as argument. Run callback for only once. */
+export function watchOnce<T>(fn: () => T, callback: (value: T) => void): () => void {
+	return globalWatcherGroup.watchOnce(fn, callback)
+}
+
+/** Watch returned values of function and trigger callback if it becomes true. */
+export function watchUntil(fn: () => any, callback: () => void): () => void {
+	return globalWatcherGroup.watchUntil(fn, callback)
+}
+

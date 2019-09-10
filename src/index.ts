@@ -1,7 +1,7 @@
 export {ObservedBaseClass, ObservedEmitter} from './emitter'
 export {define, getClosestComponent} from './element'
 export {addGlobalStyle, updateStyles} from './style'
-export {render, renderAndWatch, renderComponent, appendTo} from './render'
+export {render, renderComponent, appendTo} from './render'
 export {html, css, svg, text, TemplateResult, Template} from './parts'
 export {Component, Context, update, getComponent, getComponentAsync} from './component'
 export {defineBinding, Binding, BindingResult, show, hide} from './bindings'

@@ -1,5 +1,5 @@
 import {Component} from './component'
-import {globalWatcherSet} from '../watcher'
+import {globalWatcherGroup} from '../watcher'
 
 
 /** To cache callbacks after component initialized */
@@ -37,14 +37,15 @@ export function onComponentDisconnected(com: Component) {
 	connectedComponentSet.delete(com)
 }
 
-/** Update all components, e.g., when current language changed. */
+/** Update all components, e.g., when language changed. */
 export function update() {
-	for (let watcher of globalWatcherSet) {
-		watcher.update()
-	}
+	globalWatcherGroup.update()
 
 	for (let com of connectedComponentSet) {
+		// Why didn't handle watcher group updating in `update`:
+		// Component collect dependencies from `render` and update it by `update`.
+		// While each watchers in watcher group do the similar thing.
 		com.update()
-		com.__updateWatchers()
+		com.__updateWatcherGroup()
 	}
 }

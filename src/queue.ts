@@ -3,7 +3,7 @@ import {Watcher} from './watcher'
 
 
 let componentSet: Set<Component> = new Set()
-let watchSet: Set<Watcher> = new Set()
+let watcherSet: Set<Watcher> = new Set()
 let afterRenderCallbacks: (() => void)[] = []
 let willUpdate = false
 let updatingWatchers: Watcher[] = []
@@ -24,8 +24,8 @@ export function enqueueComponentUpdate(com: Component) {
 
 export function enqueueWatcherUpdate(watcher: Watcher) {
 	// If updating watcher trigger another watcher or component, we should update it in the same update function.
-	if (!watchSet.has(watcher)) {
-		watchSet.add(watcher)
+	if (!watcherSet.has(watcher)) {
+		watcherSet.add(watcher)
 		updatingWatchers.push(watcher)
 	}
 
@@ -119,8 +119,8 @@ async function update() {
 		for (let i = 0; i < updatingWatchers.length; i++) {
 			let watcher = updatingWatchers[i]
 
-			// Delete it so it can be added again for at most once.
-			watchSet.delete(watcher)
+			// Delete it so it can be added again.
+			watcherSet.delete(watcher)
 
 			let updatedTimes = updatedTimesMap.get(watcher) || 0
 			updatedTimesMap.set(watcher, updatedTimes + 1)

@@ -2,7 +2,7 @@ import {Emitter} from '../libs/emitter'
 import {NodePart, TemplateResult} from '../parts'
 import {enqueueComponentUpdate} from '../queue'
 import {startUpdating, endUpdating, observeComTarget, clearDependencies, clearAsDependency, restoreAsDependency, targetMap} from '../observer'
-import {Watcher} from '../watcher'
+import {WatcherGroup} from '../watcher'
 import {getScopedClassNameSet} from '../style'
 import {NodeAnchorType, NodeAnchor} from '../libs/node-helper'
 import {DirectiveResult} from '../directives'
@@ -75,9 +75,8 @@ export abstract class Component<Events = any> extends Emitter<Events & Component
 	private __slotProcesser: SlotProcesser | null = null
 	private __rootPart: NodePart | null = null
 	private __updated: boolean = false
-	private __watchers: Set<Watcher> | null = null
+	private __watcherGroup: WatcherGroup | null = null
 	private __connected: boolean = true
-
 
 	constructor(el: HTMLElement) {
 		super()
@@ -113,10 +112,8 @@ export abstract class Component<Events = any> extends Emitter<Events & Component
 			// Must restore before updating, because the restored result may be changed when updating.
 			restoreAsDependency(targetMap.get(this)!)
 
-			if (this.__watchers) {
-				for (let watcher of this.__watchers) {
-					watcher.connect()
-				}
+			if (this.__watcherGroup) {
+				this.__watcherGroup.connect()
 			}
 
 			this.__connected = true
@@ -139,10 +136,8 @@ export abstract class Component<Events = any> extends Emitter<Events & Component
 		// So here need to pass component target but not proxy to clear dependencies.
 		clearAsDependency(targetMap.get(this)!)
 
-		if (this.__watchers) {
-			for (let watcher of this.__watchers) {
-				watcher.disconnect()
-			}
+		if (this.__watcherGroup) {
+			this.__watcherGroup.disconnect()
 		}
 
 		this.__connected = false
@@ -184,11 +179,13 @@ export abstract class Component<Events = any> extends Emitter<Events & Component
 		
 		this.onUpdated()
 		this.emit('updated')
+	}
 
-		// onRenderComplete(() => {
-		// 	this.onRendered()
-		// 	this.emit('rendered')
-		// })
+	/** Force to update all watchers binded to current context. */
+	__updateWatcherGroup() {
+		if (this.__watcherGroup) {
+			this.__watcherGroup.update()
+		}
 	}
 
 	/** May be called in rendering, so we can avoid checking slot elements when no slot rendered. */
@@ -265,41 +262,12 @@ export abstract class Component<Events = any> extends Emitter<Events & Component
 	protected onDisconnected() {}
 
 	/** 
-	 * Add a watcher to connected with current component.
-	 * So it will be disconnected after current component disconnected,
-	 * and connected again after current component connected.
-	 */
-	__addWatcher(watcher: Watcher) {
-		this.__watchers = this.__watchers || new Set()
-		this.__watchers.add(watcher)
-	}
-
-	/** Delete one watcher belongs to current component, `__watchers` must be exist. */
-	__deleteWatcher(watcher: Watcher) {
-		this.__watchers!.delete(watcher)
-	}
-
-	/** Update all the watchers, used at `updateComponents`. */
-	__updateWatchers() {
-		if (this.__watchers) {
-			for (let watcher of this.__watchers) {
-				watcher.update()
-			}
-		}
-	}
-
-	/** 
 	 * Watch return value of function and trigger callback with this value as argument after it changed.
 	 * Will set callback scope as this.
 	 */
 	watch<T>(fn: () => T, callback: (value: T) => void): () => void {
-		let watcher = new Watcher(fn, callback.bind(this))
-		this.__addWatcher(watcher)
-
-		return () => {
-			watcher.disconnect()
-			this.__watchers!.delete(watcher)
-		}
+		this.__watcherGroup = this.__watcherGroup || new WatcherGroup()
+		return this.__watcherGroup!.watch(fn, callback.bind(this))
 	}
 
 	/** 
@@ -307,14 +275,8 @@ export abstract class Component<Events = any> extends Emitter<Events & Component
 	 * Will set callback scope as this.
 	 */
 	watchImmediately<T>(fn: () => T, callback: (value: T) => void): () => void {
-		let watcher = new Watcher(fn, callback.bind(this))
-		callback.call(this, watcher.value)
-		this.__addWatcher(watcher)
-
-		return () => {
-			watcher.disconnect()
-			this.__deleteWatcher(watcher)
-		}
+		this.__watcherGroup = this.__watcherGroup || new WatcherGroup()
+		return this.__watcherGroup!.watchImmediately(fn, callback.bind(this))
 	}
 
 	/** 
@@ -322,20 +284,8 @@ export abstract class Component<Events = any> extends Emitter<Events & Component
 	 * Will set callback scope as this.
 	 */
 	watchOnce<T>(fn: () => T, callback: (value: T) => void): () => void {
-		let wrappedCallback = (value: T) => {
-			callback.call(this, value)
-			disconnect()
-		}
-
-		let watcher = new Watcher(fn, wrappedCallback)
-		this.__addWatcher(watcher)
-
-		let disconnect = () => {
-			watcher.disconnect()
-			this.__deleteWatcher(watcher)
-		}
-
-		return disconnect
+		this.__watcherGroup = this.__watcherGroup || new WatcherGroup()
+		return this.__watcherGroup!.watchOnce(fn, callback.bind(this))
 	}
 
 	/** 
@@ -343,31 +293,8 @@ export abstract class Component<Events = any> extends Emitter<Events & Component
 	 * Will set callback scope as this.
 	 */
 	watchUntil<T>(fn: () => T, callback: () => void): () => void {
-		let wrappedCallback = (value: T) => {
-			if (value) {
-				callback.call(this)
-				disconnect()
-			}
-		}
-
-		let disconnect: () => void
-
-		let watcher = new Watcher(fn, wrappedCallback)
-		if (watcher.value) {
-			watcher.disconnect()
-			callback.call(this)
-			disconnect = () => {}
-		}
-		else {
-			this.__addWatcher(watcher)
-
-			disconnect = () => {
-				watcher.disconnect()
-				this.__deleteWatcher(watcher)
-			}
-		}
-
-		return disconnect
+		this.__watcherGroup = this.__watcherGroup || new WatcherGroup()
+		return this.__watcherGroup!.watchUntil(fn, callback.bind(this))
 	}
 
 	/** returns scoped class name E `.name -> .name__com-name` */

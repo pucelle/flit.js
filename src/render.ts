@@ -1,7 +1,7 @@
 import {TemplateResult, Template, html} from './parts'
 import {Component, Context} from './component/component'
-import {getComponentConstructorByName} from "./component/define";
-import {Watcher, globalWatcherSet} from './watcher'
+import {getComponentConstructorByName} from './component/define'
+import {globalWatcherGroup} from './watcher'
 import {createComponent} from './element'
 import {DirectiveResult} from './directives'
 
@@ -22,7 +22,7 @@ export function render(codes: TemplateResult | DirectiveResult, context?: Contex
  * @param context The context you used when rendering.
  * @param onUpdate Called when update after referenced data changed. if new result can't merge with old, will pass a new fragment as argument.
  */
-export function render(renderFn: () => TemplateResult | DirectiveResult, context?: Context, onUpdate?: () => void): DocumentFragment
+export function render(renderFn: () => TemplateResult | DirectiveResult, context?: Context, onUpdate?: () => void): {fragment: DocumentFragment, unwatch: () => void}
 
 export function render(
 	codesOrRenderFn: TemplateResult | DirectiveResult | (() => TemplateResult | DirectiveResult),
@@ -30,7 +30,7 @@ export function render(
 	onUpdate?: () => void
 ) {
 	if (typeof codesOrRenderFn === 'function') {
-		return renderAndWatch(codesOrRenderFn, context, onUpdate).fragment
+		return renderAndWatch(codesOrRenderFn, context, onUpdate)
 	}
 	else {
 		return renderCodes(codesOrRenderFn, context)
@@ -48,30 +48,29 @@ function renderCodes(codes: TemplateResult | DirectiveResult, context: Context =
 	return fragment
 }
 
-export function renderAndWatch(renderFn: () => TemplateResult | DirectiveResult, context: Context = null, onUpdate?: () => void) {
-	let {fragment, watcher} = watchRenderFn(renderFn, context, onUpdate)
+function renderAndWatch(renderFn: () => TemplateResult | DirectiveResult, context: Context = null, onUpdate?: () => void) {
+	let template: Template
 
-	if (context) {
-		context.__addWatcher(watcher)
-	}
-	else {
-		globalWatcherSet.add(watcher)
-	}
+	let unwatch = (context || globalWatcherGroup).watchImmediately(renderFn, (result: TemplateResult | DirectiveResult) => {
+		if (result instanceof DirectiveResult) {
+			result = html`${result}`
+		}
 
-	let unwatch = () => {
-		watcher.disconnect()
+		if (template) {
+			template.merge(result)
 
-		if (context) {
-			context.__deleteWatcher(watcher)
+			if (onUpdate) {
+				onUpdate()
+			}
 		}
 		else {
-			globalWatcherSet.delete(watcher)
+			template = new Template(result, context)
 		}
-	}
+	})
 
 	return {
-		fragment,
-		unwatch
+		fragment: template!.range.getFragment(),
+		unwatch,
 	}
 }
 
@@ -96,14 +95,14 @@ export function renderComponent(codes: TemplateResult | string | DirectiveResult
  * @param context The context you used when rendering.
  * @param onUpdate Called when update after referenced data changed. if new result can't merge with old, will pass a new fragment as argument.
  */
-export function renderComponent(renderFn: () => TemplateResult | DirectiveResult, context?: Context, onUpdate?: () => void): Component | null
+export function renderComponent(renderFn: () => TemplateResult | DirectiveResult, context?: Context, onUpdate?: () => void): {component: Component, unwatch: () => void} | null
 
-export function renderComponent(codesOrFn: any, context: Context = null, onUpdate?: () => void): Component | null {
+export function renderComponent(codesOrFn: any, context: Context = null, onUpdate?: () => void) {
 	let fragment: DocumentFragment
-	let watcher: Watcher | undefined
+	let unwatch: (() => void) | null = null
 
 	if (typeof codesOrFn === 'function') {
-		({fragment, watcher} = watchRenderFn(codesOrFn, context, onUpdate))
+		({fragment, unwatch} = renderAndWatch(codesOrFn, context, onUpdate))
 	}
 	else {
 		fragment = render(codesOrFn, context)
@@ -113,49 +112,21 @@ export function renderComponent(codesOrFn: any, context: Context = null, onUpdat
 	if (firstElement) {
 		let Com = getComponentConstructorByName(firstElement.localName)
 		if (Com) {
-			let com = createComponent(firstElement, Com)
-
-			if (watcher) {
-				com.__addWatcher(watcher)
+			let component = createComponent(firstElement, Com)
+			if (unwatch) {
+				return {component, unwatch}
 			}
-
-			return com
+			else {
+				return component
+			}
 		}
 	}
 
-	if (watcher) {
-		watcher.disconnect()
+	if (unwatch) {
+		unwatch()
 	}
 
 	return null
-}
-
-function watchRenderFn(renderFn: () => TemplateResult | DirectiveResult, context: Context, onUpdate?: () => void) {
-	let template: Template
-
-	let watcher = new Watcher(renderFn, (result) => {
-		if (result instanceof DirectiveResult) {
-			result = html`${result}`
-		}
-
-		template.merge(result)
-
-		if (onUpdate) {
-			onUpdate()
-		}
-	})
-
-	let result = watcher.value
-	if (result instanceof DirectiveResult) {
-		result = html`${result}`
-	}
-
-	template = new Template(result, context)
-
-	return {
-		fragment: template.range.getFragment(),
-		watcher
-	}
 }
 
 
