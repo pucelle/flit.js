@@ -16,8 +16,9 @@ import {SlotProcesser} from './slot'
 export type Context = Component | null
 
 export interface ComponentEvents {
-	// Not supports, you may just get component and do something.
-	// created: () => void
+	// Normally no need to register `created` event, you may just get component and do something.
+	// The only usage of it is to handle something after all sequential `onCreated` called.
+	created: () => void
 	
 	ready: () => void
 
@@ -88,6 +89,7 @@ export abstract class Component<Events = any> extends Emitter<Events & Component
 		setComponentAtElement(this.el, this)
 		emitComponentCreatedCallbacks(this.el, this)
 		this.onCreated()
+		this.emit('created')
 
 		if (this.el.childNodes.length > 0) {
 			this.__slotProcesser = new SlotProcesser(this)
