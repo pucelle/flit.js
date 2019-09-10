@@ -30,14 +30,15 @@ export class RepeatDirective<Item> implements Directive {
 		this.transition = new DirectiveTransition(context)
 	}
 
-	private watchAndUpdateData(data: Iterable<Item> | null) {
+	private watchAndUpdateDataImmediately(data: Iterable<Item> | null) {
 		// Here if `data` eauqls `lastData`, we still must update watchers.
 		// Bacause the old watcher may trigger another update and cause update for twice. 
+		if (this.unwatchData) {
+			this.unwatchData()
+			this.unwatchData = null
+		}
 
 		if (!data) {
-			if (this.unwatchData) {
-				this.unwatchData()
-			}
 			this.updateData([])
 			return
 		}
@@ -61,7 +62,7 @@ export class RepeatDirective<Item> implements Directive {
 	merge(data: Iterable<Item> | null, templateFn: TemplateFn<Item>, options?: DirectiveTransitionOptions) {
 		this.templateFn = templateFn
 		this.transition.setOptions(options)
-		this.watchAndUpdateData(data)
+		this.watchAndUpdateDataImmediately(data)
 		this.firstlyMerge = false
 	}
 

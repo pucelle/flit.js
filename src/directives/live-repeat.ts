@@ -139,9 +139,8 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 		}
 
 		this.templateFn = templateFn
-		this.updateRenderOptions(options as LiveRepeatOptions<Item>)
 		this.transition.setOptions(transitionOptions)
-		this.update()
+		this.updateRenderOptions(options as LiveRepeatOptions<Item>)
 		this.firstlyMerge = false
 	}
 
@@ -172,15 +171,17 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 		}
 
 		if (options.data !== undefined) {
-			this.watchAndAssignRawData(options.data)
+			this.watchRawDataAndUpdateImmediately(options.data)
 		}
 	}
 
-	private watchAndAssignRawData(data: Iterable<Item> | null) {
+	private watchRawDataAndUpdateImmediately(data: Iterable<Item> | null) {
+		if (this.unwatchData) {
+			this.unwatchData()
+			this.unwatchData = null
+		}
+
 		if (!data) {
-			if (this.unwatchData) {
-				this.unwatchData()
-			}
 			this.rawData = []
 			return
 		}
