@@ -129,7 +129,7 @@ export class RepeatDirective<Item> implements Directive {
 
 		// If we have upgrade `nextMatchedOldIndex` to new value,
 		// we can leave elements between last and new `nextMatchedOldIndex` and reuse them without moving.
-		// The only problem is if we moved an matched item before `nextMatchedOldIndex` element,
+		// Note that if we moved an matched item before `nextMatchedOldIndex` element,
 		// we need to move all the following items until `nextMatchedOldIndex`.
 		function getNextMatchedOldIndex(startIndex: number): number {
 			for (let i = startIndex; i < oldData.length; i++) {
@@ -166,7 +166,7 @@ export class RepeatDirective<Item> implements Directive {
 				if (reuseIndex >= nextMatchedOldIndex) {
 					this.useMatchedOne(oldWtems[reuseIndex], index)
 					usedIndexSet.add(reuseIndex)
-					lastStayedOldIndex = nextMatchedOldIndex
+					lastStayedOldIndex = reuseIndex
 					nextMatchedOldIndex = getNextMatchedOldIndex(reuseIndex + 1)
 					continue
 				}
@@ -189,7 +189,7 @@ export class RepeatDirective<Item> implements Directive {
 				if (!canStay) {
 					this.moveOneBefore(oldWtems[reuseIndex], nextMatchedOldIndex < oldData.length ? oldWtems[nextMatchedOldIndex]: null)
 				}
-	
+
 				this.reuseOne(oldWtems[reuseIndex], item, index)
 				notInUseIndexSet.delete(reuseIndex)
 				usedIndexSet.add(reuseIndex)
