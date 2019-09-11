@@ -6,7 +6,7 @@ import {NodeAnchor} from '../libs/node-helper'
 import {on} from '../dom-event'
 import {globalWatcherGroup} from '../watcher'
 import {RepeatDirective} from './repeat'
-import {onRenderComplete} from '../queue'
+import {onRenderComplete, renderComplete} from '../queue'
 import {binaryFindIndexToInsert, ScrollerClientRect, throttleByAnimationFrame} from './libs/util'
 import {observe} from '../observer'
 
@@ -508,7 +508,12 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 	async setStartIndex(index: number) {
 		this.startIndex = this.limitEndIndex(index)
 		this.needToApplyStartIndex = true
-		await this.update()
+
+		// It doesn't update immediately because `rawData` may changed and will update soon.
+		await renderComplete()
+		if (this.needToApplyStartIndex) {
+			await this.update()
+		}
 	}
 
 	/** Adjust `startIndex` and scroll position to make item in the specified index becomes visible if it's not. */
