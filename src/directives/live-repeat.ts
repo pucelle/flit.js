@@ -22,7 +22,7 @@ export interface LiveRepeatOptions<Item> {
 
 interface PositionToKepp {
 	index: number
-	lastTop: number
+	top: number
 }
 
 
@@ -325,9 +325,9 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 
 	private adjustScrollPosition() {
 		if (this.positionToKeep) {
-			let oldTop = this.positionToKeep.lastTop
+			let oldTop = this.positionToKeep.top
 			let newTop = this.getElementTopOfIndex(this.positionToKeep.index)
-			if (newTop > -1) {
+			if (newTop !== null) {
 				let topDiffAfterAdjust = oldTop - newTop
 				
 				// If all items have same height, and `averageItemHeight` was right setted,
@@ -352,22 +352,16 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 		// Here if we adjusted `marginTop`, it will trigger a new `scroll` event and then trigger another `updateToCover`.
 	}
 
-	private getElementTopOfIndex(index: number): number {
+	private getElementTopOfIndex(index: number): number | null {
 		let wtem = this.wtems[index - this.startIndex]
 		if (wtem) {
 			let el = wtem.template.range.getFirstElement()
 			if (el) {
-				// slider can move, we need to relative to a not always move element
-				if (el.offsetParent === this.slider) {
-					return el.offsetTop + this.slider.offsetTop
-				}
-				else {
-					return el.offsetTop
-				}
+				return el.getBoundingClientRect().top
 			}
 		}
 
-		return -1
+		return null
 	}
 
 	private onScroll() {
@@ -426,9 +420,12 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 			// later we will lost current `startIndex` and can't locate the element in `visibleIndex`.
 			// Otherwise cache the visible element is not working,
 			// It may be moved after `updateItems` since we will reuse item.
-			this.positionToKeep = {
-				index: visibleIndex,
-				lastTop: this.getElementTopOfIndex(visibleIndex)
+			let top = this.getElementTopOfIndex(visibleIndex)
+			if (top !== null) {
+				this.positionToKeep = {
+					index: visibleIndex,
+					top,
+				}
 			}
 		}
 

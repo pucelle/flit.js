@@ -120,9 +120,17 @@ export class RepeatDirective<Item> implements Directive {
 		}
 
 
-		// "Old matched index" is the core indicator we moving elements according to.
-		// When we reuse other elements, we move it before "next matched index",
-		// such that when we meet the "next matched index" later, we don't need to move the elements.
+		// `nextMatchedOldIndex` is the core indicator we moving elements according to,
+		// The element at `nextMatchedOldIndex` will keep it's position.
+
+		// When we check other element whose new index before it:
+		//   if is a matched one and before it: move it before
+		//   if is a matched one and after or is it: leave it and upgrade `nextMatchedOldIndex`
+
+		// If we have upgrade `nextMatchedOldIndex` to new value,
+		// we can leave elements between last and new `nextMatchedOldIndex` and reuse them without moving.
+		// The only problem is if we moved an matched item before `nextMatchedOldIndex` element,
+		// we need to move all the following items until `nextMatchedOldIndex`.
 		function getNextMatchedOldIndex(startIndex: number): number {
 			for (let i = startIndex; i < oldData.length; i++) {
 				let oldItem = oldData[i]
@@ -134,8 +142,8 @@ export class RepeatDirective<Item> implements Directive {
 			return oldData.length
 		}
 
-		let lastMatchedOldIndex = -1
 		let nextMatchedOldIndex = getNextMatchedOldIndex(0)
+		let lastStayedOldIndex = -1
 
 
 		for (let index = 0; index < newData.length; index++) {
@@ -154,11 +162,11 @@ export class RepeatDirective<Item> implements Directive {
 					reuseIndex = -1
 				}
 
-				// It's already in the right position, no need to move.
-				if (nextMatchedOldIndex <= reuseIndex) {
+				// Already in the right position, no need to move.
+				if (reuseIndex >= nextMatchedOldIndex) {
 					this.useMatchedOne(oldWtems[reuseIndex], index)
 					usedIndexSet.add(reuseIndex)
-					lastMatchedOldIndex = nextMatchedOldIndex
+					lastStayedOldIndex = nextMatchedOldIndex
 					nextMatchedOldIndex = getNextMatchedOldIndex(reuseIndex + 1)
 					continue
 				}
@@ -167,32 +175,21 @@ export class RepeatDirective<Item> implements Directive {
 					this.moveOneBefore(oldWtems[reuseIndex], nextMatchedOldIndex < oldData.length ? oldWtems[nextMatchedOldIndex]: null)
 					this.useMatchedOne(oldWtems[reuseIndex], index)
 					usedIndexSet.add(reuseIndex)
+					lastStayedOldIndex = nextMatchedOldIndex
 					continue
 				}
 			}
 
 			// Reuse template that will be removed and rerender it
 			if (!this.transition.shouldPlay() && notInUseIndexSet.size > 0) {
-				let reuseIndex = -1
+				let reuseIndex = notInUseIndexSet.keys().next().value	// index in `notInUseIndexSet` is ordered.
 
-				// Looking for a not in use index betweens `lastMatchedOldIndex` and `nextMatchedOldIndex`,
-				// Such that we have no need to move it.
-				for (let i = lastMatchedOldIndex + 1; i < nextMatchedOldIndex; i++) {
-					if (notInUseIndexSet.has(i)) {
-						reuseIndex = i
-						break
-					}
-				}
-
-				if (reuseIndex === -1) {
-					reuseIndex = notInUseIndexSet.keys().next().value
-					
-				}
-
-				if (nextMatchedOldIndex > reuseIndex) {
+				// If the index betweens `lastStayedOldIndex + 1` and `nextMatchedOldIndex`, no need to move it.
+				let canStay = reuseIndex > lastStayedOldIndex && reuseIndex < nextMatchedOldIndex
+				if (!canStay) {
 					this.moveOneBefore(oldWtems[reuseIndex], nextMatchedOldIndex < oldData.length ? oldWtems[nextMatchedOldIndex]: null)
 				}
-				
+	
 				this.reuseOne(oldWtems[reuseIndex], item, index)
 				notInUseIndexSet.delete(reuseIndex)
 				usedIndexSet.add(reuseIndex)
