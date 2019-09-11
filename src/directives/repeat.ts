@@ -77,6 +77,8 @@ export class RepeatDirective<Item> implements Directive {
 	// So we check from start position to end position,
 	// collected templates which will be removed but keep them in their old position.
 
+	// This algorthim is good when you add or remove data, but a little weak when reordering data.
+
 	// Concepts:
 	//   matched: same item, no need to update item. if duplicate items exist, only the first one match.
 	//   reuse: reuse not in use item and update item on it.
@@ -120,7 +122,7 @@ export class RepeatDirective<Item> implements Directive {
 
 		// "Old matched index" is the core indicator we moving elements according to.
 		// When we reuse other elements, we move it before "next matched index",
-		// such than when we meet the "next matched index" later, we don't need to move the elements.
+		// such that when we meet the "next matched index" later, we don't need to move the elements.
 		function getNextMatchedOldIndex(startIndex: number): number {
 			for (let i = startIndex; i < oldData.length; i++) {
 				let oldItem = oldData[i]
@@ -162,7 +164,7 @@ export class RepeatDirective<Item> implements Directive {
 				}
 
 				if (reuseIndex > -1) {
-					this.moveOne(oldWtems[reuseIndex], nextMatchedOldIndex < oldData.length ? oldWtems[nextMatchedOldIndex]: null)
+					this.moveOneBefore(oldWtems[reuseIndex], nextMatchedOldIndex < oldData.length ? oldWtems[nextMatchedOldIndex]: null)
 					this.useMatchedOne(oldWtems[reuseIndex], index)
 					usedIndexSet.add(reuseIndex)
 					continue
@@ -184,7 +186,11 @@ export class RepeatDirective<Item> implements Directive {
 
 				if (reuseIndex === -1) {
 					reuseIndex = notInUseIndexSet.keys().next().value
-					this.moveOne(oldWtems[reuseIndex], nextMatchedOldIndex < oldData.length ? oldWtems[nextMatchedOldIndex]: null)
+					
+				}
+
+				if (nextMatchedOldIndex > reuseIndex) {
+					this.moveOneBefore(oldWtems[reuseIndex], nextMatchedOldIndex < oldData.length ? oldWtems[nextMatchedOldIndex]: null)
 				}
 				
 				this.reuseOne(oldWtems[reuseIndex], item, index)
@@ -224,7 +230,7 @@ export class RepeatDirective<Item> implements Directive {
 		this.wtems.push(wtem)
 	}
 
-	private moveOne(wtem: WatchedTemplate<Item>, nextOldWtem: WatchedTemplate<Item> | null) {
+	private moveOneBefore(wtem: WatchedTemplate<Item>, nextOldWtem: WatchedTemplate<Item> | null) {
 		let fragment = wtem.template.range.getFragment()
 
 		if (nextOldWtem) {
