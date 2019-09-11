@@ -188,6 +188,7 @@ export class RepeatDirective<Item> implements Directive {
 				let canStay = reuseIndex > lastStayedOldIndex && reuseIndex < nextMatchedOldIndex
 				if (!canStay) {
 					this.moveOneBefore(oldWtems[reuseIndex], nextMatchedOldIndex < oldData.length ? oldWtems[nextMatchedOldIndex]: null)
+					lastStayedOldIndex = nextMatchedOldIndex
 				}
 
 				this.reuseOne(oldWtems[reuseIndex], item, index)
