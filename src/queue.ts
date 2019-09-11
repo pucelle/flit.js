@@ -4,17 +4,18 @@ import {Watcher} from './watcher'
 
 let componentSet: Set<Component> = new Set()
 let watcherSet: Set<Watcher> = new Set()
-let afterRenderCallbacks: (() => void)[] = []
+let renderCompleteCallbacks: (() => void)[] = []
 let willUpdate = false
-let updatingWatchers: Watcher[] = []
-let updatingComponents: Component[] = []
+let updatingComponents = false
+let watchersToUpdate: Watcher[] = []
+let componentsToUpdate: Component[] = []
 
 
 export function enqueueComponentUpdate(com: Component) {
 	// If updating component trigger another watcher or component, we should update it in the same update function.
 	if (!componentSet.has(com)) {
 		componentSet.add(com)
-		updatingComponents.push(com)
+		componentsToUpdate.push(com)
 	}
 
 	if (!willUpdate) {
@@ -23,14 +24,19 @@ export function enqueueComponentUpdate(com: Component) {
 }
 
 export function enqueueWatcherUpdate(watcher: Watcher) {
-	// If updating watcher trigger another watcher or component, we should update it in the same update function.
-	if (!watcherSet.has(watcher)) {
-		watcherSet.add(watcher)
-		updatingWatchers.push(watcher)
+	if (updatingComponents) {
+		watcher.__updateImmediately()
 	}
+	else {
+		// If updating watcher trigger another watcher or component, we should update it in the same update function.
+		if (!watcherSet.has(watcher)) {
+			watcherSet.add(watcher)
+			watchersToUpdate.push(watcher)
+		}
 
-	if (!willUpdate) {
-		enqueueUpdate()
+		if (!willUpdate) {
+			enqueueUpdate()
+		}
 	}
 }
 
@@ -39,7 +45,7 @@ export function enqueueWatcherUpdate(watcher: Watcher) {
  * Note that it was called before `renderComplete` that was called in micro task queue.
  */
 export function onRenderComplete(callback: () => void) {
-	afterRenderCallbacks.push(callback)
+	renderCompleteCallbacks.push(callback)
 	
 	if (!willUpdate) {
 		enqueueUpdate()
@@ -68,7 +74,6 @@ function enqueueUpdate() {
 	// Otherwise it's very frequently to trigger updating from data changing ,
 	// but then more data changes in micro tasks and trigger new updating.
 	requestAnimationFrame(update)
-	
 	willUpdate = true
 }
 
@@ -82,42 +87,11 @@ async function update() {
 		// But later we relaized the watchers were updated most possible because the components updated and applied `:prop` or `:props`,
 		// And updating watchers later can ensure components which requires the watched properties are rendered.
 
-		// Another influenced place is the `repeat` directive.
-		// The `repeat` directive watched the iterating datas and update indenpently when they changed.
-		// So if data changed from outer components and then items in old data changed,
-		// It would update items in old data, and then whole data,
-		// This cause it updated for twice.
-		for (let i = 0; i < updatingComponents.length; i++) {
-			let com = updatingComponents[i]
-			componentSet.delete(com)
-
-			let updatedTimes = updatedTimesMap.get(com) || 0
-			updatedTimesMap.set(com, updatedTimes + 1)
-			
-			if (updatedTimes > 3) {
-				console.warn(`Component with element "${com.el.outerHTML}" may have infinite updating`)
-			}
-			else {
-				try {
-					com.__updateImmediately()
-				}
-				catch (err) {
-					console.error(err)
-				}
-			}
-		}
-
-		updatingComponents = []
-
-
-		// When updating watch or component, data may changed and enqueu more watcher and component.
-		// if enqueued more watch, we will run it in the same update function.
-
-		// The only problems at ignore watch orders when updating is that:
-		// We may update inside firstly, and then outside, then data may flow back into inside. 
-		// So inner watcher may update for 1 more time.
-		for (let i = 0; i < updatingWatchers.length; i++) {
-			let watcher = updatingWatchers[i]
+		// So finally we decided to update watchers before components,
+		// And if components is updating, we update watchers immediately.
+		
+		for (let i = 0; i < watchersToUpdate.length; i++) {
+			let watcher = watchersToUpdate[i]
 
 			// Delete it so it can be added again.
 			watcherSet.delete(watcher)
@@ -137,21 +111,47 @@ async function update() {
 				}
 			}
 		}
+		
+		watchersToUpdate = []
 
-		updatingWatchers = []
+
+		updatingComponents = true
+
+		for (let i = 0; i < componentsToUpdate.length; i++) {
+			let com = componentsToUpdate[i]
+			componentSet.delete(com)
+
+			let updatedTimes = updatedTimesMap.get(com) || 0
+			updatedTimesMap.set(com, updatedTimes + 1)
+			
+			if (updatedTimes > 3) {
+				console.warn(`Component with element "${com.el.outerHTML}" may have infinite updating`)
+			}
+			else {
+				try {
+					com.__updateImmediately()
+				}
+				catch (err) {
+					console.error(err)
+				}
+			}
+		}
+
+		componentsToUpdate = []
+		updatingComponents = false
 
 		// If elements were added when updating, they will be connected in micro task queue.
 		// Here we must wait them to be instantiated.
 		await Promise.resolve()
 	}
-	while (updatingComponents.length > 0 || updatingWatchers.length > 0)
+	while (componentsToUpdate.length > 0 || watchersToUpdate.length > 0)
 
 	willUpdate = false
 
 	// Normally `onRenderComplete` should not enqueue more watchers and components.
 	// But if it enqueued, run them in next updating.
-	let callbacks = afterRenderCallbacks
-	afterRenderCallbacks = []
+	let callbacks = renderCompleteCallbacks
+	renderCompleteCallbacks = []
 
 	for (let callback of callbacks) {
 		callback()
