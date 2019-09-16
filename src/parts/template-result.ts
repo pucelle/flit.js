@@ -1,6 +1,12 @@
-import {inheritTemplateResults} from "./template-inherit";
+import {inheritTemplateResults} from './template-inherit'
 
-export type TemplateType = 'html' | 'svg' | 'css' | 'text'
+
+export enum TemplateType {
+	HTML,
+	SVG,
+	CSS,
+	Text,
+}
 
 export interface StringsAndValueIndexes {
 	strings: string[]
@@ -10,22 +16,22 @@ export interface StringsAndValueIndexes {
 
 /** HTML template literal that can be used to render or update a component. */
 export function html(strings: TemplateStringsArray, ...values: unknown[]): TemplateResult {
-	return new TemplateResult('html', strings, values)
+	return new TemplateResult(TemplateType.HTML, strings, values)
 }
 
 /** SVG template literal that can be used to render or update a component. */
 export function svg(strings: TemplateStringsArray, ...values: unknown[]): TemplateResult {
-	return new TemplateResult('svg', strings, values)
+	return new TemplateResult(TemplateType.SVG, strings, values)
 }
 
 /** CSS template literal that can be used as component's static style property. */
 export function css(strings: TemplateStringsArray, ...values: unknown[]): TemplateResult {
-	return new TemplateResult('css', strings, values)
+	return new TemplateResult(TemplateType.CSS, strings, values)
 }
 
 /** Text template literal that used inside. */
 export function text(strings: TemplateStringsArray, ...values: unknown[]): TemplateResult {
-	return new TemplateResult('text', strings, values)
+	return new TemplateResult(TemplateType.Text, strings, values)
 }
 
 
@@ -71,7 +77,12 @@ export class TemplateResult {
 	 * so finally we implement a new API `inherit` to call it manually.
 	 */
 	inherit(superResult: TemplateResult): TemplateResult {
-		return inheritTemplateResults(this, superResult)
+		if (this.type === TemplateType.HTML || this.type === TemplateType.SVG) {
+			return inheritTemplateResults(this, superResult)
+		}
+		else {
+			return new TemplateResult(this.type, [...superResult.strings, ...this.strings] as unknown as TemplateStringsArray, [...superResult.values, ...this.values])
+		}
 	}
 }
 

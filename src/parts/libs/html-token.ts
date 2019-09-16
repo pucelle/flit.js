@@ -10,6 +10,7 @@ export interface HTMLToken {
 	type: HTMLTokenType
 	text?: string
 	tagName?: string
+	selfClose?: boolean
 	attributes?: string
 }
 
@@ -49,29 +50,35 @@ export function parseToHTMLTokens(string: string) {
 			continue
 		}
 		else if (piece[1] === '/') {
-			tokens.push({
-				type: HTMLTokenType.EndTag,
-				tagName: piece.slice(2, -1),
-			})
-			continue
+			let tagName = piece.slice(2, -1)
+
+			if (!SELF_CLOSE_TAGS.includes(tagName)) {
+				tokens.push({
+					type: HTMLTokenType.EndTag,
+					tagName,
+				})
+			}
 		}
-		
-		let tagName = match[1]
-		let attributes = match[2]
+		else {
+			let tagName = match[1]
+			let attributes = match[2]
+			let selfClose = SELF_CLOSE_TAGS.includes(tagName)
 
-		tokens.push({
-			type: HTMLTokenType.StartTag,
-			tagName,
-			attributes,
-		})
-
-		//`<tag />` -> `<tag></tag>`
-		// Benchmark: https://jsperf.com/array-includes-vs-object-in-vs-set-has
-		if (piece[piece.length - 2] === '/' && !SELF_CLOSE_TAGS.includes(tagName)) {
 			tokens.push({
-				type: HTMLTokenType.EndTag,
+				type: HTMLTokenType.StartTag,
 				tagName,
+				attributes,
+				selfClose,
 			})
+
+			//`<tag />` -> `<tag></tag>`
+			// Benchmark: https://jsperf.com/array-includes-vs-object-in-vs-set-has
+			if (piece[piece.length - 2] === '/' && !selfClose) {
+				tokens.push({
+					type: HTMLTokenType.EndTag,
+					tagName,
+				})
+			}
 		}
 	}
 

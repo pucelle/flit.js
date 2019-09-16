@@ -54,7 +54,7 @@ const parseResultCache: Map<string, Map<string, SharedParseReulst>> = new Map()
 export function parse(type: TemplateType, strings: TemplateStringsArray, el: HTMLElement | null): ParseResult {
 	let scopeName = el ? el.localName : 'global'
 
-	if ((type === 'html' || type === 'svg')) {
+	if ((type === TemplateType.HTML || type === TemplateType.SVG)) {
 		let string = joinWithOrderedMarkers(strings as unknown as string[])
 		let sharedResultMap = parseResultCache.get(scopeName)
 		let sharedResult = sharedResultMap ? sharedResultMap.get(string) : null
@@ -70,7 +70,7 @@ export function parse(type: TemplateType, strings: TemplateStringsArray, el: HTM
 
 		return cloneParseResult(sharedResult, el)
 	}
-	else if (type === 'css') {
+	else if (type === TemplateType.CSS) {
 		let html = `<style>${strings[0]}</style>`
 		let fragment = createTemplateFromHTML(html).content
 
@@ -158,7 +158,7 @@ class HTMLSVGTemplateParser {
 		let svgWrapped = false
 
 		if (firstTag) {
-			if (this.type === 'svg' && firstTag.tagName !== 'svg') {
+			if (this.type === TemplateType.SVG && firstTag.tagName !== 'svg') {
 				codes = '<svg>' + codes + '</svg>'
 				svgWrapped = true
 			}

@@ -78,7 +78,10 @@ function parseToRootPropertiesAndSlots(tokens: HTMLToken[]) {
 					let wholeTokensBelows = outOuterNestingTokens(tokens, i)
 					slots[name] = wholeTokensBelows
 					i--
-					tabCount++
+
+					if (!token.selfClose) {
+						tabCount++
+					}
 				}
 				break
 
@@ -149,7 +152,9 @@ function findEndTagIndex(tokens: HTMLToken[], startTagIndex: number): number {
 
 		switch (token.type) {
 			case HTMLTokenType.StartTag:
-				tabCount++
+				if (!token.selfClose) {
+					tabCount++
+				}
 				break
 
 			case HTMLTokenType.EndTag:
