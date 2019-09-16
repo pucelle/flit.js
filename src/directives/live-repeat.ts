@@ -467,6 +467,10 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 			visibleIndex -= 1
 		}
 
+		if (visibleIndex === -1) {
+			return -1
+		}
+
 		let firstElement = this.wtems[visibleIndex].template.range.getFirstElement()!
 		let firstElementRect = firstElement.getBoundingClientRect()
 
