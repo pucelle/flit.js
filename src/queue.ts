@@ -100,7 +100,7 @@ async function update() {
 			updatedTimesMap.set(watcher, updatedTimes + 1)
 		
 			if (updatedTimes > 3) {
-				console.warn(`Watcher "${watcher.toString()}" may have infinite updating`)
+				console.warn(`Watcher "${watcher.toString()}" may change values in the watcher callback and cause infinite updating!`)
 			}
 			else {
 				try {
@@ -125,7 +125,9 @@ async function update() {
 			updatedTimesMap.set(com, updatedTimes + 1)
 			
 			if (updatedTimes > 3) {
-				console.warn(`Component with element "${com.el.outerHTML}" may have infinite updating`)
+				let html = com.el.outerHTML
+				let shortHTML = html.length > 100 ? html.slice(0, 100) + '...' : html
+				console.warn(`Component with element "${shortHTML}" may change values in the render function and cause infinite updating!`)
 			}
 			else {
 				try {
