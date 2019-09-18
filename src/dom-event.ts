@@ -190,7 +190,9 @@ function bindEvent(once: boolean, el: EventTarget, rawName: string, handler:　E
 	let wrappedHandler = wrapHandler(once, modifiers, el, name, handler, scope)
 	let capture = !!modifiers && modifiers.includes('capture')
 	let passive = !!modifiers && modifiers.includes('passive')
-	let options = passive ? {capture, passive} : capture
+
+	// Wheel event use passive mode by default and can't be prevented.
+	let options = passive || name === 'wheel' ? {capture, passive} : capture
 
 	let eventMap = ElementEventMap.get(el)
 	if (!eventMap) {
