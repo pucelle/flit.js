@@ -161,11 +161,7 @@ export class Transition {
 	constructor(el: Element, options: TransitionOptions) {
 		this.el = el
 		this.options = formatShortTransitionOptions(options)
-
-		if (elementTransitionMap.has(this.el)) {
-			elementTransitionMap.get(this.el)!.clean()
-		}
-		
+		clearTransition(this.el)
 		elementTransitionMap.set(this.el, this)
 	}
 
@@ -377,6 +373,14 @@ export class Transition {
 			this.cleaner()
 			this.cleaner = null
 		}
+	}
+}
+
+
+/** Clear the transition that is running in the element. */
+export function clearTransition(el: Element) {
+	if (elementTransitionMap.has(el)) {
+		elementTransitionMap.get(el)!.clean()
 	}
 }
 
