@@ -275,7 +275,7 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 			countAfterEnd = Math.max(0, totalCount - endIndex)
 		}
 
-		this.slider.style.marginTop = this.averageItemHeight * countBeforeStart + this.lastAdjustedTopDiff + 'px'
+		this.slider.style.marginTop = Math.max(0, this.averageItemHeight * countBeforeStart + this.lastAdjustedTopDiff) + 'px'
 		this.slider.style.marginBottom = this.averageItemHeight * countAfterEnd + 'px'
 	}
 
@@ -509,6 +509,7 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 	async setStartIndex(index: number) {
 		this.startIndex = this.limitEndIndex(index)
 		this.needToApplyStartIndex = true
+		this.lastAdjustedTopDiff = 0
 
 		// It doesn't update immediately because `rawData` may changed and will update soon.
 		await renderComplete()
