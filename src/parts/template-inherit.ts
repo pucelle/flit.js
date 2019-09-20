@@ -72,17 +72,17 @@ function parseToRootPropertiesAndSlots(tokens: HTMLToken[]) {
 	for (let i = 0; i < tokens.length; i++) {
 		let token = tokens[i]
 		switch (token.type) {
-			case HTMLTokenType.StartTag:
+			case HTMLTokenType.StartTag:				
+				if (!token.selfClose) {
+					tabCount++
+				}
+
 				if (/slot\s*=\s*['"](\w+)/.test(token.attributes!)) {
 					let name = token.attributes!.match(/slot\s*=\s*['"](\w+)/)![1]
 					let wholeTokensBelows = outOuterNestingTokens(tokens, i)
 					slots[name] = slots[name] || []
 					slots[name].push(...wholeTokensBelows)
 					i--
-
-					if (!token.selfClose) {
-						tabCount++
-					}
 				}
 				break
 
