@@ -11,7 +11,7 @@ import {DirectiveResult} from './directives'
  * @param codes The html code piece or html`...` template.
  * @param context The context you used when rendering.
  */
-export function render(codes: TemplateResult | DirectiveResult, context?: Context): DocumentFragment
+export function render(codes: TemplateResult | DirectiveResult, context?: Context): {template: Template, fragment: DocumentFragment}
 
 /**
  * Render template like html`...` returned from `renderFn`, returns the rendered result as an document fragment and the watcher.
@@ -37,7 +37,7 @@ export function render(
 	}
 }
 
-function renderCodes(codes: TemplateResult | DirectiveResult, context: Context = null): DocumentFragment {
+function renderCodes(codes: TemplateResult | DirectiveResult, context: Context = null) {
 	if (codes instanceof DirectiveResult) {
 		codes = html`${codes}`
 	}
@@ -45,7 +45,7 @@ function renderCodes(codes: TemplateResult | DirectiveResult, context: Context =
 	let template = new Template(codes, context)
 	let fragment = template.range.getFragment()
 
-	return fragment
+	return {template, fragment}
 }
 
 function renderAndWatch(renderFn: () => TemplateResult | DirectiveResult, context: Context = null, onUpdate?: () => void) {
@@ -83,7 +83,7 @@ function renderAndWatch(renderFn: () => TemplateResult | DirectiveResult, contex
  * @param codes The html code piece or html`...` template.
  * @param context The context you used when rendering.
  */
-export function renderComponent(codes: TemplateResult | string | DirectiveResult, context?: Context): Component | null
+export function renderComponent(codes: TemplateResult | string | DirectiveResult, context?: Context): {template: Template, component: Component | null}
 
 /**
  * Render template like html`...` returned from `renderFn` in context or null, returns the first component from the rendering result.
@@ -95,38 +95,35 @@ export function renderComponent(codes: TemplateResult | string | DirectiveResult
  * @param context The context you used when rendering.
  * @param onUpdate Called when update after referenced data changed. if new result can't merge with old, will pass a new fragment as argument.
  */
-export function renderComponent(renderFn: () => TemplateResult | DirectiveResult, context?: Context, onUpdate?: () => void): {component: Component, unwatch: () => void} | null
+export function renderComponent(renderFn: () => TemplateResult | DirectiveResult, context?: Context, onUpdate?: () => void): {component: Component | null, unwatch: () => void}
 
 export function renderComponent(codesOrFn: any, context: Context = null, onUpdate?: () => void) {
+	let template: Template
 	let fragment: DocumentFragment
+	let component: Component | null = null
 	let unwatch: (() => void) | null = null
 
 	if (typeof codesOrFn === 'function') {
 		({fragment, unwatch} = renderAndWatch(codesOrFn, context, onUpdate))
 	}
 	else {
-		fragment = render(codesOrFn, context)
+		({fragment, template} = render(codesOrFn, context))
 	}
 
 	let firstElement = fragment.firstElementChild as HTMLElement | null
 	if (firstElement) {
 		let Com = getComponentConstructorByName(firstElement.localName)
 		if (Com) {
-			let component = createComponent(firstElement, Com)
-			if (unwatch) {
-				return {component, unwatch}
-			}
-			else {
-				return component
-			}
+			component = createComponent(firstElement, Com)
 		}
 	}
 
 	if (unwatch) {
-		unwatch()
+		return {component, unwatch}
 	}
-
-	return null
+	else {
+		return {component, template: template!}
+	}
 }
 
 
