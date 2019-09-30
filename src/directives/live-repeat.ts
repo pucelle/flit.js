@@ -341,7 +341,7 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 				if (Math.abs(topDiffAfterAdjust) > 10) {
 					let topDiffToAdjust = this.lastAdjustedTopDiff + topDiffAfterAdjust
 					this.lastAdjustedTopDiff = topDiffToAdjust
-					this.slider.style.marginTop = this.averageItemHeight * this.startIndex + topDiffToAdjust + 'px'
+					this.slider.style.marginTop = Math.max(0, this.averageItemHeight * this.startIndex + topDiffToAdjust) + 'px'
 				}
 			}
 
