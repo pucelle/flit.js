@@ -262,17 +262,17 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 		}
 
 		let translateY = this.averageItemHeight * countBeforeStart
-
 		if (this.continuousScrollDirection  && countBeforeStart > 0) {
 			translateY = this.continuousSliderPosition!
-			if (translateY < this.averageItemHeight) {
-				translateY = this.averageItemHeight
-			}
 		}
 
 		let marginBottom = this.averageItemHeight * countAfterEnd
 
 		if (this.continuousScrollDirection === 'up' && countBeforeStart > 0) {
+			if (translateY < this.averageItemHeight) {
+				translateY = this.averageItemHeight
+			}
+
 			this.slider.style.top = 'auto'
 			this.slider.style.bottom = '-' + this.averageItemHeight * countAfterEnd + 'px'
 		}
