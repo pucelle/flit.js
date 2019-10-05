@@ -43,6 +43,9 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 	/** The parent node of `slider`, it's `overflow` value must be `auto` or `scroll`. */
 	protected scroller!: HTMLElement
 
+	private scrollerBorderTopWidth: number = 0
+	private scrollerBorderBottomWidth: number = 0
+
 	/**
 	* How many items to render each time.
 	* If you are using dynamic data, you should set this value to count of items that you ajax interface returned.
@@ -78,6 +81,7 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 	 */
 	private continuousScrollDirection: 'up' | 'down' | null = null
 	private continuousSliderPosition: number | null = null
+	private toRenderComplete: Promise<void> | null = null
 
 	/** We may want to do something with the currently rendered results, link loading screenshots... */
 	protected onUpdated: ((data: Item[], index: number) => void) | null = null
@@ -119,6 +123,9 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 			if (getComputedStyle(this.slider).position !== 'absolute') {
 				throw `The "position" value of "slider" out of "liveRepeat" directive must not be "absolute"`
 			}
+
+			this.scrollerBorderTopWidth = Number(getComputedStyle(this.scroller).borderTopWidth!.replace('px', '')) || 0
+			this.scrollerBorderBottomWidth = Number(getComputedStyle(this.scroller).borderBottomWidth!.replace('px', '')) || 0
 		})
 	}
 
@@ -201,7 +208,9 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 
 		let endIndex = this.limitEndIndex(this.startIndex + this.pageSize * this.renderPageCount)
 		let data = this.rawData ? this.rawData.slice(this.startIndex, endIndex) : []
-		await this.updateData(data)
+		this.toRenderComplete = this.updateData(data)
+		await this.toRenderComplete
+		this.toRenderComplete = null
 	}
 
 	protected async updateData(data: Item[]) {
@@ -310,7 +319,10 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 		return null
 	}
 
-	private onScroll() {
+	private async onScroll() {
+		if (this.toRenderComplete) {
+			await this.toRenderComplete
+		}
 		this.checkRenderedRange()
 	}
 
@@ -357,7 +369,7 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 		endIndex = this.limitEndIndex(endIndex)
 		startIndex = Math.max(0, endIndex - this.pageSize * this.renderPageCount)
 
-		this.validateContinuousScrolling(scrollDirection, startIndex, endIndex, visibleIndex)
+		this.validateContinuousScrolling(scrollDirection, startIndex, endIndex)
 
 		this.startIndex = startIndex
 		this.update()
@@ -419,44 +431,39 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 		return -1
 	}
 
-	private validateContinuousScrolling(scrollDirection: 'up' | 'down', startIndex: number, endIndex: number, visibleIndex: number) {
-		let sameScrollDirection = scrollDirection === this.continuousScrollDirection
-		this.continuousScrollDirection = null
+	private validateContinuousScrolling(scrollDirection: 'up' | 'down', startIndex: number, endIndex: number) {
+		let indexToKeepPosition = scrollDirection === 'down' ? startIndex : endIndex
+		let isSameScrollDirection = this.continuousScrollDirection === scrollDirection
 
-		let sharesIndexes = visibleIndex >= startIndex && visibleIndex < endIndex
-		if (sharesIndexes) {
-			let el = this.getElementOfIndex(visibleIndex)
-			if (el !== null) {
-				this.continuousScrollDirection = scrollDirection
-				
-				if (scrollDirection === 'down') {
-					let position = sameScrollDirection ? this.continuousSliderPosition! : this.getSliderTopPosition()
-					position += el.getBoundingClientRect().top - this.slider.firstElementChild!.getBoundingClientRect().top
-					this.continuousSliderPosition = position
-				}
-				else {
-					let position = sameScrollDirection ? this.continuousSliderPosition! : this.getSliderBottomPosition()
-					position += el.getBoundingClientRect().bottom - this.slider.lastElementChild!.getBoundingClientRect().bottom
-					this.continuousSliderPosition = position
-				}
+		let el = this.getElementOfIndex(indexToKeepPosition)
+		if (el !== null) {
+			this.continuousScrollDirection = scrollDirection
+			
+			if (scrollDirection === 'down') {
+				let position = isSameScrollDirection ? this.continuousSliderPosition! : this.getSliderTopPosition()
+				position += el.getBoundingClientRect().top - this.slider.getBoundingClientRect().top
+				this.continuousSliderPosition = position
 			}
+			else {
+				let position = isSameScrollDirection ? this.continuousSliderPosition! : this.getSliderBottomPosition()
+				position += el.getBoundingClientRect().bottom - this.slider.getBoundingClientRect().bottom
+				this.continuousSliderPosition = position
+			}
+		}
+		else {
+			this.continuousScrollDirection = null
 		}
 	}
 
 	private getSliderTopPosition() {
-		let scrollerPaddingAreaTop = this.scroller.getBoundingClientRect().top
-			+ (Number(getComputedStyle(this.scroller).borderTopWidth!.replace('px', '')) || 0)
-			
+		let scrollerPaddingAreaTop = this.scroller.getBoundingClientRect().top - this.scrollerBorderTopWidth!
 		let sliderAreaTop = this.slider.getBoundingClientRect().top
 
 		return sliderAreaTop - scrollerPaddingAreaTop + this.scroller.scrollTop
 	}
 
 	private getSliderBottomPosition() {
-		let scrollerPaddingAreaBottom = this.scroller.getBoundingClientRect().bottom
-			+ (Number(getComputedStyle(this.scroller).borderBottomWidth!.replace('px', '')) || 0)
-			
-
+		let scrollerPaddingAreaBottom = this.scroller.getBoundingClientRect().bottom + this.scrollerBorderBottomWidth
 		let sliderAreaBottom = this.slider.getBoundingClientRect().bottom
 		
 		return sliderAreaBottom - scrollerPaddingAreaBottom + this.scroller.scrollTop
