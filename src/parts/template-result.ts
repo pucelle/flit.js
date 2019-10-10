@@ -1,12 +1,7 @@
 import {inheritTemplateResults} from './template-inherit'
 
 
-export enum TemplateType {
-	HTML,
-	SVG,
-	CSS,
-	Text,
-}
+export type TemplateType = 'html' | 'css' | 'svg' | 'text'
 
 export interface StringsAndValueIndexes {
 	strings: string[]
@@ -16,29 +11,29 @@ export interface StringsAndValueIndexes {
 
 /** HTML template literal that can be used to render or update a component. */
 export function html(strings: TemplateStringsArray, ...values: unknown[]): TemplateResult {
-	return new TemplateResult(TemplateType.HTML, strings, values)
+	return new TemplateResult('html', strings, values)
 }
 
 /** SVG template literal that can be used to render or update a component. */
 export function svg(strings: TemplateStringsArray, ...values: unknown[]): TemplateResult {
-	return new TemplateResult(TemplateType.SVG, strings, values)
+	return new TemplateResult('svg', strings, values)
 }
 
 /** CSS template literal that can be used as component's static style property. */
 export function css(strings: TemplateStringsArray, ...values: unknown[]): TemplateResult {
-	return new TemplateResult(TemplateType.CSS, strings, values)
+	return new TemplateResult('css', strings, values)
 }
 
 /** Text template literal that used inside. */
 export function text(strings: TemplateStringsArray, ...values: unknown[]): TemplateResult {
-	return new TemplateResult(TemplateType.Text, strings, values)
+	return new TemplateResult('text', strings, values)
 }
 
 
 export class TemplateResult {
 
 	type: TemplateType
-	strings: TemplateStringsArray
+	strings: TemplateStringsArray | string[]
 	values: unknown[]
 
 	/**
@@ -46,7 +41,7 @@ export class TemplateResult {
 	 * Every time call `Component.update` will generate a new template result tree.
 	 * Then we will check if each result can be merged or need to be replaced recursively.
 	 */
-	constructor(type: TemplateType, strings: TemplateStringsArray, values: unknown[]) {
+	constructor(type: TemplateType, strings: TemplateStringsArray | string[], values: unknown[]) {
 		this.type = type
 		this.strings = strings
 		this.values = values
@@ -77,7 +72,7 @@ export class TemplateResult {
 	 * so finally we implement a new API `inherit` to call it manually.
 	 */
 	inherit(superResult: TemplateResult): TemplateResult {
-		if (this.type === TemplateType.HTML || this.type === TemplateType.SVG) {
+		if (this.type === 'html' || this.type === 'svg') {
 			return inheritTemplateResults(this, superResult)
 		}
 		else {
