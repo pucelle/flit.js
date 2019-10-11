@@ -51,7 +51,7 @@ const parseResultCache: Map<string, Map<string, SharedParseReulst>> = new Map()
  * @param type 
  * @param strings 
  */
-export function parse(type: TemplateType, strings: TemplateStringsArray, el: HTMLElement | null): ParseResult {
+export function parse(type: TemplateType, strings: TemplateStringsArray | string[], el: HTMLElement | null): ParseResult {
 	let scopeName = el ? el.localName : 'global'
 
 	if ((type === 'html' || type === 'svg')) {

@@ -81,7 +81,7 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 	 */
 	private continuousScrollDirection: 'up' | 'down' | null = null
 	private continuousSliderPosition: number | null = null
-	private toRenderComplete: Promise<void> | null = null
+	private toCompleteRendering: Promise<void> | null = null
 
 	/** We may want to do something with the currently rendered results, link loading screenshots... */
 	protected onUpdated: ((data: Item[], index: number) => void) | null = null
@@ -208,9 +208,9 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 
 		let endIndex = this.limitEndIndex(this.startIndex + this.pageSize * this.renderPageCount)
 		let data = this.rawData ? this.rawData.slice(this.startIndex, endIndex) : []
-		this.toRenderComplete = this.updateData(data)
-		await this.toRenderComplete
-		this.toRenderComplete = null
+		this.toCompleteRendering = this.updateData(data)
+		await this.toCompleteRendering
+		this.toCompleteRendering = null
 	}
 
 	protected async updateData(data: Item[]) {
@@ -220,22 +220,23 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 			this.onUpdated(this.data, this.startIndex)
 		}
 
-		// `renderComplete` is required,
+		// `onRenderComplete` is required,
 		// Because although repeat elements are rendered currently,
 		// The container they are in may be still in a fragment which was just initialized using `render`.
-		await renderComplete()
-
-		if (this.data.length > 0) {
-			if (!this.averageItemHeight) {
-				this.measureAverageItemHeight()
-				this.updateSliderPosition()
+		// Otherwise it should using `onRenderComplete`, such that it can be called earlier than `setStartIndex`.
+		onRenderComplete(() => {
+			if (this.data.length > 0) {
+				if (!this.averageItemHeight) {
+					this.measureAverageItemHeight()
+					this.updateSliderPosition()
+				}
+	
+				if (this.needToApplyStartIndex && this.averageItemHeight) {
+					this.scroller.scrollTop = this.averageItemHeight * this.startIndex || 0
+					this.needToApplyStartIndex = false
+				}
 			}
-
-			if (this.needToApplyStartIndex && this.averageItemHeight) {
-				this.scroller.scrollTop = this.averageItemHeight * this.startIndex || 0
-				this.needToApplyStartIndex = false
-			}
-		}
+		})
 	}
 
 	protected limitEndIndex(index: number): number {
@@ -320,8 +321,8 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 	}
 
 	private async onScroll() {
-		if (this.toRenderComplete) {
-			await this.toRenderComplete
+		if (this.toCompleteRendering) {
+			await this.toCompleteRendering
 		}
 		this.checkRenderedRange()
 	}
