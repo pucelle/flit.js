@@ -14,7 +14,7 @@ export interface Binding<A extends any[]> {
 const definedMap: Map<string, BindingConstructor<any[]>> = new Map()
 
 /**
- * Returns a define decorator to defined followed class as class as a component with specified name.
+ * Returns a define decorator to defined followed class as a binding class with specified name.
  * @param name The binding name.
  */
 export function defineBinding<A extends any[]>(name: string): (Binding: BindingConstructor<A>) => void

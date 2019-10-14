@@ -17,7 +17,12 @@ let seed = 0
 const directiveMap: Map<number, DirectiveConstructor<any>> = new Map()
 
 
-/** Define a new directive from a class which implements `Directive`. */
+/** 
+ * Defines a directive from a class which implements `Directive`.
+ * Returns a function call which will generate a `DirectiveResult`.
+ * A `Directive` works like Binding, but it used to generate HTML code pieces,
+ * not like `Binding` to modify properties of an element.
+ */
 export function defineDirective<A extends any[] = any[]>(Dir: DirectiveConstructor<A>) {
 	let id = seed++
 	directiveMap.set(id, Dir)

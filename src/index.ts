@@ -1,7 +1,7 @@
 export {ObservedBaseClass, ObservedEmitter} from './emitter'
 export {render, renderComponent, appendTo} from './render'
 export {html, css, svg, TemplateResult, Template} from './template'
-export {Component, define, ComponentConstructor} from './component'
+export {Component, Context, define, ComponentConstructor} from './component'
 export {defineBinding, Binding, BindingResult, BindingConstructor, show, hide} from './bindings'
 export {on, once, off} from './libs/dom-event'
 export {observe, observeGetter} from './observer'
