@@ -1,7 +1,7 @@
 {
-	"name": "flit",
-	"version": "0.0.0",
-	"description": "A small JavaScript web component system",
+	"name": "@pucelle/flit",
+	"version": "1.0.0",
+	"description": "A light weight web component system using ES template literal and Proxy.",
 	"main": "out/index.js",
 	"scripts": {
 		"compile": "tsc -b",
