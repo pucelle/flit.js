@@ -1,23 +1,23 @@
 import {defineDirective, DirectiveResult} from './define'
 import {Context} from '../component'
-import {DirectiveTransitionOptions} from './libs/directive-transition'
-import {WatchedTemplate, TemplateFn} from './libs/watched-template'
+import {DirectiveTransitionOptions} from './directive-transition'
+import {WatchedTemplate, TemplateFn} from '../libs/watched-template'
 import {NodeAnchor} from '../libs/node-helper'
-import {on} from '../dom-event'
+import {on} from '../libs/dom-event'
 import {globalWatcherGroup} from '../watcher'
 import {RepeatDirective} from './repeat'
-import {onRenderComplete, renderComplete} from '../queue'
-import {binaryFindIndexToInsert, ScrollerClientRect, throttleByAnimationFrame} from './libs/util'
+import {renderComplete, onRenderComplete} from '../queue'
+import {binaryFindIndexToInsert, ScrollerClientRect, throttleByAnimationFrame} from '../libs/util'
 import {observe} from '../observer'
 
 
-export interface LiveRepeatOptions<Item> {
+export interface LiveRepeatOptions<T> {
 	pageSize?: number			// Not updatable
 	renderPageCount?: number	// Not updatable
 	averageItemHeight?: number	// Not updatable
-	ref?: (dir: LiveRepeatDirective<Item>) => void	// Not updatable
-	data: Iterable<Item> | null
-	onUpdated?: (data: Item[], index: number) => void	// If you want `onRendered`, just using `onRenderComplete` in `onUpdated.`
+	ref?: (dir: LiveRepeatDirective<T>) => void	// Not updatable
+	data: Iterable<T> | null
+	onUpdated?: (data: T[], index: number) => void	// If you want `onRendered`, just use `onRenderComplete` in `onUpdated.`
 }
 
 
@@ -32,10 +32,8 @@ export interface LiveRepeatOptions<Item> {
 // This is a break change and needs us to modify `Component`, `NodePart`, `Template`, `defineDirective`, `Directive`.
 // So finally we plan to implement a component to support rendering several items in one line.
 
-// There is still a potential issue here:
-// We may can't cover viewport if page was resized.
-
-export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
+/** @hidden */
+export class LiveRepeatDirective<T> extends RepeatDirective<T> {
 
 	/** The parent node of `anchorNode`, it will be used as a slider to slide in the scroller element. */
 	protected slider!: HTMLElement
@@ -84,17 +82,17 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 	private toCompleteRendering: Promise<void> | null = null
 
 	/** We may want to do something with the currently rendered results, link loading screenshots... */
-	protected onUpdated: ((data: Item[], index: number) => void) | null = null
+	protected onUpdated: ((data: T[], index: number) => void) | null = null
 
 	/** Whole data from options. */
-	private rawData: Item[] | null = null
+	private rawData: T[] | null = null
 
 	constructor(anchor: NodeAnchor, context: Context) {
 		super(anchor, context)
 		this.initElements()
 	}
 
-	private initElements() {
+	private async initElements() {
 		this.slider = this.anchor.el.parentElement as HTMLElement
 		this.scroller = this.slider.parentElement as HTMLElement
 
@@ -129,11 +127,11 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 		})
 	}
 
-	canMergeWith(_options: any, templateFn: TemplateFn<Item>): boolean {
+	canMergeWith(_options: any, templateFn: TemplateFn<T>): boolean {
 		return templateFn.toString() === this.templateFn.toString()
 	}
 
-	merge(options: any, templateFn: TemplateFn<Item>, transitionOptions?: DirectiveTransitionOptions) {
+	merge(options: any, templateFn: TemplateFn<T>, transitionOptions?: DirectiveTransitionOptions) {
 		if (this.firstlyMerge) {
 			this.initRenderOptions(options)
 			this.validateTemplateFn(templateFn)
@@ -145,13 +143,13 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 
 		this.templateFn = templateFn
 		this.transition.setOptions(transitionOptions)
-		this.updateRenderOptions(options as LiveRepeatOptions<Item>)
+		this.updateRenderOptions(options as LiveRepeatOptions<T>)
 		this.firstlyMerge = false
 	}
 
-	protected validateTemplateFn(_templateFn: TemplateFn<Item>) {}
+	protected validateTemplateFn(_templateFn: TemplateFn<T>) {}
 
-	protected initRenderOptions(options: LiveRepeatOptions<Item>) {
+	protected initRenderOptions(options: LiveRepeatOptions<T>) {
 		if (options.pageSize !== undefined && options.pageSize > 0) {
 			this.pageSize = options.pageSize
 		}
@@ -166,7 +164,7 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 	}
 
 	// Only `data` is updatable
-	protected updateRenderOptions(options: LiveRepeatOptions<Item>) {
+	protected updateRenderOptions(options: LiveRepeatOptions<T>) {
 		if (options.averageItemHeight) {
 			this.averageItemHeight = options.averageItemHeight
 		}
@@ -180,7 +178,7 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 		}
 	}
 
-	private watchRawDataAndUpdateImmediately(data: Iterable<Item> | null) {
+	private watchRawDataAndUpdateImmediately(data: Iterable<T> | null) {
 		if (this.unwatchData) {
 			this.unwatchData()
 			this.unwatchData = null
@@ -195,7 +193,7 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 			return [...data].map(observe)
 		}
 
-		let onUpdate = (data: Item[]) => {
+		let onUpdate = (data: T[]) => {
 			this.rawData = data
 			this.update()
 		}
@@ -213,24 +211,20 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 		this.toCompleteRendering = null
 	}
 
-	protected async updateData(data: Item[]) {
+	protected async updateData(data: T[]) {
 		super.updateData(data)
 
 		if (this.onUpdated) {
 			this.onUpdated(this.data, this.startIndex)
 		}
 
-		// `onRenderComplete` is required,
-		// Because although repeat elements are rendered currently,
-		// The container they are in may be still in a fragment which was just initialized using `render`.
-		// Otherwise it should using `onRenderComplete`, such that it can be called earlier than `setStartIndex`.
 		onRenderComplete(() => {
 			if (this.data.length > 0) {
 				if (!this.averageItemHeight) {
 					this.measureAverageItemHeight()
 					this.updateSliderPosition()
 				}
-	
+
 				if (this.needToApplyStartIndex && this.averageItemHeight) {
 					this.scroller.scrollTop = this.averageItemHeight * this.startIndex || 0
 					this.needToApplyStartIndex = false
@@ -387,7 +381,7 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 	private locateVisibleIndex(isFirst: boolean): number {
 		let scrollerRect = new ScrollerClientRect(this.scroller)
 
-		let visibleIndex = binaryFindIndexToInsert(this.wtems as WatchedTemplate<Item>[], (wtem) => {
+		let visibleIndex = binaryFindIndexToInsert(this.wtems as WatchedTemplate<T>[], (wtem) => {
 			let firstElement = wtem.template.range.getFirstElement()
 			if (firstElement) {
 				let rect = firstElement.getBoundingClientRect()
@@ -493,7 +487,9 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 		this.continuousScrollDirection = null
 
 		// It doesn't update immediately because `rawData` may changed and will update soon.
+		// Need to wait reset `needToApplyStartIndex` in `updateData`.
 		await renderComplete()
+
 		if (this.needToApplyStartIndex) {
 			await this.update()
 		}
@@ -540,7 +536,7 @@ export class LiveRepeatDirective<Item> extends RepeatDirective<Item> {
 	}
 
 	/** Get item in index. */
-	getItem(index: number): Item | null {
+	getItem(index: number): T | null {
 		return this.rawData ? this.rawData[index] || null : null
 	}
 }

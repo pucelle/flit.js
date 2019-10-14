@@ -1,5 +1,5 @@
-export {DirectiveTransition, DirectiveTransitionOptions} from './libs/directive-transition'
-export {defineDirective, DirectiveResult, Directive, createDirectiveFromResult} from './define'
+export {DirectiveTransition, DirectiveTransitionOptions} from './directive-transition'
+export {defineDirective, DirectiveResult, Directive, createDirectiveFromResult, DirectiveConstructor} from './define'
 export {cache} from './cache'
 export {repeat} from './repeat'
 export {liveRepeat, LiveRepeatDirective, LiveRepeatOptions} from './live-repeat'

@@ -5,6 +5,7 @@ import {NodeRange} from '../libs/node-helper'
 export class SlotProcesser {
 
 	private com: Component
+	private slots: {[key: string]: HTMLElement[]} = {}
 	private restSlotNodeRange: NodeRange | null = null
 
 	// When updated inner templates and found there are slots need to be filled, This value will become `true`.
@@ -21,7 +22,7 @@ export class SlotProcesser {
 	// Must cache slot nodes when com created and before child created,
 	// Because child components may remove them when created, in this situation we will lost it forever.
 	private initSlotNodes() {
-		let slots = this.com.slots
+		let slots = this.slots
 
 		// We only check `[slot]` in the children, or:
 		// <com1><com2><el slot="for com2"></com2></com1>
@@ -56,29 +57,31 @@ export class SlotProcesser {
 	}
 
 	mayFillSlots() {
-		if (this.hasSlotsToBeFilled) {
-			let slots = this.com.slots
-			let slotAnchors = this.com.el.querySelectorAll('slot')
+		if (!this.hasSlotsToBeFilled) {
+			return
+		}
 
-			for (let slotAnchor of slotAnchors) {
-				let name = slotAnchor.getAttribute('name')
-				if (name) {
-					if (slots && slots[name]) {
-						while (slotAnchor.firstChild) {
-							slotAnchor.firstChild.remove()
-						}
-						slotAnchor.append(...slots[name]!)
-					}
-				}
-				else if (this.restSlotNodeRange) {
+		let slots = this.slots
+		let slotAnchors = this.com.el.querySelectorAll('slot')
+
+		for (let slotAnchor of slotAnchors) {
+			let name = slotAnchor.getAttribute('name')
+			if (name) {
+				if (slots && slots[name]) {
 					while (slotAnchor.firstChild) {
 						slotAnchor.firstChild.remove()
 					}
-					slotAnchor.append(this.restSlotNodeRange.getFragment())
+					slotAnchor.append(...slots[name]!)
 				}
 			}
-			
-			this.hasSlotsToBeFilled = false
+			else if (this.restSlotNodeRange) {
+				while (slotAnchor.firstChild) {
+					slotAnchor.firstChild.remove()
+				}
+				slotAnchor.append(this.restSlotNodeRange.getFragment())
+			}
 		}
+		
+		this.hasSlotsToBeFilled = false
 	}
 }

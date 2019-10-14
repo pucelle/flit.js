@@ -1,6 +1,6 @@
-import {Context} from '../../component/component'
-import {Template, TemplateResult} from '../../parts'
-import {Watcher} from '../../watcher'
+import {Context} from '../component'
+import {Template, TemplateResult} from '../template'
+import {Watcher} from '../watcher'
 
 
 export type TemplateFn<Item> = (item: Item, index: number) => TemplateResult

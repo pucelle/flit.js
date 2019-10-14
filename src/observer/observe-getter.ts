@@ -1,9 +1,11 @@
-// After think more about getter, we decided to drop supports for observing getters automatically.
-// The main reason is when we observering get calling in proxy, we can't distinguish if it's normal property
-// or a getter calling immediately, then we must to follow prototype chain to find the getter descriptor,
-// and call the getter function manually by: `descriptor.get.call(objectProxy)`.
+/**
+ * After think more about getter, we decided to drop supports for observing getters automatically.
+ * The main reason is when we observe get callings in proxy, we can't distinguish if it's a normal property
+ * or a getter calling immediately, but we must to follow prototype chains to find the getter descriptor,
+ * and call the getter function manually by: `descriptor.get.call(objectProxy)`.
 
-// But we still add a API to support check getter descriptor and call it with proxied object manually,
+ * You can still check getter descriptor and call it with proxied object manually.
+ */
 export function observeGetter<T extends object>(obj: T, getterProperty: keyof T) {
 	let descriptor = getPropertyDescriptor(obj, getterProperty)
 	if (descriptor && descriptor.get) {

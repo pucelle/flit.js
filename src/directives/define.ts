@@ -2,13 +2,13 @@ import {Context} from '../component'
 import {NodeAnchor} from '../libs/node-helper'
 
 
-interface DirectiveConstructor<Args extends any[]> {
-	new(anchor: NodeAnchor, context: Context): Directive<Args>
+export interface DirectiveConstructor<A extends any[]> {
+	new(anchor: NodeAnchor, context: Context): Directive<A>
 }
 
-export interface Directive<Args extends any[] = any[]> {
-	canMergeWith(...args: Args): boolean
-	merge(...args: Args): void
+export interface Directive<A extends any[] = any[]> {
+	canMergeWith(...args: A): boolean
+	merge(...args: A): void
 	remove(): void
 }
 
@@ -18,23 +18,26 @@ const directiveMap: Map<number, DirectiveConstructor<any>> = new Map()
 
 
 /** Define a new directive from a class which implements `Directive`. */
-export function defineDirective<Args extends any[] = any[]>(Dir: DirectiveConstructor<Args>) {
+export function defineDirective<A extends any[] = any[]>(Dir: DirectiveConstructor<A>) {
 	let id = seed++
 	directiveMap.set(id, Dir)
 	
-	return function(...args: Args) {
+	return function(...args: A) {
 		return new DirectiveResult(id, ...args)
 	}
 }
 
 
-/** Returns from calling directive function. */
-export class DirectiveResult<Args extends any[] = any[]> {
+/** 
+ * Returned from calling directive functions like `repeat`.
+ * Used to cache arguments and update template later.
+ */
+export class DirectiveResult<A extends any[] = any[]> {
 
 	id: number
-	args: Args
+	args: A
 
-	constructor(id: number, ...args: Args) {
+	constructor(id: number, ...args: A) {
 		this.id = id
 		this.args = args
 	}
@@ -42,6 +45,7 @@ export class DirectiveResult<Args extends any[] = any[]> {
 
 
 /** Create directive from directive result. used in `node.ts` */
+/** @hidden */
 export function createDirectiveFromResult(anchor: NodeAnchor, context: Context, result: DirectiveResult): Directive {
 	let Dir = directiveMap.get(result.id)!
 	let directive = new Dir(anchor, context)

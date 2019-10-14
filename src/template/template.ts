@@ -2,12 +2,12 @@ import {Part} from './types'
 import {NodeAnchor, NodeAnchorType, NodeRange} from "../libs/node-helper"
 import {TemplateResult} from './template-result'
 import {parse, Place, PartType} from './template-parser'
-import {NodePart} from './node'
-import {MayAttrPart} from './may-attr'
-import {EventPart} from './event'
-import {AttrPart} from './attr'
-import {BindingPart, FixedBindingPart} from './binding'
-import {PropertyPart} from './property'
+import {NodePart} from './node-part'
+import {MayAttrPart} from './may-attr-part'
+import {EventPart} from './event-part'
+import {AttrPart} from './attr-part'
+import {BindingPart, FixedBindingPart} from './binding-part'
+import {PropertyPart} from './property-part'
 import {Context} from '../component'
 
 
@@ -18,6 +18,10 @@ interface CanUpdateParts {
 }
 
 
+/**
+ * Class to parse a template result returned from html`...` to element,
+ * And can do some patches on it according to newly rendered template result.
+ */
 export class Template {
 
 	private result: TemplateResult
@@ -76,7 +80,7 @@ export class Template {
 						break
 
 					case PartType.Property:
-						part = new PropertyPart(node as Element, place.name!, value)
+						part = new PropertyPart(node as Element, place.name!, value, !valueIndexes)
 						break
 	
 					case PartType.FixedBinging:

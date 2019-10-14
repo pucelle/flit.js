@@ -1,5 +1,9 @@
-import {Component, ComponentStyle} from './component'
-import {onRenderComplete} from './queue'
+import {onRenderComplete} from '../queue'
+import {TemplateResult} from '../template'
+import {Component} from './component'
+
+
+export type ComponentStyle = TemplateResult | string | (() => TemplateResult | string)
 
 
 // At beginning, we remove styles when they are no needed, but later we decided to always keep them,
@@ -42,7 +46,7 @@ function getStyleContent(style: ComponentStyle, scopeName: string): string {
 }
 
 
-/** Add global styles */
+/** Add global style codes. */
 export function addGlobalStyle(style: ComponentStyle): HTMLStyleElement {
 	let styleTag = createStyle(style, 'global')
 	globalStyleTagSet.add([style, styleTag])

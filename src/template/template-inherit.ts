@@ -1,5 +1,6 @@
-import {parseToHTMLTokens, HTMLTokenType, HTMLToken, joinHTMLTokens} from './libs/html-token'
-import {TemplateResult, joinWithOrderedMarkers, splitByOrderedMarkers, StringsAndValueIndexes} from './template-result'
+import {parseToHTMLTokens, HTMLTokenType, HTMLToken, joinHTMLTokens} from '../libs/html-token'
+import {TemplateResult} from './template-result'
+import {StringsAndValueIndexes, joinWithOrderedMarkers, splitByOrderedMarkers} from './template-result-operate'
 
 
 const inheritTemplateCache: Map<string, Map<string, StringsAndValueIndexes>> = new Map()

@@ -1,6 +1,6 @@
 import {Binding, defineBinding} from './define'
 import {Component, getComponent, onComponentCreatedAt, Context} from '../component'
-import {on} from '../dom-event'
+import {on} from '../libs/dom-event'
 
 
 const ALLOWED_MODIFIERS = ['lazy', 'number']

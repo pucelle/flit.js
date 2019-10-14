@@ -1,4 +1,6 @@
-export {defineComponent, ComponentConstructor, getComponentConstructorByName, ComponentStyle} from './define'
+export {ComponentConstructor, getComponentConstructor} from './constructor'
 export {Component, Context} from './component'
 export {getComponent, getComponentAsync} from './from-element'
-export {onComponentCreatedAt, update} from './life-cycle'
+export {onComponentCreatedAt} from './life-cycle'
+export {ComponentStyle, getScopedClassNameSet} from './style'
+export {define, createComponent} from './define'

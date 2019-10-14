@@ -4,7 +4,7 @@ import {NodeAnchor} from "../libs/node-helper"
 import {Template} from './template'
 import {DirectiveResult, Directive, createDirectiveFromResult} from '../directives'
 import {Context} from '../component'
-import {trim} from './libs/util'
+import {trim} from '../libs/util'
 
 
 enum ChildContentType {
@@ -137,11 +137,9 @@ export class NodePart implements Part {
 		}
 
 		if (results.length < templates.length) {
-			for (let i = results.length; i < templates.length; i++) {
-				let template = templates[i]
-				template.remove()
+			for (let i = templates.length - 1; i >= results.length; i--) {
+				templates.pop()!.remove()
 			}
-			this.templates = templates.slice(0, results.length)
 		}
 
 		else if (templates.length < results.length) {

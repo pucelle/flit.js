@@ -1,7 +1,8 @@
-import {TemplateType, joinWithOrderedMarkers, containsOrderedMarker, parseOrderedMarkers, splitByOrderedMarkers} from './template-result'
-import {getScopedClassNameSet} from '../style'
-import {cloneAttributes, trim} from './libs/util'
-import {parseToHTMLTokens, HTMLTokenType} from './libs/html-token'
+import {TemplateType} from './template-result'
+import {joinWithOrderedMarkers, containsOrderedMarker, parseOrderedMarkers, splitByOrderedMarkers} from './template-result-operate'
+import {getScopedClassNameSet} from '../component'
+import {cloneAttributes, trim} from '../libs/util'
+import {parseToHTMLTokens, HTMLTokenType} from '../libs/html-token'
 
 
 export enum PartType {

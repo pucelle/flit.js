@@ -4,8 +4,8 @@ import {Component, getComponent, onComponentCreatedAt} from '../component'
 
 /**
  * `.property=${...}` will assign value to element by `element.property = value`.
- * `.comProperty=${...}` will assign value to component by `com.property = value`.
- * `..property=${...}` to always assign to element.
+ * `.property=${...}` will assign value to component by `com.property = value` if on custom element.
+ * `..property=${...}` will always assign value to element.
 */
 export class PropertyPart implements Part {
 
@@ -14,11 +14,13 @@ export class PropertyPart implements Part {
 	private com: Component | null = null
 	private isComProperty: boolean
 	private value: unknown = undefined
+	private fixed: boolean
 
-	constructor(el: Element, name: string, value: unknown) {
+	constructor(el: Element, name: string, value: unknown, fixed: boolean) {
 		this.el = el
 		this.name = name[0] === '.' ? name.slice(1) : name
 		this.isComProperty = el.localName.includes('-') && name[0] !== '.'
+		this.fixed = fixed
 
 		if (this.isComProperty) {
 			this.bindCom()
@@ -55,7 +57,27 @@ export class PropertyPart implements Part {
 	}
 
 	private setComProperty(value: unknown) {
-		(this.com as any)[this.name] = value
+		if (this.fixed) {
+			this.setFixedComProperty(value as string)
+		}
+		else {
+			(this.com as any)[this.name] = value
+		}
+	}
+
+	private setFixedComProperty(value: string) {
+		let com = this.com as any
+		let type = typeof com[this.name]
+		
+		if (type === 'boolean') {
+			com[this.name] = value === 'false' || !value ? false : true
+		}
+		else if (type === 'number') {
+			com[this.name] = Number(value)
+		}
+		else {
+			com[this.name] = value
+		}
 	}
 
 	private updateElementProperty(value: unknown) {

@@ -1,4 +1,4 @@
-import {once, off} from './dom-event'
+import {once, off} from './libs/dom-event'
 import {onRenderComplete} from './queue'
 
 
@@ -83,6 +83,7 @@ const CUBIC_BEZIER_EASINGS = {
  * Get `cubic-bezier(...)` from easing name.
  * @param easing The extended easing name.
  */
+/** @hidden */
 export function getEasing(easing: TransitionEasing): string {
 	return CUBIC_BEZIER_EASINGS.hasOwnProperty(easing)
 		? 'cubic-bezier(' + CUBIC_BEZIER_EASINGS[easing as keyof typeof CUBIC_BEZIER_EASINGS].join(', ') + ')'
@@ -128,6 +129,7 @@ const CSS_PROPERTIES = {
 	transform: true
 }
 
+/** @hidden */
 export function formatShortTransitionOptions(options: TransitionOptions): StandardTransitionOptions {
 	if (Array.isArray(options)) {
 		return {
@@ -152,6 +154,10 @@ export function formatShortTransitionOptions(options: TransitionOptions): Standa
 }
 
 
+/**
+ * Class used to play specified transition on an element.
+ * Transition types includes class name, css properties, and registered js transition.
+ */
 export class Transition {
 
 	private el: Element

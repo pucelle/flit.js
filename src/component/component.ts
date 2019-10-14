@@ -1,32 +1,39 @@
 import {Emitter} from '../libs/emitter'
-import {NodePart, TemplateResult} from '../parts'
+import {NodePart, TemplateResult} from '../template'
 import {enqueueComponentUpdate} from '../queue'
 import {startUpdating, endUpdating, observeComTarget, clearDependencies, clearAsDependency, restoreAsDependency, targetMap} from '../observer'
 import {WatcherGroup} from '../watcher'
-import {getScopedClassNameSet} from '../style'
+import {getScopedClassNameSet, ComponentStyle, addGlobalStyle} from './style'
 import {NodeAnchorType, NodeAnchor} from '../libs/node-helper'
 import {DirectiveResult} from '../directives'
-import {getClosestComponent} from '../element'
-import {ComponentConstructor, ComponentStyle} from './define'
-import {setComponentAtElement} from './from-element'
-import {emitComponentCreatedCallbacks, onComponentConnected, onComponentDisconnected} from './life-cycle'
+import {setComponentAtElement, getComponent, getComponentAsync, getClosestComponent} from './from-element'
+import {emitComponentCreatedCallbacks, onComponentConnected, onComponentDisconnected, update} from './life-cycle'
 import {SlotProcesser} from './slot'
 
 /** Context may be `null` when using `render` or `renderAndUpdate` */
 export type Context = Component | null
 
 export interface ComponentEvents {
-	// Normally no need to register `created` event, you may just get component and do something.
-	// The only usage of it is to handle something after all sequential `onCreated` called.
-	created: () => void
-	
-	ready: () => void
+	/** 
+	 * No need to register `created` event, you may just get component and do something.
+	 * Seems that the only usage of it is to handle something after all sequential `onCreated` called.
+	 */
+	// created: () => void
 
-	/** After data updated, and will reander in next tick. */
-	updated: () => void
+	/** Not useful, equals to get component and await render complete. */
+	// ready: () => void
 
-	// After data rendered, you can visit element layouts now.
-	// We dropped the support of it because it equals running `onRenderComplete` or `renderComplete` in `updated`.
+	/** 
+	 * After data updated, and will reander in next tick.
+	 * Not useful because in component we can use `onUpdated` instead,
+	 * in outer other classes should only operate data and element of current component.
+	 */
+	// updated: () => void
+
+	/**
+	 * After data rendered, you can visit element layouts now.
+	 * We dropped the support of it because it equals running `onRenderComplete` or `renderComplete` in `updated`.
+	 */ 
 	// rendered: () => void
 
 	/** After element been inserted into body, include the first time. */
@@ -37,7 +44,26 @@ export interface ComponentEvents {
 }
 
 
-export abstract class Component<Events = any> extends Emitter<Events & ComponentEvents> {
+/** 
+ * Super class of all the components, create automacially from custom elements connected into document.
+ * @typeparam E Event interface in `{eventName: (...args) => void}` format.
+ */
+export abstract class Component<E = any> extends Emitter<E & ComponentEvents> {
+
+	/** Get component instance from root element. */
+	static get = getComponent
+
+	/** Get component instance from root element asynchronously. */
+	static getAsync = getComponentAsync
+
+	/** Get closest ancestor component which instanceof specified component constructor. */
+	static closest = getClosestComponent
+
+	 /** Update all components, watchers, styles. e.g., after language changed. */
+	static update = update
+
+	/** Add global style codes. */
+	static addGlobalStyle = addGlobalStyle
 
 	/**
 	 * The static `style` property contains style text used as styles for current component.
@@ -52,13 +78,6 @@ export abstract class Component<Events = any> extends Emitter<Events & Component
 	 */
 	static style: ComponentStyle | null = null
 
-	/**
-	 * Used to assign very important and unchanged properties,
-	 * Can be camel cased or dash cased, but assin in HTML element must be dash caces.
-	 * So I would suggest use it for one-word properties.
-	 */
-	static properties: string[] | null = null
-
 	/** The root element of component. */
 	el: HTMLElement
 
@@ -70,7 +89,6 @@ export abstract class Component<Events = any> extends Emitter<Events & Component
 
 	// Should be `Element` type, but in 99% scenarios it's HTMLElement.
 	refs: {[key: string]: HTMLElement} = {}
-	slots: {[key: string]: HTMLElement[]} = {}
 
 	private __slotProcesser: SlotProcesser | null = null
 	private __rootPart: NodePart | null = null
@@ -81,18 +99,15 @@ export abstract class Component<Events = any> extends Emitter<Events & Component
 	constructor(el: HTMLElement) {
 		super()
 		this.el = el
+		this.__emitCreated()
 		return observeComTarget(this as any)
 	}
 
+	/** @hidden */
 	__emitCreated() {
 		setComponentAtElement(this.el, this)
 		emitComponentCreatedCallbacks(this.el, this)
 		this.onCreated()
-		this.emit('created')
-
-		if (this.el.childNodes.length > 0) {
-			this.__slotProcesser = new SlotProcesser(this)
-		}
 
 		// A typescript issue here if we want to infer emitter arguments:
 		// We accept an `Events` and union it with type `ComponentEvents`,
@@ -106,6 +121,7 @@ export abstract class Component<Events = any> extends Emitter<Events & Component
 		// this.emit('created')
 	}
 
+	/** @hidden */
 	__emitConnected() {
 		// Not do following things when firstly connected.
 		if (!this.__connected) {
@@ -129,6 +145,7 @@ export abstract class Component<Events = any> extends Emitter<Events & Component
 		onComponentConnected(this)
 	}
 
+	/** @hidden */
 	__emitDisconnected() {
 		clearDependencies(this)
 
@@ -146,6 +163,24 @@ export abstract class Component<Events = any> extends Emitter<Events & Component
 		onComponentDisconnected(this)
 	}
 
+	/** May be called in rendering, so we can avoid checking slot elements when no slot rendered. */
+	/** @hidden */
+	__foundSlotsWhenRendering() {
+		// One potential issue here:
+		// created -> child component created.
+		//         -> element of child component removed, which also used as slot element of current component.
+		//         -> render and initialize slots for current component.
+		//         -> Can't found slot element because it was removed.
+		if (!this.__slotProcesser && this.el.childNodes.length > 0) {
+			this.__slotProcesser = new SlotProcesser(this)
+		}
+
+		if (this.__slotProcesser) {
+			this.__slotProcesser.needToFillSlotsLater()
+		}
+	}
+	
+	/** @hidden */
 	__updateImmediately() {
 		if (!this.__connected) {
 			return
@@ -173,25 +208,17 @@ export abstract class Component<Events = any> extends Emitter<Events & Component
 		let isFirstlyUpdate = !this.__updated
 		if (isFirstlyUpdate) {
 			this.onReady()
-			this.emit('ready')
 			this.__updated = true
 		}
 		
 		this.onUpdated()
-		this.emit('updated')
 	}
 
 	/** Force to update all watchers binded to current context. */
+	/** @hidden */
 	__updateWatcherGroup() {
 		if (this.__watcherGroup) {
 			this.__watcherGroup.update()
-		}
-	}
-
-	/** May be called in rendering, so we can avoid checking slot elements when no slot rendered. */
-	__foundSlotsWhenRendering() {
-		if (this.__slotProcesser) {
-			this.__slotProcesser.needToFillSlotsLater()
 		}
 	}
 
@@ -209,15 +236,6 @@ export abstract class Component<Events = any> extends Emitter<Events & Component
 	 */
 	update() {
 		enqueueComponentUpdate(this)
-	}
-
-	/**
-	 * Get closest ancestor component which instanceof `Com`.
-	 * It's very common that you extend a component and define a new custom element,
-	 * So you will can't find the parent component from the tag name. 
-	 */
-	closest<C extends ComponentConstructor>(Com: C): InstanceType<C> | null {
-		return getClosestComponent(this.el, Com)
 	}
 
 	/**

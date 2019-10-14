@@ -1,24 +1,24 @@
 import {defineDirective, DirectiveResult} from './define'
-import {DirectiveTransitionOptions} from './libs/directive-transition'
-import {TemplateResult} from '../parts'
+import {DirectiveTransitionOptions} from './directive-transition'
+import {TemplateResult} from '../template'
 import {LiveRepeatDirective} from './live-repeat'
-import {PageDataGetter, PageDataCacher} from './libs/page-data-cacher'
+import {PageDataGetter, PageDataCacher} from '../libs/page-data-cacher'
 import {observe} from '../observer'
 
 
-export interface LiveAsyncRepeatOptions<Item> {
+export interface LiveAsyncRepeatOptions<T> {
 	pageSize?: number			// Not updatable
 	renderPageCount?: number	// Not updatable
 	averageItemHeight?: number
-	key?: keyof Item
-	ref?: (dir: LiveAsyncRepeatDirective<Item>) => void	// Not updatable
-	dataGetter: PageDataGetter<Item>
+	key?: keyof T
+	ref?: (dir: LiveAsyncRepeatDirective<T>) => void	// Not updatable
+	dataGetter: PageDataGetter<T>
 	dataCount: number | Promise<number> | (() => (number | Promise<number>))
-	onUpdated?: (data: (Item | null)[], index: number) => void
+	onUpdated?: (data: (T | null)[], index: number) => void
 }
 
 // Compare to `TempalteFn`, the `item` can accpet `null` as argument when data is still loading.
-type LiveTemplateFn<Item> = (item: Item | null, index: number) => TemplateResult
+type LiveTemplateFn<T> = (item: T | null, index: number) => TemplateResult
 
 
 // One issue that is not solved:
@@ -34,11 +34,12 @@ type LiveTemplateFn<Item> = (item: Item | null, index: number) => TemplateResult
 // And it also cause cached paged data doesn't have fixed size,
 // such that we must count size of cached data of each page to fetch the data from `startIndex` to `endIndex`.
 
-export class LiveAsyncRepeatDirective<Item> extends LiveRepeatDirective<Item> {
+/** @hidden */
+export class LiveAsyncRepeatDirective<T> extends LiveRepeatDirective<T> {
 
 	private dataCount: number | Promise<number> | (() => (number | Promise<number>)) | null = null
 
-	private key: keyof Item | null = null
+	private key: keyof T | null = null
 
 	/**
 	 * Whole data count when using `dataGetter`.
@@ -50,10 +51,10 @@ export class LiveAsyncRepeatDirective<Item> extends LiveRepeatDirective<Item> {
 	/** Need to call `updateSliderPosition` after got `knownDataCount`. */
 	private needToUpdateSliderPositionAfterDataCountKnown: boolean = false
 
-	private dataCacher!: PageDataCacher<Item>
+	private dataCacher!: PageDataCacher<T>
 	private updateId: number = 0
 
-	protected validateTemplateFn(templateFn: LiveTemplateFn<Item> | any) {
+	protected validateTemplateFn(templateFn: LiveTemplateFn<T> | any) {
 		try {
 			let result = templateFn(null, 0)
 			if (!(result instanceof TemplateResult)) {
@@ -65,13 +66,13 @@ export class LiveAsyncRepeatDirective<Item> extends LiveRepeatDirective<Item> {
 		}
 	}
 
-	protected initRenderOptions(options: LiveAsyncRepeatOptions<Item> | any) {
+	protected initRenderOptions(options: LiveAsyncRepeatOptions<T> | any) {
 		this.dataCacher = new PageDataCacher(this.pageSize)
 		this.updateRenderOptions(options)
 		this.updateDataCount()
 	}
 
-	protected updateRenderOptions(options: LiveAsyncRepeatOptions<Item> | any) {
+	protected updateRenderOptions(options: LiveAsyncRepeatOptions<T> | any) {
 		if (options.averageItemHeight) {
 			this.averageItemHeight = options.averageItemHeight
 		}
@@ -120,7 +121,7 @@ export class LiveAsyncRepeatDirective<Item> extends LiveRepeatDirective<Item> {
 
 		if (renderPalceholders) {
 			let {data, fresh} = this.dataCacher.getExistingData(this.startIndex, endIndex)
-			updateImmediatelyPromise = this.updateData(data as Item[])
+			updateImmediatelyPromise = this.updateData(data as T[])
 			needToRenderWithFreshData = !fresh
 		}
 		
@@ -128,7 +129,7 @@ export class LiveAsyncRepeatDirective<Item> extends LiveRepeatDirective<Item> {
 		let updateId = this.updateId += 1
 
 		if (needToRenderWithFreshData) {
-			updateFreshPromise = this.dataCacher.getFreshData(this.startIndex, endIndex).then((data: Item[]) => {
+			updateFreshPromise = this.dataCacher.getFreshData(this.startIndex, endIndex).then((data: T[]) => {
 				if (updateId === this.updateId) {
 					return this.updateData(data)
 				}
@@ -147,7 +148,7 @@ export class LiveAsyncRepeatDirective<Item> extends LiveRepeatDirective<Item> {
 		}
 	}
 
-	protected async updateData(data: Item[]) {
+	protected async updateData(data: T[]) {
 		if (this.key) {
 			data = this.uniqueData(data)
 		}
@@ -156,7 +157,7 @@ export class LiveAsyncRepeatDirective<Item> extends LiveRepeatDirective<Item> {
 		await super.updateData(data)
 	}
 
-	private uniqueData(data: Item[]): Item[] {
+	private uniqueData(data: T[]): T[] {
 		let set = new Set()
 		
 		return data.filter(item => {
@@ -204,12 +205,12 @@ export class LiveAsyncRepeatDirective<Item> extends LiveRepeatDirective<Item> {
 		await this.setStartIndex(index)
 	}
 
-	getItem(index: number): Item | null {
+	getItem(index: number): T | null {
 		return this.dataCacher.getExistingData(index, index + 1).data[0]
 	}
 
 	/** Get currently rendered item in index. */
-	getRenderedItem(index: number): Item | null {
+	getRenderedItem(index: number): T | null {
 		let isRendered = index >= this.startIndex && index < this.startIndex + this.data.length
 		if (isRendered) {
 			return this.data[index - this.startIndex]

@@ -1,21 +1,19 @@
 // This file cloned for https://github.com/pucelle/ff/blob/master/src/base/emitter.ts
 // You may visit it to find more descriptions about the implemention.
 
-type EventListener = (...args: any[]) => void
 
 interface EventItem {
-	listener: EventListener
+	listener: (...args: any[]) => void
 	scope?: object,
 	once: boolean
 }
 
 
-/** An event emitter to listen and emit events. */
-export class Emitter<Events = any, K = keyof Events> {
+export class Emitter<E = any> {
 
-	private __events: Map<K, EventItem[]> = new Map()
+	private __events: Map<keyof E, EventItem[]> = new Map()
 
-	private __ensureEvents(name: K): EventItem[] {
+	private __ensureEvents<K extends keyof E>(name: K): EventItem[] {
 		let events = this.__events.get(name)
 		if (!events) {
 			this.__events.set(name, events = [])
@@ -24,13 +22,7 @@ export class Emitter<Events = any, K = keyof Events> {
 		return events
 	}
 
-	/**
-	 * Register listener for specified event name.
-	 * @param name The event name.
-	 * @param listener The event listener.
-	 * @param scope The scope will be binded to listener.
-	 */
-	on(name: K, listener: EventListener, scope?: object) {
+	on<K extends keyof E>(name: K, listener: (...args: any[]) => void, scope?: object) {
 		let events = this.__ensureEvents(name)
 		
 		events.push({
@@ -40,13 +32,7 @@ export class Emitter<Events = any, K = keyof Events> {
 		})
 	}
 
-	/**
-	 * Register listener for specified event name for only once.
-	 * @param name The event name.
-	 * @param listener The event listener.
-	 * @param scope The scope will be binded to listener.
-	 */
-	once(name: K, listener: EventListener, scope?: object) {
+	once<K extends keyof E>(name: K, listener: (...args: any[]) => void, scope?: object) {
 		let events = this.__ensureEvents(name)
 
 		events.push({
@@ -56,13 +42,7 @@ export class Emitter<Events = any, K = keyof Events> {
 		})
 	}
 
-	/**
-	 * Stop listening specified event.
-	 * @param name The event name.
-	 * @param listener The event listener, only matched listener will be removed.
-	 * @param scope The scope binded to listener. If provided, remove listener only when scope match.
-	 */
-	off(name: K, listener: EventListener, scope?: object) {
+	off<K extends keyof E>(name: K, listener: (...args: any[]) => void, scope?: object) {
 		let events = this.__events.get(name)
 		if (events) {
 			for (let i = events.length - 1; i >= 0; i--) {
@@ -74,14 +54,8 @@ export class Emitter<Events = any, K = keyof Events> {
 		}
 	}
 
-	/**
-	 * Check if registered listener for specified event.
-	 * @param name The event name.
-	 * @param listener The event listener. If provided, will also check if the listener match.
-	 * @param scope The scope binded to listener. If provided, will additionally check if the scope match.
-	 */
-	hasListener(name: string, listener?: EventListener, scope?: object) {
-		let events = this.__events.get(name as unknown as K)
+	hasListener(name: string, listener?: (...args: any[]) => void, scope?: object) {
+		let events = this.__events.get(name as any)
 
 		if (!listener) {
 			return !!events && events.length > 0
@@ -99,12 +73,7 @@ export class Emitter<Events = any, K = keyof Events> {
 		return false
 	}
 
-	/**
-	 * Emit specified event with followed arguments.
-	 * @param name The event name.
-	 * @param args The arguments that will be passed to event listeners.
-	 */
-	emit(name: K, ...args: any[]) {
+	emit<K extends keyof E>(name: K, ...args: any[]) {
 		let events = this.__events.get(name)
 		if (events) {
 			for (let i = 0; i < events.length; i++) {
@@ -120,7 +89,6 @@ export class Emitter<Events = any, K = keyof Events> {
 		}
 	}
 
-	/** Remove all event listeners */
 	removeAllListeners() {
 		this.__events = new Map()
 	}

@@ -1,4 +1,4 @@
-import {Component} from './component/component'
+import {Component} from './component'
 import {Watcher} from './watcher'
 
 
@@ -10,7 +10,7 @@ let updatingComponents = false
 let watchersToUpdate: Watcher[] = []
 let componentsToUpdate: Component[] = []
 
-
+/** @hidden */
 export function enqueueComponentUpdate(com: Component) {
 	// If updating component trigger another watcher or component, we should update it in the same update function.
 	if (!componentSet.has(com)) {
@@ -23,6 +23,7 @@ export function enqueueComponentUpdate(com: Component) {
 	}
 }
 
+/** @hidden */
 export function enqueueWatcherUpdate(watcher: Watcher) {
 	if (updatingComponents) {
 		watcher.__updateImmediately()
@@ -41,8 +42,8 @@ export function enqueueWatcherUpdate(watcher: Watcher) {
 }
 
 /** 
- * Call `callback` after next rendered all the components in micro task queue.
- * Note that it was called before `renderComplete` that was called in micro task queue.
+ * Call `callback` after rendered all the components in followed micro task queues.
+ * Note that it was called before `renderComplete`.
  */
 export function onRenderComplete(callback: () => void) {
 	renderCompleteCallbacks.push(callback)
@@ -53,9 +54,9 @@ export function onRenderComplete(callback: () => void) {
 }
 
 /** 
- * Returns a promise which will be resolved after rendered all the components in micro task queue.
- * Note that it was called in micro task queue, after `onRenderComplete` been called.
- * So when you are implementing an common component, using `onRenderComplete` would be better.
+ * Returns a promise which will be resolved after rendered all the components in micro task queues.
+ * Note that it was called after `onRenderComplete`.
+ * So if you are implementing a common component, using `onRenderComplete` would be better.
  * Please don't call `await renderComplete()` for two times,
  * The second one will be called in a new `requestAnimationFrame` and browser will render before it.
  */

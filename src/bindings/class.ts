@@ -1,5 +1,5 @@
 import {Binding, defineBinding} from './define'
-import {getScopedClassNameSet} from '../style'
+import {getScopedClassNameSet} from '../component'
 import {Context} from '../component'
 
 

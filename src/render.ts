@@ -1,8 +1,6 @@
-import {TemplateResult, Template, html} from './parts'
-import {Component, Context} from './component/component'
-import {getComponentConstructorByName} from './component/define'
+import {TemplateResult, Template, html} from './template'
+import {Component, Context, getComponentConstructor, createComponent} from './component'
 import {globalWatcherGroup} from './watcher'
-import {createComponent} from './element'
 import {DirectiveResult} from './directives'
 
 
@@ -112,7 +110,7 @@ export function renderComponent(codesOrFn: any, context: Context = null, onUpdat
 
 	let firstElement = fragment.firstElementChild as HTMLElement | null
 	if (firstElement) {
-		let Com = getComponentConstructorByName(firstElement.localName)
+		let Com = getComponentConstructor(firstElement.localName)
 		if (Com) {
 			component = createComponent(firstElement, Com)
 		}
@@ -128,7 +126,8 @@ export function renderComponent(codesOrFn: any, context: Context = null, onUpdat
 
 
 /**
- * Append fragment or element into target element or selector. Returns the first element of fragment.
+ * Append a fragment or element into target element or selector.
+ * Returns the first element in the fragment.
  * It's a helper function to use like `appendTo(render(...), document.body)`.
  * @param fragment The fragment to append.
  * @param target The target element to append to.

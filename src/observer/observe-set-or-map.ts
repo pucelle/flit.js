@@ -4,7 +4,7 @@ import {proxyMap, targetMap} from './shared'
 
 type MapOrSet = Map<unknown, unknown> | Set<unknown>
 
-const MAP_SET_SET_METHODS = ['add', 'set', 'delete', 'clear']
+const MAP_SET_METHODS = ['add', 'set', 'delete', 'clear']
 
 
 export function observeMapOrSetTarget(ms: MapOrSet) {
@@ -16,7 +16,7 @@ export function observeMapOrSetTarget(ms: MapOrSet) {
 }
 
 
-// A very big issue in map and set:
+// A potential issue in map and set:
 // We may add an item to a set, and then test if proxy of item in set,
 // or add proxy of item and cause it has duplicate values in set.
 // We will fix this when we indeed meet this.
@@ -31,7 +31,7 @@ const proxyHandler = {
 			value = value.bind(ms)
 			mayAddDependency(ms)
 
-			if (MAP_SET_SET_METHODS.includes(prop as string)) {
+			if (MAP_SET_METHODS.includes(prop as string)) {
 				notifyObjectSet(ms)
 			}
 		}

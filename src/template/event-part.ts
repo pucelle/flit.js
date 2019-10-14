@@ -1,6 +1,6 @@
 import {Part} from './types'
 import {Component, getComponent, onComponentCreatedAt, Context} from '../component'
-import {on} from '../dom-event'
+import {on} from '../libs/dom-event'
 
 
 /**

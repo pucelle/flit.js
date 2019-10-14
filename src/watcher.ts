@@ -2,11 +2,10 @@ import {startUpdating, endUpdating, clearDependencies} from './observer'
 import {enqueueWatcherUpdate} from './queue'
 
 
-export type WatchFn = () => unknown
-export type WatcherCallback<T> = (value: T) => void
-
-
-/** You need to know that when calling callback, the Watch doesn't ensure the watched datas are truly changed. */
+/** 
+ * Used to watch a function returns and trigger callback if it is changed.
+ * You need to know that when callback was called, it doesn't ensure the watched datas are truly changed.
+ */
 export class Watcher<T = any> {
 
 	private fn: () => T
@@ -87,6 +86,7 @@ export class Watcher<T = any> {
  * Used to manage several watchers that binded to a context or as global watchers.
  * By this class, you can easily connect, disconnect, update all the watchers related.
  */
+/** @hidden */
 export class WatcherGroup {
 
 	private watchers: Set<Watcher> = new Set()
@@ -183,6 +183,7 @@ export class WatcherGroup {
 	}
 }
 
+/** @hidden */
 export const globalWatcherGroup = new WatcherGroup()
 
 

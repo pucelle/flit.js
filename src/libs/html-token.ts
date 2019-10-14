@@ -1,4 +1,5 @@
-import {trim} from "./util";
+import {trim} from './util'
+
 
 export enum HTMLTokenType {
 	StartTag,
