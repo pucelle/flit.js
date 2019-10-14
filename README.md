@@ -11,6 +11,9 @@
 
  - Written in typescript.
  - Using `Proxy` to observe data changes and update components automatically.
+ - Supports partial rendering.
+
+For more details, preview [flit-ui](https://github.com/pucelle/flit-ui)
 
 
 ## Documentation
