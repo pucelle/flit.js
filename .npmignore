@@ -1,0 +1,10 @@
+node_modules
+.vscode
+docs
+src
+test
+gulpfile.js
+tsconfig.json
+typedoc.json
+README.md
+*.tgz
