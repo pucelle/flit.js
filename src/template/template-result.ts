@@ -1,4 +1,4 @@
-import {inheritTemplateResults} from './template-inherit'
+import {extendsTemplateResult} from './template-extends'
 
 
 export type TemplateType = 'html' | 'css' | 'svg' | 'text'
@@ -64,16 +64,16 @@ export class TemplateResult {
 	 * Used for `TemplateResult` to merge root attributes and slot elements into super.
 	 * Sometimes you want to reuse super rendering result and add some classes and set soem slots,
 	 * but normally this can only work when instantiation, not working inside a new defined component.
-	 * Now using `CurrentRenderingResult.inherit(super.render())`, you can do this.
+	 * Now using `CurrentRenderingResult.extends(super.render())`, you can do this.
 	 * 
 	 * At beginning, we decided to implement this by rendering `<super-com>`,
 	 * but every time for every rendered component to update, it need to check the name.
 	 * We should makesure the rendering logic simple and easy to understand,
-	 * so finally we implement a new API `inherit` to call it manually.
+	 * so finally we implement a new API `extends` to call it manually.
 	 */
-	inherit(superResult: TemplateResult): TemplateResult {
+	extends(superResult: TemplateResult): TemplateResult {
 		if (this.type === 'html' || this.type === 'svg') {
-			return inheritTemplateResults(this, superResult)
+			return extendsTemplateResult(this, superResult)
 		}
 		else {
 			return new TemplateResult(this.type, [...superResult.strings, ...this.strings] as unknown as TemplateStringsArray, [...superResult.values, ...this.values])

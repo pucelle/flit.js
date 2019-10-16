@@ -3,7 +3,7 @@ import {TemplateResult} from './template-result'
 import {StringsAndValueIndexes, joinWithOrderedMarkers, splitByOrderedMarkers} from './template-result-operate'
 
 
-const inheritTemplateCache: Map<string, Map<string, StringsAndValueIndexes>> = new Map()
+const extendsTemplateCache: Map<string, Map<string, StringsAndValueIndexes>> = new Map()
 
 
 /**
@@ -16,20 +16,20 @@ const inheritTemplateCache: Map<string, Map<string, StringsAndValueIndexes>> = n
  * What happens when multiple rest slot anchor elements (`<slot />`) exists in different template:
  *   The outside most rest slot elements will exist too, others will be removed.
  */
-export function inheritTemplateResults(result: TemplateResult, superResult: TemplateResult): TemplateResult {
+export function extendsTemplateResult(result: TemplateResult, superResult: TemplateResult): TemplateResult {
 	let totalValues = [...result.values, ...superResult.values]
 
 	let string = joinWithOrderedMarkers(result.strings as unknown as string[])
 	let superString = joinWithOrderedMarkers(superResult.strings as unknown as string[], result.values.length)
 	let stringsAndValueIndexes: StringsAndValueIndexes
-	let cacheForSuper = inheritTemplateCache.get(string)
+	let cacheForSuper = extendsTemplateCache.get(string)
 
 	if (cacheForSuper) {
 		stringsAndValueIndexes = cacheForSuper.get(superString)!
 	}
 
 	if (!stringsAndValueIndexes!) {
-		stringsAndValueIndexes = parseTemplateResultInheriting(string, superString)
+		stringsAndValueIndexes = parseTemplateResultForExtending(string, superString)
 	}
 	
 	let {strings, valueIndexes} = stringsAndValueIndexes!
@@ -38,7 +38,7 @@ export function inheritTemplateResults(result: TemplateResult, superResult: Temp
 	return new TemplateResult(result.type, strings as unknown as TemplateStringsArray, reOrderedValues)
 }
 
-function parseTemplateResultInheriting(string: string, superString: string): StringsAndValueIndexes {
+function parseTemplateResultForExtending(string: string, superString: string): StringsAndValueIndexes {
 	let tokens = parseToHTMLTokens(string)
 	let {attributes, slots, restSlot} = parseToRootPropertiesAndSlots(tokens)
 
@@ -47,10 +47,10 @@ function parseTemplateResultInheriting(string: string, superString: string): Str
 
 	let stringsAndValueIndexes = splitByOrderedMarkers(joinHTMLTokens(superTokens))
 
-	let cacheForSuper = inheritTemplateCache.get(string)
+	let cacheForSuper = extendsTemplateCache.get(string)
 	if (!cacheForSuper) {
 		cacheForSuper = new Map()
-		inheritTemplateCache.set(string, cacheForSuper)
+		extendsTemplateCache.set(string, cacheForSuper)
 	}
 
 	cacheForSuper.set(superString, stringsAndValueIndexes)
