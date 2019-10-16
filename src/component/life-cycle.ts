@@ -37,8 +37,8 @@ export function onComponentDisconnected(com: Component) {
 	connectedComponentSet.delete(com)
 }
 
-/** Update all components, watchers, styles. e.g., when language changed. */
-export function update() {
+/** Update all components, watchers. e.g., when language changed. */
+export function updateComponents() {
 	globalWatcherGroup.update()
 
 	for (let com of connectedComponentSet) {

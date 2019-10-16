@@ -54,8 +54,8 @@ export function addGlobalStyle(style: ComponentStyle): HTMLStyleElement {
 }
 
 /** Update all styles for components, you can update styles after theme changed. */
-// `updateStyles` always been called along with `updateComponents`,
-// So we may need to makesure `updateStyles` in the same micro task with `updateComponents`.
+// `updateStyles` should always been called along with `update`,
+// So we may need to makesure `updateStyles` in the same micro task with `update`.
 export function updateStyles() {
 	onRenderComplete(() => {
 		let styleAndTags = [...globalStyleTagSet]

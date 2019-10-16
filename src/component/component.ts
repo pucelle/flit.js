@@ -3,12 +3,13 @@ import {NodePart, TemplateResult} from '../template'
 import {enqueueComponentUpdate} from '../queue'
 import {startUpdating, endUpdating, observeComTarget, clearDependencies, clearAsDependency, restoreAsDependency, targetMap} from '../observer'
 import {WatcherGroup} from '../watcher'
-import {getScopedClassNameSet, ComponentStyle, addGlobalStyle} from './style'
+import {getScopedClassNameSet, ComponentStyle, addGlobalStyle, updateStyles} from './style'
 import {NodeAnchorType, NodeAnchor} from '../libs/node-helper'
 import {DirectiveResult} from '../directives'
 import {setComponentAtElement, getComponent, getComponentAsync, getClosestComponent} from './from-element'
-import {emitComponentCreatedCallbacks, onComponentConnected, onComponentDisconnected, update} from './life-cycle'
+import {emitComponentCreatedCallbacks, onComponentConnected, onComponentDisconnected, updateComponents} from './life-cycle'
 import {SlotProcesser} from './slot'
+
 
 /** Context may be `null` when using `render` or `renderAndUpdate` */
 export type Context = Component | null
@@ -59,8 +60,11 @@ export abstract class Component<E = any> extends Emitter<E & ComponentEvents> {
 	/** Get closest ancestor component which instanceof specified component constructor. */
 	static closest = getClosestComponent
 
-	 /** Update all components, watchers, styles. e.g., after language changed. */
-	static update = update
+	 /** Update all components, watchers. e.g., after language changed. */
+	static updateComponents = updateComponents
+
+	/** Update all styles for components, you may update styles after theme changed. */
+	static updateStyles = updateStyles
 
 	/** Add global style codes. */
 	static addGlobalStyle = addGlobalStyle
@@ -99,10 +103,10 @@ export abstract class Component<E = any> extends Emitter<E & ComponentEvents> {
 	constructor(el: HTMLElement) {
 		super()
 		this.el = el
-		this.__emitCreated()
 		return observeComTarget(this as any)
 	}
 
+	/** Not called in constructor because in child classes it doesn't apply instance properties yet. */
 	/** @hidden */
 	__emitCreated() {
 		setComponentAtElement(this.el, this)
@@ -194,10 +198,6 @@ export abstract class Component<E = any> extends Emitter<E & ComponentEvents> {
 			this.__rootPart.update(result)
 		}
 		else if (result !== null) {
-			if (this.__slotProcesser) {
-				this.__slotProcesser.initRestSlotRange()
-			}
-
 			this.__rootPart = new NodePart(new NodeAnchor(this.el, NodeAnchorType.Root), result, this)
 		}
 
