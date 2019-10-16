@@ -70,13 +70,16 @@ export class PropertyPart implements Part {
 		let type = typeof com[this.name]
 		
 		if (type === 'boolean') {
-			com[this.name] = value === 'false' || !value ? false : true
+			com[this.name] = value === 'false' ? false : true
 		}
 		else if (type === 'number') {
 			com[this.name] = Number(value)
 		}
-		else {
+		else if (type !== 'undefined') {
 			com[this.name] = value
+		}
+		else {
+			console.warn(`Please makesure value of property "${this.name}" exist in "<${com.el.localName} />" when assigning fixed property!`)
 		}
 	}
 
