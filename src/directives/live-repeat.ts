@@ -15,7 +15,6 @@ export interface LiveRepeatOptions<T> {
 	pageSize?: number			// Not updatable
 	renderPageCount?: number	// Not updatable
 	averageItemHeight?: number	// Not updatable
-	ref?: (dir: LiveRepeatDirective<T>) => void	// Not updatable
 	data: Iterable<T> | null
 	onUpdated?: (data: T[], index: number) => void	// If you want `onRendered`, just use `onRenderComplete` in `onUpdated.`
 }
@@ -135,10 +134,6 @@ export class LiveRepeatDirective<T> extends RepeatDirective<T> {
 		if (this.firstlyMerge) {
 			this.initRenderOptions(options)
 			this.validateTemplateFn(templateFn)
-
-			if (options.ref) {
-				options.ref(this)
-			}
 		}
 
 		this.templateFn = templateFn

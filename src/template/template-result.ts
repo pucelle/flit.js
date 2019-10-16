@@ -76,7 +76,11 @@ export class TemplateResult {
 			return extendsTemplateResult(this, superResult)
 		}
 		else {
-			return new TemplateResult(this.type, [...superResult.strings, ...this.strings] as unknown as TemplateStringsArray, [...superResult.values, ...this.values])
+			return new TemplateResult(
+				this.type,
+				[...superResult.strings, ...this.strings],
+				[...superResult.values, '', ...this.values]
+			)
 		}
 	}
 }

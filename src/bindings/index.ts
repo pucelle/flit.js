@@ -1,4 +1,4 @@
-export {defineBinding, getDefinedBinding, Binding, BindingResult, BindingConstructor} from './define'
+export {defineBinding, Binding, BindingResult, BindingConstructor, createBindingFromResult, refBinding} from './define'
 import './class'
 import './style'
 import './model'

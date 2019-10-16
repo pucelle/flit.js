@@ -1,6 +1,6 @@
 import {onRenderComplete} from '../queue'
 import {TemplateResult} from '../template'
-import {Component} from './component'
+import {ComponentConstructor} from './constructor'
 
 
 export type ComponentStyle = TemplateResult | string | (() => TemplateResult | string)
@@ -12,12 +12,12 @@ export type ComponentStyle = TemplateResult | string | (() => TemplateResult | s
 
 
 /** Cache `Component` -> {style element, referenced count} */
-const componentStyleTagMap: Map<typeof Component, HTMLStyleElement> = new Map()
+const componentStyleTagMap: Map<ComponentConstructor, HTMLStyleElement> = new Map()
 const globalStyleTagSet: Set<[ComponentStyle, HTMLStyleElement]> = new Set()
 
 
 /** Called when component was connected. */
-export function ensureComponentStyle(Com: typeof Component, name: string) {
+export function ensureComponentStyle(Com: ComponentConstructor, name: string) {
 	if (Com.style) {
 		if (!componentStyleTagMap.has(Com)) {
 			let styleTag = createStyle(Com.style, name)

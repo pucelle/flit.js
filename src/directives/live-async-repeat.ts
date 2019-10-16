@@ -11,7 +11,6 @@ export interface LiveAsyncRepeatOptions<T> {
 	renderPageCount?: number	// Not updatable
 	averageItemHeight?: number
 	key?: keyof T
-	ref?: (dir: LiveAsyncRepeatDirective<T>) => void	// Not updatable
 	dataGetter: PageDataGetter<T>
 	dataCount: number | Promise<number> | (() => (number | Promise<number>))
 	onUpdated?: (data: (T | null)[], index: number) => void
