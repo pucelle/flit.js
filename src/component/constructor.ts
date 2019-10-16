@@ -1,18 +1,9 @@
 import {Component} from './component'
-import {getComponent, getComponentAsync, getClosestComponent} from './from-element'
-import {ComponentStyle, addGlobalStyle, updateStyles} from './style'
-import {updateComponents} from './life-cycle'
+import {ComponentStyle} from './style'
 
 
 export interface ComponentConstructor {
-	get: typeof getComponent
-	getAsync: typeof getComponentAsync
-	closest: typeof getClosestComponent
-	updateComponents: typeof updateComponents
-	updateStyles: typeof updateStyles
-	addGlobalStyle: typeof addGlobalStyle
 	style: ComponentStyle | null
-
 	new(...args: any[]): Component
 }
 

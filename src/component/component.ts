@@ -3,11 +3,11 @@ import {NodePart, TemplateResult} from '../template'
 import {enqueueComponentUpdate} from '../queue'
 import {startUpdating, endUpdating, observeComTarget, clearDependencies, clearAsDependency, restoreAsDependency, targetMap} from '../observer'
 import {WatcherGroup} from '../watcher'
-import {getScopedClassNameSet, ComponentStyle, addGlobalStyle, updateStyles} from './style'
+import {getScopedClassNameSet, ComponentStyle} from './style'
 import {NodeAnchorType, NodeAnchor} from '../libs/node-helper'
 import {DirectiveResult} from '../directives'
-import {setComponentAtElement, getComponent, getComponentAsync, getClosestComponent} from './from-element'
-import {emitComponentCreatedCallbacks, onComponentConnected, onComponentDisconnected, updateComponents} from './life-cycle'
+import {setComponentAtElement} from './from-element'
+import {emitComponentCreatedCallbacks, onComponentConnected, onComponentDisconnected} from './life-cycle'
 import {SlotProcesser} from './slot'
 
 
@@ -50,24 +50,6 @@ export interface ComponentEvents {
  * @typeparam E Event interface in `{eventName: (...args) => void}` format.
  */
 export abstract class Component<E = any> extends Emitter<E & ComponentEvents> {
-
-	/** Get component instance from root element. */
-	static get = getComponent
-
-	/** Get component instance from root element asynchronously. */
-	static getAsync = getComponentAsync
-
-	/** Get closest ancestor component which instanceof specified component constructor. */
-	static closest = getClosestComponent
-
-	 /** Update all components, watchers. e.g., after language changed. */
-	static updateComponents = updateComponents
-
-	/** Update all styles for components, you may update styles after theme changed. */
-	static updateStyles = updateStyles
-
-	/** Add global style codes. */
-	static addGlobalStyle = addGlobalStyle
 
 	/**
 	 * The static `style` property contains style text used as styles for current component.
