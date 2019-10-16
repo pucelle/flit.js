@@ -138,7 +138,9 @@ function connectElement(el: HTMLElement, Com: ComponentConstructor) {
 /** @hidden */
 export function createComponent(el: HTMLElement, Com: ComponentConstructor): Component {
 	ensureComponentStyle(Com, el.localName)
-	return new Com(el)
+	let com = new Com(el)
+	com.__emitCreated()
+	return com
 }
 
 function disconnectElement(el: HTMLElement) {

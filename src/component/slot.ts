@@ -16,12 +16,13 @@ export class SlotProcesser {
 
 	constructor(com: Component) {
 		this.com = com
-		this.initSlotNodes()
+		this.initNamedSlotNodes()
+		this.initRestSlotRange()
 	}
 
 	// Must cache slot nodes when com created and before child created,
 	// Because child components may remove them when created, in this situation we will lost it forever.
-	private initSlotNodes() {
+	private initNamedSlotNodes() {
 		let slots = this.slots
 
 		// We only check `[slot]` in the children, or:
@@ -46,7 +47,7 @@ export class SlotProcesser {
 	// It's very import to cache rest nodes after child created and before rendering,
 	// because these nodes may be changed since child nodes may be removed when child components created.
 	// Otherwise those nodes may be firstly removed and then restored from `<slot />`, so we must cache before rendering.
-	initRestSlotRange() {
+	private initRestSlotRange() {
 		let fragment = document.createDocumentFragment()
 		fragment.append(...this.com.el.childNodes)
 		this.restSlotNodeRange = new NodeRange(fragment)
