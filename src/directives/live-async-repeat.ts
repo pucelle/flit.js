@@ -1,20 +1,17 @@
 import {defineDirective, DirectiveResult} from './define'
-import {DirectiveTransitionOptions} from './directive-transition'
+import {DirectiveTransitionOptions} from '../libs/directive-transition'
 import {TemplateResult} from '../template'
-import {LiveRepeatDirective} from './live-repeat'
+import {LiveRepeatDirective, LiveRepeatOptions} from './live-repeat'
 import {PageDataGetter, PageDataCacher} from '../libs/page-data-cacher'
 import {observe} from '../observer'
 
 
-export interface LiveAsyncRepeatOptions<T> {
-	pageSize?: number			// Not updatable
-	renderPageCount?: number	// Not updatable
-	averageItemHeight?: number
+export interface LiveAsyncRepeatOptions<T> extends LiveRepeatOptions<T> {
 	key?: keyof T
 	dataGetter: PageDataGetter<T>
 	dataCount: number | Promise<number> | (() => (number | Promise<number>))
-	onUpdated?: (data: (T | null)[], index: number) => void
 }
+
 
 // Compare to `TempalteFn`, the `item` can accpet `null` as argument when data is still loading.
 type LiveTemplateFn<T> = (item: T | null, index: number) => TemplateResult
@@ -53,6 +50,23 @@ export class LiveAsyncRepeatDirective<T> extends LiveRepeatDirective<T> {
 	private dataCacher!: PageDataCacher<T>
 	private updateId: number = 0
 
+	merge(options: any, templateFn: any, transitionOptions?: DirectiveTransitionOptions) {
+		let firstlyUpdate = !this.options.updated
+
+		this.options.update(options)
+		this.templateFn = templateFn
+		this.transition.updateOptions(transitionOptions)
+
+		if (firstlyUpdate) {
+			this.validateTemplateFn(templateFn)
+			this.dataCacher = new PageDataCacher(options.pageSize)
+			this.updateDataCount()
+		}
+		else {
+			this.dataCacher.setDataGetter(options.dataGetter)
+		}
+	}
+
 	protected validateTemplateFn(templateFn: LiveTemplateFn<T> | any) {
 		try {
 			let result = templateFn(null, 0)
@@ -65,23 +79,10 @@ export class LiveAsyncRepeatDirective<T> extends LiveRepeatDirective<T> {
 		}
 	}
 
-	protected initRenderOptions(options: LiveAsyncRepeatOptions<T> | any) {
-		this.dataCacher = new PageDataCacher(this.pageSize)
-		this.updateRenderOptions(options)
-		this.updateDataCount()
-	}
-
 	protected updateRenderOptions(options: LiveAsyncRepeatOptions<T> | any) {
 		if (options.averageItemHeight) {
 			this.averageItemHeight = options.averageItemHeight
 		}
-
-		if (options.onUpdated) {
-			this.onUpdated = options.onUpdated
-		}
-
-		this.dataCacher.setDataGetter(options.dataGetter)
-		this.dataCount = options.dataCount
 	}
 
 	private async updateDataCount() {
@@ -114,7 +115,9 @@ export class LiveAsyncRepeatDirective<T> extends LiveRepeatDirective<T> {
 	protected async update(renderPalceholders: boolean = true) {
 		this.updateSliderPosition()
 
-		let endIndex = this.limitEndIndex(this.startIndex + this.pageSize * this.renderPageCount)
+		let pageSize = this.options.get('pageSize')
+		let renderPageCount = this.options.get('renderPageCount')
+		let endIndex = this.limitEndIndex(this.startIndex + pageSize * renderPageCount)
 		let needToRenderWithFreshData = !renderPalceholders
 		let updateImmediatelyPromise: Promise<void> | undefined
 

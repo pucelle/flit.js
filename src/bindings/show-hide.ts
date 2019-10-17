@@ -1,6 +1,6 @@
 import {Binding, defineBinding, BindingResult} from './define'
 import {Context} from '../component'
-import {DirectiveTransition, DirectiveTransitionOptions} from '../directives'
+import {DirectiveTransition, DirectiveTransitionOptions} from '../libs/directive-transition'
 
 
 /**
@@ -21,22 +21,21 @@ class ShowBinding implements Binding<[any, DirectiveTransitionOptions | undefine
 
 	update(value: any, options?: DirectiveTransitionOptions) {
 		value = !!value
-		this.transition.setOptions(options)
+		this.transition.updateOptions(options)
 
 		if (value !== this.value) {
-			let atStart = this.value === undefined
 
 			if (value) {
 				this.el.hidden = false
 
-				if (this.transition.shouldPlayEnter(atStart)) {
-					this.transition.mayPlayEnter(this.el)
+				if (this.transition.shouldPlayEnter()) {
+					this.transition.playEnter(this.el)
 				}
 				
 			}
 			else {
-				if (this.transition.shouldPlayLeave(atStart)) {
-					this.transition.mayPlayLeave(this.el).then(finish => {
+				if (this.transition.shouldPlayLeave()) {
+					this.transition.playLeave(this.el).then(finish => {
 						if (finish) {
 							this.el.hidden = true
 						}

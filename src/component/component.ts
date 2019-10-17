@@ -187,8 +187,8 @@ export abstract class Component<E = any> extends Emitter<E & ComponentEvents> {
 			this.__slotProcesser.mayFillSlots()
 		}
 
-		let isFirstlyUpdate = !this.__updated
-		if (isFirstlyUpdate) {
+		let firstlyUpdate = !this.__updated
+		if (firstlyUpdate) {
 			this.onReady()
 			this.__updated = true
 		}

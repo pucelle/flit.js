@@ -1,7 +1,7 @@
 import {defineDirective, Directive, DirectiveResult} from './define'
 import {globalWatcherGroup} from '../watcher'
 import {Context} from '../component'
-import {DirectiveTransition, DirectiveTransitionOptions} from './directive-transition'
+import {DirectiveTransition, DirectiveTransitionOptions} from '../libs/directive-transition'
 import {WatchedTemplate, TemplateFn} from '../libs/watched-template'
 import {NodeAnchor} from '../libs/node-helper'
 import {observe} from '../observer'
@@ -17,7 +17,6 @@ export class RepeatDirective<T> implements Directive {
 	protected data: T[] = []
 	protected wtems: WatchedTemplate<T>[] = []
 	protected unwatchData: (() => void) | null = null
-	protected firstlyMerge: boolean = true
 
 	/** 
 	 * For `liveRepeat`, specify the the start index of first item in the whole data.
@@ -62,9 +61,8 @@ export class RepeatDirective<T> implements Directive {
 
 	merge(data: Iterable<T> | null, templateFn: TemplateFn<T>, options?: DirectiveTransitionOptions) {
 		this.templateFn = templateFn
-		this.transition.setOptions(options)
+		this.transition.updateOptions(options)
 		this.watchAndUpdateDataImmediately(data)
-		this.firstlyMerge = false
 	}
 
 	// We want to reduce moving times, the best way is here:
@@ -246,7 +244,7 @@ export class RepeatDirective<T> implements Directive {
 		let fragment = template.range.getFragment()
 		let firstElement: HTMLElement | null = null
 
-		if (this.transition.shouldPlayEnter(this.firstlyMerge)) {
+		if (this.transition.shouldPlayEnter()) {
 			firstElement = fragment.firstElementChild as HTMLElement
 		}
 
@@ -258,7 +256,7 @@ export class RepeatDirective<T> implements Directive {
 		}
 
 		if (firstElement) {
-			this.transition.mayPlayEnter(firstElement)
+			this.transition.playEnter(firstElement)
 		}
 
 		return wtem
@@ -270,7 +268,7 @@ export class RepeatDirective<T> implements Directive {
 		if (this.transition.shouldPlay()) {
 			let firstElement = template.range.getFirstElement()
 			if (firstElement) {
-				this.transition.mayPlayLeave(firstElement).then((finish: boolean) => {
+				this.transition.playLeave(firstElement).then((finish: boolean) => {
 					if (finish) {
 						wtem.remove()
 					}

@@ -3,7 +3,7 @@ import {TemplateResult, Template} from '../template'
 import {text} from '../template'
 import {Context} from '../component'
 import {NodeAnchorType, NodeAnchor} from "../libs/node-helper"
-import {DirectiveTransition, DirectiveTransitionOptions} from './directive-transition'
+import {DirectiveTransition, DirectiveTransitionOptions} from '../libs/directive-transition'
 
 
 class CacheDirective implements Directive {
@@ -23,7 +23,7 @@ class CacheDirective implements Directive {
 	private async playEnterTransition(template: Template) {
 		let firstElement = template.range.getFirstElement()
 		if (firstElement) {
-			await this.transition.mayPlayEnter(firstElement)
+			await this.transition.playEnter(firstElement)
 		}
 	}
 
@@ -32,7 +32,7 @@ class CacheDirective implements Directive {
 	}
 
 	merge(result: TemplateResult | string | null, options?: DirectiveTransitionOptions) {
-		this.transition.setOptions(options)
+		this.transition.updateOptions(options)
 
 		if (result) {
 			if (typeof result === 'string') {
@@ -71,12 +71,11 @@ class CacheDirective implements Directive {
 			result = text`${result}`
 		}
 		
-		let atStart = this.templates.length === 0
 		let template = new Template(result, this.context)
 		let fragment = template.range.getFragment()
 		this.anchor.insert(fragment)
 
-		if (this.transition.shouldPlayEnter(atStart)) {
+		if (this.transition.shouldPlayEnter()) {
 			this.playEnterTransition(template)
 		}
 
@@ -94,7 +93,7 @@ class CacheDirective implements Directive {
 		}
 
 		if (this.transition.shouldPlay() && firstElement) {
-			this.transition.mayPlayLeave(firstElement).then((finish: boolean) => {
+			this.transition.playLeave(firstElement).then((finish: boolean) => {
 				if (finish) {
 					template.range.cacheFragment()
 				}

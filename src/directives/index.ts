@@ -1,4 +1,3 @@
-export {DirectiveTransition, DirectiveTransitionOptions} from './directive-transition'
 export {defineDirective, refDirective, DirectiveResult, Directive, createDirectiveFromResult, DirectiveConstructor} from './define'
 export {cache} from './cache'
 export {repeat} from './repeat'

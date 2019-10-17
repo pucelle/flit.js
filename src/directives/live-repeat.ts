@@ -1,6 +1,6 @@
 import {defineDirective, DirectiveResult} from './define'
 import {Context} from '../component'
-import {DirectiveTransitionOptions} from './directive-transition'
+import {DirectiveTransitionOptions} from '../libs/directive-transition'
 import {WatchedTemplate, TemplateFn} from '../libs/watched-template'
 import {NodeAnchor} from '../libs/node-helper'
 import {on} from '../libs/dom-event'
@@ -9,14 +9,35 @@ import {RepeatDirective} from './repeat'
 import {renderComplete, onRenderComplete} from '../queue'
 import {binaryFindIndexToInsert, ScrollerClientRect, throttleByAnimationFrame} from '../libs/util'
 import {observe} from '../observer'
+import {Options} from '../libs/options'
 
 
 export interface LiveRepeatOptions<T> {
-	pageSize?: number			// Not updatable
-	renderPageCount?: number	// Not updatable
-	averageItemHeight?: number	// Not updatable
-	data: Iterable<T> | null
-	onUpdated?: (data: T[], index: number) => void	// If you want `onRendered`, just use `onRenderComplete` in `onUpdated.`
+	/**
+	* How many items to render each time.
+	* If you are using dynamic data, you should set this value to count of items that you ajax interface returned.
+	* Otherwise you may set this value big enough to cover viewport, but should not too big to render too much items.
+	* Normally 50 would be enough since minimal lineHeight is `24` and `24 * 50 = 1200` can cover most screens.
+	* If the render result can't cover the viewport, it will be double until it can and rerender.
+	*/
+	pageSize: number
+
+	/**
+	* How many pages to render each time.
+	* If the render result can't cover viewport, will double this value.
+	* Normally you don't need to set this, it's value will be automatically detected.
+	* Set this value only if you can makesure `1` is not enough and don't want the rerendering at the beginning.
+	*/
+	renderPageCount?: number
+
+	/** Raw data to only render part of it. */
+	data?: Iterable<T> | null
+
+	/** 
+	 * We may want to do something with the currently rendered results, link loading screenshots...
+	 * If you want `onRendered`, just use `onRenderComplete` in `onUpdated.`
+	 */
+	onUpdated?: (data: T[], index: number) => void
 }
 
 
@@ -40,25 +61,13 @@ export class LiveRepeatDirective<T> extends RepeatDirective<T> {
 	/** The parent node of `slider`, it's `overflow` value must be `auto` or `scroll`. */
 	protected scroller!: HTMLElement
 
-	private scrollerBorderTopWidth: number = 0
-	private scrollerBorderBottomWidth: number = 0
+		/** 
+	 * Average item height value, it is used to calculate the position of the `slider`.
+	 * It will be detected automatically from the first rendering if was not initialized.
+	 */
+	protected averageItemHeight: number = 0
 
-	/**
-	* How many items to render each time.
-	* If you are using dynamic data, you should set this value to count of items that you ajax interface returned.
-	* Otherwise you may set this value big enough to cover viewport, but should not too big to render too much items.
-	* Normally 50 would be enough since minimal lineHeight is `24` and `24 * 50 = 1200` can cover most screens.
-	* If the render result can't cover the viewport, it will be double until it can and rerender.
-	*/
-	protected pageSize: number = 50
-
-	/**
-	* How many pages to render each time.
-	* If the render result can't cover viewport, will double this value.
-	* Normally you don't need to set this, it's value will be automatically detected.
-	* Set this value only if you can makesure `1` is not enough and don't want the rerendering at the beginning.
-	*/
-	protected renderPageCount: number = 1
+	protected options: Options<LiveRepeatOptions<T>> = new Options({pageSize: 50})	// > 1080 / 29
 
 	/** 
 	 * `startIndex` can only be set for once from `options`.
@@ -67,21 +76,14 @@ export class LiveRepeatDirective<T> extends RepeatDirective<T> {
 	protected needToApplyStartIndex: boolean = false
 
 	/** 
-	 * Average item height value, it is used to calculate the position of the `slider`.
-	 * It will be detected automatically from the first rendering if was not initialized.
-	 */
-	protected averageItemHeight: number = 0
-
-	/** 
 	 * When we scrolled up or down, we don't know about the height of just inserted or removed elements.
 	 * But we can keep it's scrolling position by adjusting `top` or `bottom` property of slider element.
 	 */
 	private continuousScrollDirection: 'up' | 'down' | null = null
 	private continuousSliderPosition: number | null = null
+	private scrollerBorderTopWidth: number = 0
+	private scrollerBorderBottomWidth: number = 0
 	private toCompleteRendering: Promise<void> | null = null
-
-	/** We may want to do something with the currently rendered results, link loading screenshots... */
-	protected onUpdated: ((data: T[], index: number) => void) | null = null
 
 	/** Whole data from options. */
 	private rawData: T[] | null = null
@@ -131,49 +133,16 @@ export class LiveRepeatDirective<T> extends RepeatDirective<T> {
 	}
 
 	merge(options: any, templateFn: TemplateFn<T>, transitionOptions?: DirectiveTransitionOptions) {
-		if (this.firstlyMerge) {
-			this.initRenderOptions(options)
-			this.validateTemplateFn(templateFn)
-		}
-
+		this.options.update(options)
 		this.templateFn = templateFn
-		this.transition.setOptions(transitionOptions)
-		this.updateRenderOptions(options as LiveRepeatOptions<T>)
-		this.firstlyMerge = false
-	}
-
-	protected validateTemplateFn(_templateFn: TemplateFn<T>) {}
-
-	protected initRenderOptions(options: LiveRepeatOptions<T>) {
-		if (options.pageSize !== undefined && options.pageSize > 0) {
-			this.pageSize = options.pageSize
-		}
-
-		if (options.renderPageCount) {
-			this.renderPageCount = options.renderPageCount
-		}
-
-		if (options.averageItemHeight) {
-			this.averageItemHeight = options.averageItemHeight
-		}
-	}
-
-	// Only `data` is updatable
-	protected updateRenderOptions(options: LiveRepeatOptions<T>) {
-		if (options.averageItemHeight) {
-			this.averageItemHeight = options.averageItemHeight
-		}
-		
-		if (options.onUpdated) {
-			this.onUpdated = options.onUpdated
-		}
+		this.transition.updateOptions(transitionOptions)
 
 		if (options.data !== undefined) {
-			this.watchRawDataAndUpdateImmediately(options.data)
+			this.watchRawDataAndUpdate(options.data)
 		}
 	}
 
-	private watchRawDataAndUpdateImmediately(data: Iterable<T> | null) {
+	private watchRawDataAndUpdate(data: Iterable<T> | null) {
 		if (this.unwatchData) {
 			this.unwatchData()
 			this.unwatchData = null
@@ -198,8 +167,10 @@ export class LiveRepeatDirective<T> extends RepeatDirective<T> {
 
 	protected async update() {
 		this.updateSliderPosition()
-
-		let endIndex = this.limitEndIndex(this.startIndex + this.pageSize * this.renderPageCount)
+		
+		let pageSize = this.options.get('pageSize')
+		let renderPageCount = this.options.get('renderPageCount')
+		let endIndex = this.limitEndIndex(this.startIndex + pageSize * renderPageCount)
 		let data = this.rawData ? this.rawData.slice(this.startIndex, endIndex) : []
 		this.toCompleteRendering = this.updateData(data)
 		await this.toCompleteRendering
@@ -209,8 +180,9 @@ export class LiveRepeatDirective<T> extends RepeatDirective<T> {
 	protected async updateData(data: T[]) {
 		super.updateData(data)
 
-		if (this.onUpdated) {
-			this.onUpdated(this.data, this.startIndex)
+		let onUpdated = this.options.get('onUpdated')
+		if (onUpdated) {
+			onUpdated(this.data, this.startIndex)
 		}
 
 		onRenderComplete(() => {
@@ -251,8 +223,10 @@ export class LiveRepeatDirective<T> extends RepeatDirective<T> {
 	// When no child nodes moved in scroller, expecially when rendering placeholder values [null, ...].
 	// updating height of placeholder elements will cause `scroller.scrollTop` reset.
 	protected updateSliderPosition() {
+		let pageSize = this.options.get('pageSize')
+		let renderPageCount = this.options.get('renderPageCount')
 		let countBeforeStart = this.startIndex
-		let endIndex = this.limitEndIndex(this.startIndex + this.pageSize * this.renderPageCount)
+		let endIndex = this.limitEndIndex(this.startIndex + pageSize * renderPageCount)
 		let countAfterEnd = 0
 		let totalCount = this.getTotalDataCount()
 
@@ -330,6 +304,8 @@ export class LiveRepeatDirective<T> extends RepeatDirective<T> {
 
 	// `direction` means where we render new items, and also the direction that the value of `startIndex` will change to.
 	private updateToCover(scrollDirection: 'up' | 'down') {
+		let pageSize = this.options.get('pageSize')
+		let renderPageCount = this.options.get('renderPageCount')
 		let startIndex = -1
 		let endIndex = -1	// Max value is `rawData.length`, it's a slice index, not true index of data. 
 		let visibleIndex = -1
@@ -341,7 +317,7 @@ export class LiveRepeatDirective<T> extends RepeatDirective<T> {
 		else {
 			startIndex = visibleIndex = this.locateFirstVisibleIndex()
 			if (startIndex > -1) {
-				endIndex = startIndex + this.pageSize * this.renderPageCount
+				endIndex = startIndex + pageSize * renderPageCount
 			}
 		}
 
@@ -352,12 +328,12 @@ export class LiveRepeatDirective<T> extends RepeatDirective<T> {
 			}
 			else {
 				endIndex = Math.floor(this.scroller.scrollTop / this.averageItemHeight)
-						 + this.pageSize * this.renderPageCount
+						 + pageSize * renderPageCount
 			}
 		}
 
 		endIndex = this.limitEndIndex(endIndex)
-		startIndex = Math.max(0, endIndex - this.pageSize * this.renderPageCount)
+		startIndex = Math.max(0, endIndex - pageSize * renderPageCount)
 
 		this.validateContinuousScrolling(scrollDirection, startIndex, endIndex)
 
