@@ -20,7 +20,7 @@ export interface LiveRepeatOptions<T> {
 	* Normally 50 would be enough since minimal lineHeight is `24` and `24 * 50 = 1200` can cover most screens.
 	* If the render result can't cover the viewport, it will be double until it can and rerender.
 	*/
-	pageSize: number
+	pageSize?: number
 
 	/**
 	* How many pages to render each time.
