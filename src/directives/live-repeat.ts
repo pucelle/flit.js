@@ -41,6 +41,9 @@ export interface LiveRepeatOptions<T> {
 }
 
 
+const defaultLiveRepeatOptions: LiveRepeatOptions<any> = {pageSize: 50}
+
+
 // Benchmark about using static layout or absolute layout: https://jsperf.com/is-absolute-layout-faster
 
 // The `liveRepeat` only support render one item in one line.
@@ -67,7 +70,7 @@ export class LiveRepeatDirective<T> extends RepeatDirective<T> {
 	 */
 	protected averageItemHeight: number = 0
 
-	protected options: Options<LiveRepeatOptions<T>> = new Options({pageSize: 50})	// > 1080 / 29
+	protected options: Options<LiveRepeatOptions<T>> = new Options(defaultLiveRepeatOptions)	// > 1080 / 29
 
 	/** 
 	 * `startIndex` can only be set for once from `options`.
