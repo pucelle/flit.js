@@ -53,7 +53,16 @@ export class TemplateResult {
 
 		for (let i = 0; i < this.strings.length - 1; i++) {
 			let value = this.values[i]
-			text += value === null || value === undefined ? '' : String(value)
+
+			if (value !== null && value !== undefined) {
+				if (Array.isArray(value)) {
+					text += value.join('')
+				}
+				else {
+					text += String(value)
+				}
+			}
+
 			text += this.strings[i + 1]
 		}
 
