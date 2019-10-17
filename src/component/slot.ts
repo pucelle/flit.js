@@ -37,7 +37,7 @@ export class SlotProcesser {
 				}
 				els.push(el as HTMLElement)
 
-				// No need to move slot attribute here, bacause only check child slot elements, not check deeper.
+				// No need to remove `slot` attribute here, bacause we only check child slot elements, not check deeper.
 				// So it can avoid been treated as slot element again after moved into an outer component
 				el.remove()
 			}
