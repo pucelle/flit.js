@@ -5,7 +5,7 @@ import {Options} from './options'
 
 export interface DirectiveTransitionOptions {
 	/** Transition options to control enter and leave transition. */
-	transition: TransitionOptions
+	transition?: TransitionOptions
 
 	/** Should play enter transition when just created the elements. */
 	enterAtStart?: boolean
@@ -18,12 +18,11 @@ export interface DirectiveTransitionOptions {
 }
 
 
-
 /** Class to manage transition options, expecially to know should play transition when at start. */
 export class DirectiveTransition {
 	
 	private context: Context
-	private options: Options<DirectiveTransitionOptions> = new Options({transition: 'fade'})
+	private options: Options<DirectiveTransitionOptions> = new Options({})
 	private firstlyUpdate: boolean | null = null
 
 	constructor(context: Context) {
