@@ -114,6 +114,7 @@ namespace StyleParser {
 		let current: string[] | undefined
 		let codes = ''
 		let classNameSet: Set<string> | undefined
+		let keyframesDeep: number = 0
 
 		if (comName) {
 			// May add more scoped class name when using `render` or `renderAndUpdate`.
@@ -130,9 +131,16 @@ namespace StyleParser {
 			let endChar = match[3]
 
 			if (endChar === '{' && chars) {
-				// Commands likes `@media` must be in the out mose level.
-				if (chars[0] === '@') {
+				// Commands likes `@media` must in the out most level.
+				if (chars[0] === '@' || keyframesDeep > 0) {
 					codes += match[0]
+
+					if (chars.startsWith('@keyframes')) {
+						keyframesDeep = 1
+					}
+					else if (keyframesDeep > 0) {
+						keyframesDeep++
+					}
 				}
 				else {
 					if (current) {
@@ -152,7 +160,13 @@ namespace StyleParser {
 
 			// May also be end paren `@media{...}`, but it's can't be included in any selectors.
 			else if (endChar === '}') {
+				if (keyframesDeep > 0) {
+					keyframesDeep--
+				}
+
 				current = stack.pop()
+
+				// Not add `}` for sass like nesting.
 				if (!current) {
 					codes += match[0]
 				}
