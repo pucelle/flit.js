@@ -1,6 +1,5 @@
 import {defineDirective, Directive, DirectiveResult} from './define'
 import {TemplateResult, Template} from '../template'
-import {text} from '../template'
 import {Context} from '../component'
 import {NodeAnchorType, NodeAnchor} from "../libs/node-helper"
 import {DirectiveTransition, DirectiveTransitionOptions} from '../libs/directive-transition'
@@ -20,25 +19,14 @@ class CacheDirective implements Directive {
 		this.transition = new DirectiveTransition(context)
 	}
 
-	private async playEnterTransition(template: Template) {
-		let firstElement = template.range.getFirstElement()
-		if (firstElement) {
-			await this.transition.playEnter(firstElement)
-		}
-	}
-
 	canMergeWith(_result: TemplateResult | string | null): boolean {
 		return true
 	}
 
-	merge(result: TemplateResult | string | null, options?: DirectiveTransitionOptions) {
+	merge(result: TemplateResult | '' | null, options?: DirectiveTransitionOptions) {
 		this.transition.updateOptions(options)
 
 		if (result) {
-			if (typeof result === 'string') {
-				result = text`${result}`
-			}
-
 			if (this.currentTemplate && this.currentTemplate.canMergeWith(result)) {
 				this.currentTemplate.merge(result)
 			}
@@ -55,7 +43,7 @@ class CacheDirective implements Directive {
 					this.currentTemplate = template
 				}
 				else {
-					this.initTrueResult(result)
+					this.initNewResult(result)
 				}
 			}
 		}
@@ -66,11 +54,14 @@ class CacheDirective implements Directive {
 		}
 	}
 	
-	private initTrueResult(result: TemplateResult | string) {
-		if (typeof result === 'string') {
-			result = text`${result}`
+	private async playEnterTransition(template: Template) {
+		let firstElement = template.range.getFirstElement()
+		if (firstElement) {
+			await this.transition.playEnter(firstElement)
 		}
-		
+	}
+
+	private initNewResult(result: TemplateResult) {
 		let template = new Template(result, this.context)
 		let fragment = template.range.getFragment()
 		this.anchor.insert(fragment)
@@ -113,9 +104,10 @@ class CacheDirective implements Directive {
 	}
 }
 
+
 /**
  * When returned vlaue of `result` changed, this directive will try to reuse old rendered elements.
  * Note that when old rendering result restored, the scroll positions in it will fall back to start position.
- * @param result The html`...` result, can be null or empty string. This value map change when rerendering.
+ * @param result The html`...` result, can be null or empty string. This value may change when rerendering.
  */
-export const cache = defineDirective(CacheDirective) as (result: TemplateResult | string | null, options?: DirectiveTransitionOptions) => DirectiveResult
+export const cache = defineDirective(CacheDirective) as (result: TemplateResult | '' | null, options?: DirectiveTransitionOptions) => DirectiveResult
