@@ -40,10 +40,10 @@ export function extendsTemplateResult(result: TemplateResult, superResult: Templ
 
 function parseTemplateResultForExtending(string: string, superString: string): StringsAndValueIndexes {
 	let tokens = parseToHTMLTokens(string)
-	let {attributes, slots, restSlot} = parseToRootPropertiesAndSlots(tokens)
+	let {attributes, slots, restTokens} = parseToRootPropertiesAndSlots(tokens)
 
 	let superTokens = parseToHTMLTokens(superString)
-	assignRootPropertiesAndSlotsTo(superTokens, attributes, slots, restSlot)
+	assignRootPropertiesAndSlotsTo(superTokens, attributes, slots, restTokens)
 
 	let stringsAndValueIndexes = splitByOrderedMarkers(joinHTMLTokens(superTokens))
 
@@ -67,8 +67,8 @@ function parseToRootPropertiesAndSlots(tokens: HTMLToken[]) {
 	let attributes = firstTag.attributes!
 	let slots: {[key: string]: HTMLToken[]} = {}
 
-	// Text nodes already been trimmed when parsing as tokens, no need to worry rest slot exist with empty text.
-	let restSlot: HTMLToken[] = []
+	// Text nodes already been trimmed when parsing as tokens, no need to worry rest slot contains empty text.
+	let restTokens: HTMLToken[] = []
 
 	for (let i = 0; i < tokens.length; i++) {
 		let token = tokens[i]
@@ -97,17 +97,17 @@ function parseToRootPropertiesAndSlots(tokens: HTMLToken[]) {
 	}
 
 	if (firstTagEndIndex - firstTagStartIndex > 2) {
-		restSlot = tokens.slice(firstTagStartIndex + 1, firstTagEndIndex - 1)
+		restTokens = tokens.slice(firstTagStartIndex + 1, firstTagEndIndex - 1)
 	}
 
-	return {attributes, slots, restSlot}
+	return {attributes, slots, restTokens}
 }
 
-function assignRootPropertiesAndSlotsTo(tokens: HTMLToken[], attributes: string, slots: {[key: string]: HTMLToken[]}, restSlot: HTMLToken[]) {
+function assignRootPropertiesAndSlotsTo(tokens: HTMLToken[], attributes: string, slots: {[key: string]: HTMLToken[]}, restTokens: HTMLToken[]) {
 	let firstTag = tokens.find(token => token.type === HTMLTokenType.StartTag)!
 	firstTag.attributes += attributes
 
-	if (Object.keys(slots).length > 0 || restSlot.length > 0) {
+	if (Object.keys(slots).length > 0 || restTokens.length > 0) {
 		for (let i = 0; i < tokens.length; i++) {
 			let token = tokens[i]
 			switch (token.type) {
@@ -118,17 +118,29 @@ function assignRootPropertiesAndSlotsTo(tokens: HTMLToken[], attributes: string,
 
 						if (name) {
 							if (slots[name]) {
-								outInnerNestingTokens(tokens, i)
 								let tokenPieces = slots[name]
+
+								// Don't remove `<slot name="">` so it may be overwrited by outers.
+								outInnerNestingTokens(tokens, i)
+								
+								if (token.selfClose) {
+									token.selfClose = false
+									tokenPieces.push({
+										type: HTMLTokenType.EndTag,
+										tagName: 'slot',
+									})
+								}
+
 								tokens.splice(i + 1, 0, ...tokenPieces)
 								i += tokenPieces.length
 							}
 						}
 						else {
-							outInnerNestingTokens(tokens, i)
-							if (restSlot.length) {
-								tokens.splice(i + 1, 0, ...restSlot)
-								i += restSlot.length
+							// Removes `<slot />` so different levels of rest contents will be merged.
+							if (restTokens.length) {
+								outOuterNestingTokens(tokens, i)
+								tokens.splice(i, 0, ...restTokens)
+								i += restTokens.length
 							}
 						}
 					}
