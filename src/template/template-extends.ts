@@ -42,7 +42,7 @@ function parseTemplateResultForExtending(string: string, superString: string): S
 	let tokens = parseToHTMLTokens(string)
 	let {attributes, slots, restTokens} = parseToRootPropertiesAndSlots(tokens)
 
-	let superTokens = parseToHTMLTokens(superString)
+	let superTokens = parseToSuperTokens(superString)
 	assignRootPropertiesAndSlotsTo(superTokens, attributes, slots, restTokens)
 
 	let stringsAndValueIndexes = splitByOrderedMarkers(joinHTMLTokens(superTokens))
@@ -103,9 +103,29 @@ function parseToRootPropertiesAndSlots(tokens: HTMLToken[]) {
 	return {attributes, slots, restTokens}
 }
 
+// Will add a template tag at start if don't have.
+function parseToSuperTokens(string: string): HTMLToken[] {
+	let tokens = parseToHTMLTokens(string)
+	let firstToken = tokens[0]
+
+	if (!firstToken || firstToken.type !== HTMLTokenType.StartTag || firstToken.tagName !== 'template') {
+		tokens.unshift({
+			type: HTMLTokenType.StartTag,
+			tagName: 'template',
+			attributes: '',
+		})
+
+		tokens.push({
+			type: HTMLTokenType.EndTag,
+			tagName: 'template',
+		})
+	}
+
+	return tokens
+}
+
 function assignRootPropertiesAndSlotsTo(tokens: HTMLToken[], attributes: string, slots: {[key: string]: HTMLToken[]}, restTokens: HTMLToken[]) {
-	let firstTag = tokens.find(token => token.type === HTMLTokenType.StartTag)!
-	firstTag.attributes += attributes
+	tokens[0].attributes += attributes
 
 	if (Object.keys(slots).length > 0 || restTokens.length > 0) {
 		for (let i = 0; i < tokens.length; i++) {
@@ -120,17 +140,8 @@ function assignRootPropertiesAndSlotsTo(tokens: HTMLToken[], attributes: string,
 							if (slots[name]) {
 								let tokenPieces = slots[name]
 
-								// Don't remove `<slot name="">` so it may be overwrited by outers.
+								// Keep `<slot name="">` so it may be overwrited by outers.
 								outInnerNestingTokens(tokens, i)
-								
-								if (token.selfClose) {
-									token.selfClose = false
-									tokenPieces.push({
-										type: HTMLTokenType.EndTag,
-										tagName: 'slot',
-									})
-								}
-
 								tokens.splice(i + 1, 0, ...tokenPieces)
 								i += tokenPieces.length
 							}

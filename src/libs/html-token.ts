@@ -24,6 +24,8 @@ const SELF_CLOSE_TAGS = [
 /**
  * Parse html codes to tokens.
  * After parsed, all comment was removed, and `\r\n\t` in text nodes was removed too.
+ * Automatically fix `<tag />` to `<tag></tag>` for not self close tags.
+ * attributes are not been trimmed.
  */
 export function parseToHTMLTokens(string: string) {
 	const tagRE = /<!--[\s\S]*?-->|<([\w-]+)([\s\S]*?)\/?>|<\/[\w-]+>/g
