@@ -4,13 +4,14 @@ import {Options} from './options'
 
 
 export interface DirectiveTransitionOptions {
+	
 	/** Transition options to control enter and leave transition. */
 	transition?: TransitionOptions
 
-	/** Should play enter transition when just created the elements. */
+	/** Should play enter transition for just created element. */
 	enterAtStart?: boolean
 
-	/** Should play leave transition when just created the elements. */
+	/** Should play leave transition for just created element. */
 	leaveAtStart?: boolean
 
 	/** Call it when transition end. */

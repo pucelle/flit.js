@@ -118,4 +118,9 @@ export class NodeRange {
 
 		return null
 	}
+
+	/** Remove all the nodes in range from parent. */
+	remove() {
+		this.getNodes().forEach(node => (node as ChildNode).remove())
+	}
 }

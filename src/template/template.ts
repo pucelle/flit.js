@@ -142,7 +142,7 @@ export class Template {
 
 	// Been called when this template will never be used any more.
 	remove() {
-		this.range.getNodes().forEach(node => (node as ChildNode).remove())
+		this.range.remove()
 	}
 }
 

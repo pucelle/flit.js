@@ -290,6 +290,7 @@ export class RepeatDirective<T> implements Directive {
 	}
 }
 
+
 /**
  * Gerenate repeat elements, it will reuse elements as much as possible when data changed.
  * Currently the repeat directive reuses rendered elements by repeat data items, not `key` can be specified.

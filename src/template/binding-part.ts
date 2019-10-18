@@ -54,16 +54,16 @@ export class BindingPart implements Part {
 				this.binding!.update(...value.args)
 			}
 			else {
-				this.removeBinding()
+				this.removeCurrentBinding()
 				this.binding = createBindingFromResult(this.el, this.context, value)
 			}
 		}
 		else {
-			this.removeBinding()
+			this.removeCurrentBinding()
 		}
 	}
 
-	private removeBinding() {
+	private removeCurrentBinding() {
 		if (this.binding) {
 			this.name = null
 			this.binding.remove()
