@@ -1,4 +1,4 @@
-import {TemplateResult, text} from './template-result'
+import {TemplateResult} from './template-result'
 import {Part} from './types'
 import {NodeAnchor} from '../libs/node-helper'
 import {Template} from './template'
@@ -39,7 +39,6 @@ export class NodePart implements Part {
 			this.updateDirective(value as DirectiveResult)
 		}
 		else if (Array.isArray(value)) {
-			this.beTemplateResults(value)
 			this.updateTemplates(value as TemplateResult[])
 		}
 		else if (contentType === ChildContentType.Templates) {
@@ -98,16 +97,6 @@ export class NodePart implements Part {
 		}
 		
 		this.directive = createDirectiveFromResult(this.anchor, this.context as any, directiveResult)
-	}
-
-	private beTemplateResults(array: unknown[]): TemplateResult[] {
-		for (let i = 0; i < array.length; i++) {
-			if (!(array[i] instanceof TemplateResult)) {
-				array[i] = text`${array[i]}`
-			}
-		}
-
-		return array as TemplateResult[]
 	}
 	
 	// One issue when reusing old template, image will keep old appearance until the new image loaded.

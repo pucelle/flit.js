@@ -1,7 +1,7 @@
 import {extendsTemplateResult} from './template-extends'
 
 
-export type TemplateType = 'html' | 'css' | 'svg' | 'text'
+export type TemplateType = 'html' | 'css' | 'svg'
 
 
 /** HTML template literal that can be used to render or update a component. */
@@ -17,12 +17,6 @@ export function svg(strings: TemplateStringsArray, ...values: unknown[]): Templa
 /** CSS template literal that can be used as component's static style property. */
 export function css(strings: TemplateStringsArray, ...values: unknown[]): TemplateResult {
 	return new TemplateResult('css', strings, values)
-}
-
-/** Text template literal that used inside. */
-/** @hidden */
-export function text(strings: TemplateStringsArray, ...values: unknown[]): TemplateResult {
-	return new TemplateResult('text', strings, values)
 }
 
 
