@@ -41,7 +41,10 @@ export interface LiveRepeatOptions<T> {
 }
 
 
-const defaultLiveRepeatOptions: LiveRepeatOptions<any> = {pageSize: 50}
+const defaultLiveRepeatOptions: LiveRepeatOptions<any> = {
+	pageSize: 50,
+	renderPageCount: 1,
+}
 
 
 // Benchmark about using static layout or absolute layout: https://jsperf.com/is-absolute-layout-faster
@@ -315,11 +318,14 @@ export class LiveRepeatDirective<T> extends RepeatDirective<T> {
 
 		if (scrollDirection === 'up') {
 			visibleIndex = this.locateLastVisibleIndex()
-			endIndex = visibleIndex > -1 ? visibleIndex + 1 : 0
+			if (visibleIndex > -1) {
+				endIndex = visibleIndex + 1
+			}
 		}
 		else {
-			startIndex = visibleIndex = this.locateFirstVisibleIndex()
+			visibleIndex = this.locateFirstVisibleIndex()
 			if (startIndex > -1) {
+				startIndex = visibleIndex
 				endIndex = startIndex + pageSize * renderPageCount
 			}
 		}
