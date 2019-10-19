@@ -3,7 +3,7 @@
 <head>
 	<meta charset="utf-8">
 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
-	<title>LiveRepeatOptions | flit</title>
+	<title>LiveRepeatOptions | @pucelle/flit</title>
 	<meta name="description" content="">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<link rel="stylesheet" href="../assets/css/main.css">
@@ -22,7 +22,7 @@
 						<li class="state loading">Preparing search index...</li>
 						<li class="state failure">The search index is not available</li>
 					</ul>
-					<a href="../index.html" class="title">flit</a>
+					<a href="../index.html" class="title">@pucelle/flit</a>
 				</div>
 				<div class="table-cell" id="tsd-widgets">
 					<div id="tsd-filter">
@@ -75,6 +75,11 @@
 				<ul class="tsd-hierarchy">
 					<li>
 						<span class="target">LiveRepeatOptions</span>
+						<ul class="tsd-hierarchy">
+							<li>
+								<a href="liveasyncrepeatoptions.html" class="tsd-signature-type">LiveAsyncRepeatOptions</a>
+							</li>
+						</ul>
 					</li>
 				</ul>
 			</section>
@@ -85,11 +90,9 @@
 						<section class="tsd-index-section ">
 							<h3>Properties</h3>
 							<ul class="tsd-index-list">
-								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="liverepeatoptions.html#averageitemheight" class="tsd-kind-icon">average<wbr>Item<wbr>Height</a></li>
 								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="liverepeatoptions.html#data" class="tsd-kind-icon">data</a></li>
 								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="liverepeatoptions.html#onupdated" class="tsd-kind-icon">on<wbr>Updated</a></li>
 								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="liverepeatoptions.html#pagesize" class="tsd-kind-icon">page<wbr>Size</a></li>
-								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="liverepeatoptions.html#ref" class="tsd-kind-icon">ref</a></li>
 								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="liverepeatoptions.html#renderpagecount" class="tsd-kind-icon">render<wbr>Page<wbr>Count</a></li>
 							</ul>
 						</section>
@@ -99,24 +102,19 @@
 			<section class="tsd-panel-group tsd-member-group ">
 				<h2>Properties</h2>
 				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
-					<a name="averageitemheight" class="tsd-anchor"></a>
-					<h3><span class="tsd-flag ts-flagOptional">Optional</span> average<wbr>Item<wbr>Height</h3>
-					<div class="tsd-signature tsd-kind-icon">average<wbr>Item<wbr>Height<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">number</span></div>
-					<aside class="tsd-sources">
-						<ul>
-							<li>Defined in <a href="https://github.com/pucelle/flit/blob/1a222ed/src/directives/live-repeat.ts#L17">directives/live-repeat.ts:17</a></li>
-						</ul>
-					</aside>
-				</section>
-				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
 					<a name="data" class="tsd-anchor"></a>
-					<h3>data</h3>
+					<h3><span class="tsd-flag ts-flagOptional">Optional</span> data</h3>
 					<div class="tsd-signature tsd-kind-icon">data<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Iterable</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">T</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">null</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/pucelle/flit/blob/1a222ed/src/directives/live-repeat.ts#L19">directives/live-repeat.ts:19</a></li>
+							<li>Defined in <a href="https://github.com/pucelle/flit/blob/558b897/src/directives/live-repeat.ts#L34">directives/live-repeat.ts:34</a></li>
 						</ul>
 					</aside>
+					<div class="tsd-comment tsd-typography">
+						<div class="lead">
+							<p>Raw data to only render part of it.</p>
+						</div>
+					</div>
 				</section>
 				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
 					<a name="onupdated" class="tsd-anchor"></a>
@@ -124,9 +122,15 @@
 					<div class="tsd-signature tsd-kind-icon">on<wbr>Updated<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">function</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/pucelle/flit/blob/1a222ed/src/directives/live-repeat.ts#L20">directives/live-repeat.ts:20</a></li>
+							<li>Defined in <a href="https://github.com/pucelle/flit/blob/558b897/src/directives/live-repeat.ts#L40">directives/live-repeat.ts:40</a></li>
 						</ul>
 					</aside>
+					<div class="tsd-comment tsd-typography">
+						<div class="lead">
+							<p>We may want to do something with the currently rendered results, link loading screenshots...
+							If you want <code>onRendered</code>, just use <code>onRenderComplete</code> in <code>onUpdated.</code></p>
+						</div>
+					</div>
 				</section>
 				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
 					<a name="pagesize" class="tsd-anchor"></a>
@@ -134,19 +138,18 @@
 					<div class="tsd-signature tsd-kind-icon">page<wbr>Size<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">number</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/pucelle/flit/blob/1a222ed/src/directives/live-repeat.ts#L15">directives/live-repeat.ts:15</a></li>
+							<li>Defined in <a href="https://github.com/pucelle/flit/blob/558b897/src/directives/live-repeat.ts#L23">directives/live-repeat.ts:23</a></li>
 						</ul>
 					</aside>
-				</section>
-				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
-					<a name="ref" class="tsd-anchor"></a>
-					<h3><span class="tsd-flag ts-flagOptional">Optional</span> ref</h3>
-					<div class="tsd-signature tsd-kind-icon">ref<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">function</span></div>
-					<aside class="tsd-sources">
-						<ul>
-							<li>Defined in <a href="https://github.com/pucelle/flit/blob/1a222ed/src/directives/live-repeat.ts#L18">directives/live-repeat.ts:18</a></li>
-						</ul>
-					</aside>
+					<div class="tsd-comment tsd-typography">
+						<div class="lead">
+							<p>How many items to render each time.
+								If you are using dynamic data, you should set this value to count of items that you ajax interface returned.
+								Otherwise you may set this value big enough to cover viewport, but should not too big to render too much items.
+								Normally 50 would be enough since minimal lineHeight is <code>24</code> and <code>24 * 50 = 1200</code> can cover most screens.
+							If the render result can&#39;t cover the viewport, it will be double until it can and rerender.</p>
+						</div>
+					</div>
 				</section>
 				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
 					<a name="renderpagecount" class="tsd-anchor"></a>
@@ -154,9 +157,17 @@
 					<div class="tsd-signature tsd-kind-icon">render<wbr>Page<wbr>Count<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">number</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/pucelle/flit/blob/1a222ed/src/directives/live-repeat.ts#L16">directives/live-repeat.ts:16</a></li>
+							<li>Defined in <a href="https://github.com/pucelle/flit/blob/558b897/src/directives/live-repeat.ts#L31">directives/live-repeat.ts:31</a></li>
 						</ul>
 					</aside>
+					<div class="tsd-comment tsd-typography">
+						<div class="lead">
+							<p>How many pages to render each time.
+								If the render result can&#39;t cover viewport, will double this value.
+								Normally you don&#39;t need to set this, it&#39;s value will be automatically detected.
+							Set this value only if you can makesure <code>1</code> is not enough and don&#39;t want the rerendering at the beginning.</p>
+						</div>
+					</div>
 				</section>
 			</section>
 		</div>
@@ -176,9 +187,6 @@
 						<a href="liverepeatoptions.html" class="tsd-kind-icon">Live<wbr>Repeat<wbr>Options</a>
 						<ul>
 							<li class=" tsd-kind-property tsd-parent-kind-interface">
-								<a href="liverepeatoptions.html#averageitemheight" class="tsd-kind-icon">average<wbr>Item<wbr>Height</a>
-							</li>
-							<li class=" tsd-kind-property tsd-parent-kind-interface">
 								<a href="liverepeatoptions.html#data" class="tsd-kind-icon">data</a>
 							</li>
 							<li class=" tsd-kind-property tsd-parent-kind-interface">
@@ -186,9 +194,6 @@
 							</li>
 							<li class=" tsd-kind-property tsd-parent-kind-interface">
 								<a href="liverepeatoptions.html#pagesize" class="tsd-kind-icon">page<wbr>Size</a>
-							</li>
-							<li class=" tsd-kind-property tsd-parent-kind-interface">
-								<a href="liverepeatoptions.html#ref" class="tsd-kind-icon">ref</a>
 							</li>
 							<li class=" tsd-kind-property tsd-parent-kind-interface">
 								<a href="liverepeatoptions.html#renderpagecount" class="tsd-kind-icon">render<wbr>Page<wbr>Count</a>
