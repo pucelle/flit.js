@@ -35,17 +35,22 @@ export class NodePart implements Part {
 			this.contentType = contentType
 		}
 
-		if (contentType === ChildContentType.Directive) {
-			this.updateDirective(value as DirectiveResult)
-		}
-		else if (Array.isArray(value)) {
-			this.updateTemplates(value as TemplateResult[])
-		}
-		else if (contentType === ChildContentType.Templates) {
-			this.updateTemplates([value as TemplateResult])
-		}
-		else {
-			this.updateText(value)
+		switch (contentType) {
+			case ChildContentType.Directive:
+				this.updateDirective(value as DirectiveResult)
+				break
+
+			case ChildContentType.Templates:
+				if (Array.isArray(value)) {
+					this.updateTemplates(value.filter(v => v) as TemplateResult[])
+				}
+				else {
+					this.updateTemplates([value as TemplateResult])
+				}
+				break
+
+			default:
+				this.updateText(value)
 		}
 	}
 
@@ -100,14 +105,16 @@ export class NodePart implements Part {
 	}
 	
 	// One issue when reusing old template, image will keep old appearance until the new image loaded.
+	// We fix this by implementing `:src`.
 	private updateTemplates(results: TemplateResult[]) {
 		let templates = this.templates!
 		if (!templates) {
 			templates = this.templates = []
 		}
 
-		if (templates.length > 0 && results.length > 0) {
-			for (let i = 0; i < templates.length && i < results.length; i++) {
+		let sharedLength = Math.min(templates.length, results.length)
+		if (sharedLength > 0) {
+			for (let i = 0; i < sharedLength; i++) {
 				let oldTemplate = templates[i]
 				let result = results[i]
 
@@ -130,7 +137,6 @@ export class NodePart implements Part {
 				templates.pop()!.remove()
 			}
 		}
-
 		else if (templates.length < results.length) {
 			for (let i = templates.length; i < results.length; i++) {
 				let template = new Template(results[i], this.context)
