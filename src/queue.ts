@@ -9,11 +9,24 @@ let willUpdate = false
 let updatingComponents = false
 let watchersToUpdate: Watcher[] = []
 let componentsToUpdate: Component[] = []
+let updatedTimesMap: Map<Watcher | Component, number> = new Map()
+
 
 /** @hidden */
-export function enqueueComponentUpdate(com: Component) {
+export function enqueueComponentToUpdate(com: Component) {
 	// If updating component trigger another watcher or component, we should update it in the same update function.
 	if (!componentSet.has(com)) {
+		if (updatingComponents) {
+			let updatedTimes = updatedTimesMap.get(com) || 0
+			updatedTimesMap.set(com, updatedTimes + 1)
+			
+			if (updatedTimes > 3) {
+				let html = com.el.outerHTML
+				let shortHTML = html.length > 100 ? html.slice(0, 100) + '...' : html
+				console.warn(`Component with element "${shortHTML}" may change values in the render function and cause infinite updating!`)
+			}
+		}
+
 		componentSet.add(com)
 		componentsToUpdate.push(com)
 	}
@@ -24,7 +37,7 @@ export function enqueueComponentUpdate(com: Component) {
 }
 
 /** @hidden */
-export function enqueueWatcherUpdate(watcher: Watcher) {
+export function enqueueWatcherToUpdate(watcher: Watcher) {
 	if (updatingComponents) {
 		watcher.__updateImmediately()
 	}
@@ -79,7 +92,6 @@ function enqueueUpdate() {
 }
 
 async function update() {
-	let updatedTimesMap: Map<Watcher | Component, number> = new Map()
 
 	do {
 		// At beginning, we update watchers firstly and then components,
@@ -122,21 +134,11 @@ async function update() {
 			let com = componentsToUpdate[i]
 			componentSet.delete(com)
 
-			let updatedTimes = updatedTimesMap.get(com) || 0
-			updatedTimesMap.set(com, updatedTimes + 1)
-			
-			if (updatedTimes > 3) {
-				let html = com.el.outerHTML
-				let shortHTML = html.length > 100 ? html.slice(0, 100) + '...' : html
-				console.warn(`Component with element "${shortHTML}" may change values in the render function and cause infinite updating!`)
+			try {
+				com.__updateImmediately()
 			}
-			else {
-				try {
-					com.__updateImmediately()
-				}
-				catch (err) {
-					console.error(err)
-				}
+			catch (err) {
+				console.error(err)
 			}
 		}
 
@@ -150,6 +152,7 @@ async function update() {
 	while (componentsToUpdate.length > 0 || watchersToUpdate.length > 0)
 
 	willUpdate = false
+	updatedTimesMap = new Map()
 
 	// Normally `onRenderComplete` should not enqueue more watchers and components.
 	// But if it enqueued, run them in next updating.

@@ -1,5 +1,5 @@
 import {startUpdating, endUpdating, clearDependencies} from './observer'
-import {enqueueWatcherUpdate} from './queue'
+import {enqueueWatcherToUpdate} from './queue'
 
 
 /** 
@@ -30,7 +30,7 @@ export class Watcher<T = any> {
 
 	/** When detected dependencies changed. trigger this immediately. */
 	update() {
-		enqueueWatcherUpdate(this)
+		enqueueWatcherToUpdate(this)
 	}
 
 	/** Keep consitant with Component */

@@ -1,6 +1,6 @@
 import {Emitter} from '../libs/emitter'
 import {NodePart, TemplateResult} from '../template'
-import {enqueueComponentUpdate} from '../queue'
+import {enqueueComponentToUpdate} from '../queue'
 import {startUpdating, endUpdating, observeComTarget, clearDependencies, clearAsDependency, restoreAsDependency, targetMap} from '../observer'
 import {WatcherGroup} from '../watcher'
 import {getScopedClassNameSet, ComponentStyle} from './style'
@@ -217,7 +217,7 @@ export abstract class Component<E = any> extends Emitter<E & ComponentEvents> {
 	 * You should not overwrite this method until you know what you are doing.
 	 */
 	update() {
-		enqueueComponentUpdate(this)
+		enqueueComponentToUpdate(this)
 	}
 
 	/**
