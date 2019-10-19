@@ -79,7 +79,7 @@ export class PropertyPart implements Part {
 			com[this.name] = value
 		}
 		else {
-			console.warn(`Please makesure value of property "${this.name}" exist in "<${com.el.localName} />" when assigning fixed property!`)
+			console.warn(`Please makesure value of property "${this.name}" exist on "<${com.el.localName} />" when assigning fixed property!`)
 		}
 	}
 
