@@ -20,7 +20,7 @@ For more details, preview [flit-ui](https://github.com/pucelle/flit-ui).
 
 ## Documentation
 
-Simple [documentation](https://pucelle.github.io/flit/) is here (Thanks to [typedoc](https://typedoc.org/)).
+Simple [documentation](https://pucelle.github.io/flit/) is here (Thanks to [typedoc](https://typedoc.org/)). More resources will come in the future.
 
 
 ## License
