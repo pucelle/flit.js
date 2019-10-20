@@ -68,37 +68,6 @@ export function binaryFindIndexToInsert<Item>(array: Item[], fn: (item: Item) =>
 }
 
 
-/** 
- * Used to throttle scroll event to trigger at most once in each animation frame.
- * It also ensure the last calling.
- */
-export function throttleByAnimationFrame<F extends (...args: any) => void>(fn: F): F {
-	let frameId: number | null = null
-	let lastArgs: any[] | null = null
-
-	function lockBeforeNextAnimationFrame() {
-		frameId = requestAnimationFrame(() => {
-			frameId = null
-
-			if (lastArgs) {
-				fn(...lastArgs)
-				lockBeforeNextAnimationFrame()
-			}
-		})
-	}
-
-	return function(...args: any[]) {
-		if (frameId) {
-			lastArgs = args
-		}
-		else {
-			fn(...args)
-			lockBeforeNextAnimationFrame()
-		}
-	} as F
-}
-
-
 export function repeatValue<T>(value: T, count: number): T[] {
 	let values: T[] = []
 	for (let i = 0; i < count; i++) {

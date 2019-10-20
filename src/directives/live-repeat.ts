@@ -7,7 +7,7 @@ import {on} from '../libs/dom-event'
 import {globalWatcherGroup} from '../watcher'
 import {RepeatDirective} from './repeat'
 import {renderComplete, onRenderComplete} from '../queue'
-import {binaryFindIndexToInsert, throttleByAnimationFrame} from '../libs/util'
+import {binaryFindIndexToInsert} from '../libs/util'
 import {observe} from '../observer'
 import {Options} from '../libs/options'
 
@@ -113,7 +113,7 @@ export class LiveRepeatDirective<T> extends RepeatDirective<T> {
 			"`)
 		}
 
-		on(this.scroller, 'scroll.passive', throttleByAnimationFrame(this.onScroll.bind(this)))
+		on(this.scroller, 'scroll.passive', this.onScroll, this)
 		
 		onRenderComplete(() => {
 			let computedStyle = getComputedStyle(this.scroller)
