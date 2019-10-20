@@ -68,56 +68,32 @@ export function binaryFindIndexToInsert<Item>(array: Item[], fn: (item: Item) =>
 }
 
 
-/** Exclude paddings from `getBoundingClientRect` result. */
-export class ScrollerClientRect {
-
-	rect: {-readonly [key in keyof ClientRect]: number}
-
-	constructor(scroller: HTMLElement) {
-		let rawRect = scroller.getBoundingClientRect()
-		let style = getComputedStyle(scroller)
-		let paddingTop = parseFloat(style.paddingTop!) || 0
-		let paddingRight = parseFloat(style.paddingRight!) || 0
-		let paddingBottom = parseFloat(style.paddingTop!) || 0
-		let paddingLeft = parseFloat(style.paddingLeft!) || 0
-	
-		this.rect = {
-			top: rawRect.top + paddingTop,
-			right: rawRect.right - paddingRight,
-			bottom: rawRect.bottom - paddingBottom,
-			left: rawRect.left + paddingLeft,
-			width: rawRect.width - paddingLeft - paddingRight,
-			height: rawRect.height - paddingTop - paddingBottom
-		}
-	}
-
-	/** Returns if the element with `rect` is above the scroller. */
-	isRectAbove(rect: ClientRect | DOMRect): boolean {
-		return rect.bottom <= this.rect.top
-	}
-
-	/** Returns if the element with `rect` is below the scroller. */
-	isRectBelow(rect: ClientRect | DOMRect): boolean {
-		return rect.top >= this.rect.bottom
-	}
-
-	/** Returns if the element with `rect` is in scroller or cross with the scroller. */
-	isRectIn(rect: ClientRect | DOMRect): boolean {
-		return !this.isRectAbove(rect) && !this.isRectBelow(rect)
-	}
-}
-
-
-/** Used to throttle scroll event to trigger at most once in each animation frame. */
+/** 
+ * Used to throttle scroll event to trigger at most once in each animation frame.
+ * It also ensure the last calling.
+ */
 export function throttleByAnimationFrame<F extends (...args: any) => void>(fn: F): F {
 	let frameId: number | null = null
+	let lastArgs: any[] | null = null
 
-	return function(...args: any) {
-		if (!frameId) {
-			frameId = requestAnimationFrame(() => {
-				frameId = null
-			})
+	function lockBeforeNextAnimationFrame() {
+		frameId = requestAnimationFrame(() => {
+			frameId = null
+
+			if (lastArgs) {
+				fn(...lastArgs)
+				lockBeforeNextAnimationFrame()
+			}
+		})
+	}
+
+	return function(...args: any[]) {
+		if (frameId) {
+			lastArgs = args
+		}
+		else {
 			fn(...args)
+			lockBeforeNextAnimationFrame()
 		}
 	} as F
 }

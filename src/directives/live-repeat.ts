@@ -7,7 +7,7 @@ import {on} from '../libs/dom-event'
 import {globalWatcherGroup} from '../watcher'
 import {RepeatDirective} from './repeat'
 import {renderComplete, onRenderComplete} from '../queue'
-import {binaryFindIndexToInsert, ScrollerClientRect, throttleByAnimationFrame} from '../libs/util'
+import {binaryFindIndexToInsert, throttleByAnimationFrame} from '../libs/util'
 import {observe} from '../observer'
 import {Options} from '../libs/options'
 
@@ -191,19 +191,18 @@ export class LiveRepeatDirective<T> extends RepeatDirective<T> {
 			onUpdated(this.data, this.startIndex)
 		}
 
-		onRenderComplete(() => {
-			if (this.data.length > 0) {
-				if (!this.averageItemHeight) {
-					this.measureAverageItemHeight()
-					this.updateSliderPosition()
-				}
-
-				if (this.needToApplyStartIndex && this.averageItemHeight) {
-					this.scroller.scrollTop = this.averageItemHeight * this.startIndex || 0
-					this.needToApplyStartIndex = false
-				}
+		await renderComplete()
+		if (this.data.length > 0) {
+			if (!this.averageItemHeight) {
+				this.measureAverageItemHeight()
+				this.updateSliderPosition()
 			}
-		})
+
+			if (this.needToApplyStartIndex && this.averageItemHeight) {
+				this.scroller.scrollTop = this.averageItemHeight * this.startIndex || 0
+				this.needToApplyStartIndex = false
+			}
+		}
 	}
 
 	protected limitEndIndex(index: number): number {
@@ -297,13 +296,13 @@ export class LiveRepeatDirective<T> extends RepeatDirective<T> {
 	}
 
 	private checkRenderedRange() {
-		let scrollerRect = new ScrollerClientRect(this.scroller)
+		let scrollerRect = this.scroller.getBoundingClientRect()
 		let sliderRect = this.slider.getBoundingClientRect()
-		
-		if (scrollerRect.rect.top < sliderRect.top) {
+
+		if (scrollerRect.top < sliderRect.top) {
 			this.updateToCover('up')
 		}
-		else if (scrollerRect.rect.bottom > sliderRect.bottom) {
+		else if (scrollerRect.bottom > sliderRect.bottom) {
 			this.updateToCover('down')
 		}
 	}
@@ -324,7 +323,7 @@ export class LiveRepeatDirective<T> extends RepeatDirective<T> {
 		}
 		else {
 			visibleIndex = this.locateFirstVisibleIndex()
-			if (startIndex > -1) {
+			if (visibleIndex > -1) {
 				startIndex = visibleIndex
 				endIndex = startIndex + pageSize * renderPageCount
 			}
@@ -359,16 +358,16 @@ export class LiveRepeatDirective<T> extends RepeatDirective<T> {
 	}
 
 	private locateVisibleIndex(isFirst: boolean): number {
-		let scrollerRect = new ScrollerClientRect(this.scroller)
+		let scrollerRect = this.scroller.getBoundingClientRect()
 
 		let visibleIndex = binaryFindIndexToInsert(this.wtems as WatchedTemplate<T>[], (wtem) => {
 			let firstElement = wtem.template.range.getFirstElement()
 			if (firstElement) {
 				let rect = firstElement.getBoundingClientRect()
-				if (scrollerRect.isRectAbove(rect)) {
+				if (rect.bottom <= scrollerRect.top) {
 					return 1
 				}
-				else if (scrollerRect.isRectBelow(rect)) {
+				else if (rect.top >= scrollerRect.bottom) {
 					return -1
 				}
 				else {
@@ -392,10 +391,10 @@ export class LiveRepeatDirective<T> extends RepeatDirective<T> {
 		let firstElementRect = firstElement.getBoundingClientRect()
 
 		// The found index is just an enge index, may the element still outside the visible range.
-		if (scrollerRect.isRectAbove(firstElementRect)) {
+		if (firstElementRect.bottom <= scrollerRect.top) {
 			visibleIndex += 1
 		}
-		else if (scrollerRect.isRectBelow(firstElementRect)) {
+		else if (firstElementRect.top >= scrollerRect.bottom) {
 			visibleIndex -= 1
 		}
 
@@ -470,6 +469,10 @@ export class LiveRepeatDirective<T> extends RepeatDirective<T> {
 		// Need to wait reset `needToApplyStartIndex` in `updateData`.
 		await renderComplete()
 
+		if (this.toCompleteRendering) {
+			await this.toCompleteRendering
+		}
+
 		if (this.needToApplyStartIndex) {
 			await this.update()
 		}
@@ -503,15 +506,15 @@ export class LiveRepeatDirective<T> extends RepeatDirective<T> {
 	private scrollToViewRenderedIndex(index: number) {
 		let el = this.wtems[index - this.startIndex].template.range.getFirstElement()!
 		let rect = el.getBoundingClientRect()
-		let scrollerRect = new ScrollerClientRect(this.scroller)
+		let scrollerRect = this.scroller.getBoundingClientRect()
 
 		// Below it, need to scroll up
-		if (rect.bottom > scrollerRect.rect.bottom) {
-			this.scroller.scrollTop = this.scroller.scrollTop + (scrollerRect.rect.bottom - rect.bottom)
+		if (rect.bottom > scrollerRect.bottom) {
+			this.scroller.scrollTop = this.scroller.scrollTop + (scrollerRect.bottom - rect.bottom)
 		}
 		// Above it, need to scroll down
-		else if (rect.top < scrollerRect.rect.top) {
-			this.scroller.scrollTop = this.scroller.scrollTop + (scrollerRect.rect.top - rect.top)
+		else if (rect.top < scrollerRect.top) {
+			this.scroller.scrollTop = this.scroller.scrollTop + (scrollerRect.top - rect.top)
 		}
 	}
 
