@@ -20,8 +20,10 @@ export class SlotProcesser {
 		this.initRestSlotRange()
 	}
 
-	// Must cache slot nodes when com created and before child created,
-	// Because child components may remove them when created, in this situation we will lost it forever.
+	// Here we cache slot nodes when we detected there is `<slot>` in the template,
+	// And only for once..
+	// So if those named slot element were removed before or created dynamically in the future,
+	// We can't capture this and update name slot elements.
 	private initNamedSlotNodes() {
 		let slots = this.slots
 
