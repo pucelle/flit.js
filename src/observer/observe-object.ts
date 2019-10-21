@@ -16,16 +16,14 @@ const proxyHandler = {
 	get(obj: object, prop: keyof typeof obj): unknown {
 		let value: any = obj[prop]
 
-		if (obj.hasOwnProperty(prop)) {
-			mayAddDependency(obj)
+		mayAddDependency(obj)
 
-			if (value && typeof value === 'object') {
-				if (proxyMap.has(value)) {
-					return proxyMap.get(value)
-				}
-				else if (isUpdating()) {
-					return observeTarget(value)
-				}
+		if (value && typeof value === 'object') {
+			if (proxyMap.has(value)) {
+				return proxyMap.get(value)
+			}
+			else if (isUpdating()) {
+				return observeTarget(value)
 			}
 		}
 
