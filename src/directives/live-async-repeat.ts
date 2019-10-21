@@ -4,6 +4,7 @@ import {TemplateResult} from '../template'
 import {LiveRepeatDirective, LiveRepeatOptions} from './live-repeat'
 import {PageDataGetter, PageDataCacher} from '../libs/page-data-cacher'
 import {observe} from '../observer'
+import {Options} from '../libs/options'
 
 
 export interface LiveAsyncRepeatOptions<T> extends LiveRepeatOptions<T> {
@@ -33,8 +34,6 @@ type LiveTemplateFn<T> = (item: T | null, index: number) => TemplateResult
 /** @hidden */
 export class LiveAsyncRepeatDirective<T> extends LiveRepeatDirective<T> {
 
-	private dataCount: number | Promise<number> | (() => (number | Promise<number>)) | null = null
-
 	private key: keyof T | null = null
 
 	/**
@@ -52,6 +51,11 @@ export class LiveAsyncRepeatDirective<T> extends LiveRepeatDirective<T> {
 
 	merge(options: any, templateFn: any, transitionOptions?: DirectiveTransitionOptions) {
 		let firstlyUpdate = !this.options.updated
+		if (firstlyUpdate) {
+			if (options.startIndex > 0) {
+				this.startIndex = options.startIndex
+			}
+		}
 
 		this.options.update(options)
 		this.templateFn = templateFn
@@ -60,10 +64,25 @@ export class LiveAsyncRepeatDirective<T> extends LiveRepeatDirective<T> {
 		if (firstlyUpdate) {
 			this.validateTemplateFn(templateFn)
 			this.dataCacher = new PageDataCacher(options.pageSize)
-			this.updateDataCount()
+		}
+
+		this.dataCacher.setDataGetter(options.dataGetter)
+
+		if (firstlyUpdate) {
+			if (options.startIndex > 0) {
+				this.updateDataCount().then(() => {
+					this.startIndex = this.limitStartIndex(options.startIndex)
+					this.needToApplyStartIndex = true
+					this.update()
+				})
+			}
+			else {
+				this.updateDataCount()
+				this.update()
+			}
 		}
 		else {
-			this.dataCacher.setDataGetter(options.dataGetter)
+			this.update()
 		}
 	}
 
@@ -86,18 +105,19 @@ export class LiveAsyncRepeatDirective<T> extends LiveRepeatDirective<T> {
 	}
 
 	private async updateDataCount() {
-		if (!this.dataCount) {
+		let dataCountFn = (this.options as Options<LiveAsyncRepeatOptions<T>>).get('dataCount')
+		if (!dataCountFn) {
 			return
 		}
 
 		this.knownDataCount = -1
 
 		let dataCount: number | Promise<number>
-		if (typeof this.dataCount === 'function') {
-			dataCount = this.dataCount()
+		if (typeof dataCountFn === 'function') {
+			dataCount = dataCountFn()
 		}
 		else {
-			dataCount = this.dataCount
+			dataCount = dataCountFn
 		}
 		
 		if (dataCount instanceof Promise) {
@@ -115,9 +135,8 @@ export class LiveAsyncRepeatDirective<T> extends LiveRepeatDirective<T> {
 	protected async update(renderPalceholders: boolean = true) {
 		this.updateSliderPosition()
 
-		let pageSize = this.options.get('pageSize')
-		let renderPageCount = this.options.get('renderPageCount')
-		let endIndex = this.limitEndIndex(this.startIndex + pageSize * renderPageCount)
+		let renderCount = this.options.get('pageSize') * this.options.get('renderPageCount')
+		let endIndex = this.limitEndIndex(this.startIndex + renderCount)
 		let needToRenderWithFreshData = !renderPalceholders
 		let updateImmediatelyPromise: Promise<void> | undefined
 

@@ -13,6 +13,12 @@ import {Options} from '../libs/options'
 
 
 export interface LiveRepeatOptions<T> {
+	/** 
+	 * If you want it renders from `startIndex` when initialize, set this value.
+	 * It works only for first time.
+	 */
+	startIndex?: number
+
 	/**
 	* How many items to render each time.
 	* If you are using dynamic data, you should set this value to count of items that you ajax interface returned.
@@ -139,11 +145,20 @@ export class LiveRepeatDirective<T> extends RepeatDirective<T> {
 	}
 
 	merge(options: any, templateFn: TemplateFn<T>, transitionOptions?: DirectiveTransitionOptions) {
+		let firstlyUpdate = !this.options.updated
 		this.options.update(options)
 		this.templateFn = templateFn
 		this.transition.updateOptions(transitionOptions)
 
 		if (options.data !== undefined) {
+			if (firstlyUpdate && options.data && options.startIndex > 0) {
+				// `this.data` is not assigned yet, so cant use `limitStartIndex`
+				let renderCount = this.options.get('pageSize') * this.options.get('renderPageCount')
+				let startIndex = Math.min(options.startIndex, options.data.length - renderCount)
+				this.startIndex = Math.max(0, startIndex)
+				this.needToApplyStartIndex = true
+			}
+	
 			this.watchRawDataAndUpdate(options.data)
 		}
 	}
@@ -173,11 +188,10 @@ export class LiveRepeatDirective<T> extends RepeatDirective<T> {
 
 	protected async update() {
 		this.updateSliderPosition()
-		
-		let pageSize = this.options.get('pageSize')
-		let renderPageCount = this.options.get('renderPageCount')
-		let endIndex = this.limitEndIndex(this.startIndex + pageSize * renderPageCount)
+
+		let endIndex = this.getLimitedEndIndex()
 		let data = this.rawData ? this.rawData.slice(this.startIndex, endIndex) : []
+
 		this.toCompleteRendering = this.updateData(data)
 		await this.toCompleteRendering
 		this.toCompleteRendering = null
@@ -205,6 +219,15 @@ export class LiveRepeatDirective<T> extends RepeatDirective<T> {
 		}
 	}
 
+	/** `this.data` must be determinated. */
+	protected limitStartIndex(index: number): number {
+		let renderCount = this.options.get('pageSize') * this.options.get('renderPageCount')
+		let endIndex = this.limitEndIndex(index + renderCount)
+		let startIndex = Math.max(0, endIndex - renderCount)
+
+		return startIndex
+	}
+
 	protected limitEndIndex(index: number): number {
 		let maxCount = this.getTotalDataCount()
 		if (maxCount >= 0 && index > maxCount) {
@@ -212,6 +235,14 @@ export class LiveRepeatDirective<T> extends RepeatDirective<T> {
 		}
 
 		return index
+	}
+
+	/** `this.startIndex` must be determinated. */
+	protected getLimitedEndIndex(): number {
+		let renderCount = this.options.get('pageSize') * this.options.get('renderPageCount')
+		let endIndex = this.limitEndIndex(this.startIndex + renderCount)
+
+		return endIndex
 	}
 
 	protected getTotalDataCount(): number {
@@ -228,11 +259,9 @@ export class LiveRepeatDirective<T> extends RepeatDirective<T> {
 	// When no child nodes moved in scroller, expecially when rendering placeholder values [null, ...].
 	// updating height of placeholder elements will cause `scroller.scrollTop` reset.
 	protected updateSliderPosition() {
-		let pageSize = this.options.get('pageSize')
-		let renderPageCount = this.options.get('renderPageCount')
 		let countBeforeStart = this.startIndex
-		let endIndex = this.limitEndIndex(this.startIndex + pageSize * renderPageCount)
 		let countAfterEnd = 0
+		let endIndex = this.getLimitedEndIndex()
 		let totalCount = this.getTotalDataCount()
 
 		if (totalCount >= 0) {
@@ -309,39 +338,34 @@ export class LiveRepeatDirective<T> extends RepeatDirective<T> {
 
 	// `direction` means where we render new items, and also the direction that the value of `startIndex` will change to.
 	private updateToCover(scrollDirection: 'up' | 'down') {
-		let pageSize = this.options.get('pageSize')
-		let renderPageCount = this.options.get('renderPageCount')
+		let renderCount = this.options.get('pageSize') * this.options.get('renderPageCount')
 		let startIndex = -1
-		let endIndex = -1	// Max value is `rawData.length`, it's a slice index, not true index of data. 
-		let visibleIndex = -1
 
 		if (scrollDirection === 'up') {
-			visibleIndex = this.locateLastVisibleIndex()
+			let visibleIndex = this.locateLastVisibleIndex()
 			if (visibleIndex > -1) {
-				endIndex = visibleIndex + 1
+				startIndex = visibleIndex + 1 - renderCount
 			}
 		}
 		else {
-			visibleIndex = this.locateFirstVisibleIndex()
+			let visibleIndex = this.locateFirstVisibleIndex()
 			if (visibleIndex > -1) {
 				startIndex = visibleIndex
-				endIndex = startIndex + pageSize * renderPageCount
 			}
 		}
 
 		// In this situation two rendering have no sharing part
-		if (endIndex === -1) {
+		if (startIndex === -1) {
 			if (scrollDirection === 'up') {
-				endIndex = Math.ceil((this.scroller.scrollTop + this.scroller.clientHeight) / this.averageItemHeight)
+				startIndex = Math.ceil((this.scroller.scrollTop + this.scroller.clientHeight) / this.averageItemHeight) - renderCount
 			}
 			else {
-				endIndex = Math.floor(this.scroller.scrollTop / this.averageItemHeight)
-						 + pageSize * renderPageCount
+				startIndex = Math.floor(this.scroller.scrollTop / this.averageItemHeight)
 			}
 		}
 
-		endIndex = this.limitEndIndex(endIndex)
-		startIndex = Math.max(0, endIndex - pageSize * renderPageCount)
+		startIndex = this.limitStartIndex(startIndex)
+		let endIndex = this.limitEndIndex(startIndex + renderCount)
 
 		this.validateContinuousScrolling(scrollDirection, startIndex, endIndex)
 
@@ -461,7 +485,7 @@ export class LiveRepeatDirective<T> extends RepeatDirective<T> {
 
 	/** Set `startIndex`, and the item in which index will be at the top start position of the viewport. */
 	async setStartIndex(index: number) {
-		this.startIndex = this.limitEndIndex(index)
+		this.startIndex = this.limitStartIndex(index)
 		this.needToApplyStartIndex = true
 		this.continuousScrollDirection = null
 
@@ -516,11 +540,6 @@ export class LiveRepeatDirective<T> extends RepeatDirective<T> {
 		else if (rect.top < scrollerRect.top) {
 			this.scroller.scrollTop = this.scroller.scrollTop + (scrollerRect.top - rect.top)
 		}
-	}
-
-	/** Get item in index. */
-	getItem(index: number): T | null {
-		return this.rawData ? this.rawData[index] || null : null
 	}
 }
 
