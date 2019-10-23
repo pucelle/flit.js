@@ -49,7 +49,7 @@ defineBinding('style', class StyleBinding implements Binding<[string | StyleObje
 		}
 
 		for (let name of newStyleNames) {
-			if (!oldStyleNames.includes(name)) {
+			if (!oldStyleNames.includes(name) || this.lastStyle[name] !== newStyle[name]) {
 				this.addStyle(name, newStyle[name])
 			}
 		}
