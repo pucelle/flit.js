@@ -146,10 +146,10 @@ export class Template {
 	}
 
 	/** 
-	 * Initialize components inside a template and update immediately.
+	 * Initialize components inside a template and update it immediately.
 	 * Elements are not connected but will be pre rendered.
 	 */
-	preConnect() {
+	preRender() {
 		let fragment = this.range.fragment
 		if (!fragment) {
 			return

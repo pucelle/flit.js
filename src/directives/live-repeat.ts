@@ -539,7 +539,7 @@ export class LiveRepeatDirective<T> extends RepeatDirective<T> {
 
 			if (!this.preRendered.has(item)) {
 				let wtem = new WatchedTemplate(this.context, this.templateFn, item, index)
-				wtem.template.preConnect()
+				wtem.template.preRender()
 				this.preRendered.set(item, wtem)
 			}
 
