@@ -497,7 +497,7 @@ export class LiveRepeatDirective<T> extends RepeatDirective<T> {
 
 	protected async mayDoPreRendering() {
 		// Wait page to layout & render
-		await untilFrame()
+		await untilNextFrame()
 
 		if (this.shouldUpdatePreRendering()) {
 			await this.updatePreRendering()
@@ -547,7 +547,13 @@ export class LiveRepeatDirective<T> extends RepeatDirective<T> {
 				let currentTime = performance.now()
 				if (currentTime - startTime > 10) {
 					startTime = currentTime
-					await untilFrame()
+					await untilNextFrame()
+
+					// Is rendering, no need to update,
+					// Will start a new prerendering later.
+					if (this.toCompleteRendering) {
+						return
+					}
 				}
 			}
 		}
@@ -665,7 +671,7 @@ export const liveRepeat = defineDirective(LiveRepeatDirective) as <Item>(
 ) => DirectiveResult
 
 
-function untilFrame() {
+function untilNextFrame() {
 	return new Promise(resolve => {
 		requestAnimationFrame(resolve)
 	})
