@@ -50,14 +50,14 @@ defineBinding('style', class StyleBinding implements Binding<[string | StyleObje
 
 		for (let name of newStyleNames) {
 			if (!oldStyleNames.includes(name) || this.lastStyle[name] !== newStyle[name]) {
-				this.addStyle(name, newStyle[name])
+				this.setStyle(name, newStyle[name])
 			}
 		}
 
 		this.lastStyle = newStyle
 	}
 
-	private addStyle(name: string, value: unknown) {
+	private setStyle(name: string, value: unknown) {
 		let unit = this.modifiers ? this.modifiers[1] : ''
 		
 		if (value === null || value === undefined) {
