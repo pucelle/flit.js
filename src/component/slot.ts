@@ -69,14 +69,14 @@ export class SlotProcesser {
 		for (let slotAnchor of slotAnchors) {
 			let name = slotAnchor.getAttribute('name')
 			if (name) {
-				if (slots && slots[name]) {
+				if (slots && slots[name] && slotAnchor.firstChild !== slots[name][0]) {
 					while (slotAnchor.firstChild) {
 						slotAnchor.firstChild.remove()
 					}
 					slotAnchor.append(...slots[name]!)
 				}
 			}
-			else if (this.restSlotNodeRange) {
+			else if (this.restSlotNodeRange && slotAnchor.firstChild !== this.restSlotNodeRange.startNode) {
 				while (slotAnchor.firstChild) {
 					slotAnchor.firstChild.remove()
 				}
