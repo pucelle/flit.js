@@ -1,7 +1,7 @@
 import {Emitter} from '../libs/emitter'
 import {NodePart, TemplateResult} from '../template'
 import {enqueueComponentToUpdate} from '../queue'
-import {startUpdating, endUpdating, observeComTarget, clearDependencies, clearAsDependency, restoreAsDependency, targetMap} from '../observer'
+import {startUpdating, endUpdating, observeComTarget, clearDependencies, clearAsDependency, restoreAsDependency} from '../observer'
 import {WatcherGroup} from '../watcher'
 import {getScopedClassNameSet, ComponentStyle} from './style'
 import {NodeAnchorType, NodeAnchor} from '../libs/node-helper'
@@ -80,7 +80,9 @@ export abstract class Component<E = any> extends Emitter<E & ComponentEvents> {
 	private __rootPart: NodePart | null = null
 	private __updated: boolean = false
 	private __watcherGroup: WatcherGroup | null = null
-	private __connected: boolean = true
+	private __connected: boolean = false
+	private __connectedBefore: boolean = false
+	private __mustUpdate: boolean = true
 
 	constructor(el: HTMLElement) {
 		super()
@@ -110,22 +112,32 @@ export abstract class Component<E = any> extends Emitter<E & ComponentEvents> {
 	/** @hidden */
 	__emitConnected() {
 		// Not do following things when firstly connected.
-		if (!this.__connected) {
+		if (this.__connectedBefore) {
 			// Must restore before updating, because the restored result may be changed when updating.
-			restoreAsDependency(targetMap.get(this)!)
+			restoreAsDependency(this)
 
 			if (this.__watcherGroup) {
 				this.__watcherGroup.connect()
 			}
-
-			this.__connected = true
+		}
+		else {
+			this.__connectedBefore = true
 		}
 
-		// Why using `update` but not `__updateImmediately`?
+		this.__connected = true
+
+		// Sometimes we may pre render but not connect component,
+		// In this condition watchers of component are active and they keep notify component to update.
+		// When connect the component, may no need to update.
+
+		// Why `update` here but not `__updateImmediately`?
 		// After component created, it may delete element belongs to other components in `onCreated`
 		// Then in following micro task, the deleted components's `__connected` becomes false,
 		// and they will not been updated finally as expected.
-		this.update()
+		if (this.__mustUpdate) {
+			this.update()
+		}
+
 		this.onConnected()
 		this.emit('connected')
 		onComponentConnected(this)
@@ -134,16 +146,14 @@ export abstract class Component<E = any> extends Emitter<E & ComponentEvents> {
 	/** @hidden */
 	__emitDisconnected() {
 		clearDependencies(this)
-
-		// We generated `updatable proxy -> dependency target` maps in dependency module,
-		// So here need to pass component target but not proxy to clear dependencies.
-		clearAsDependency(targetMap.get(this)!)
+		clearAsDependency(this)
 
 		if (this.__watcherGroup) {
 			this.__watcherGroup.disconnect()
 		}
 
 		this.__connected = false
+		this.__mustUpdate = true
 		this.onDisconnected()
 		this.emit('disconnected')
 		onComponentDisconnected(this)
@@ -167,10 +177,13 @@ export abstract class Component<E = any> extends Emitter<E & ComponentEvents> {
 	}
 	
 	/** @hidden */
-	__updateImmediately() {
-		if (!this.__connected) {
+	__updateImmediately(force: boolean = false) {
+		if (!this.__connected && !force) {
+			this.__mustUpdate = true
 			return
 		}
+
+		this.__mustUpdate = false
 
 		startUpdating(this)
 		let result = this.render()

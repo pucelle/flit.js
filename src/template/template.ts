@@ -163,7 +163,7 @@ export class Template {
 				let Com = getComponentConstructor(el.localName)
 				if (Com && !getComponent(el)) {
 					let com = createComponent(el, Com)
-					com.__updateImmediately()
+					com.__updateImmediately(true)
 				}
 			}
 		}
@@ -172,7 +172,7 @@ export class Template {
 
 
 /** Join strings and values to string, returns `values[0]` if `strings` is null. */
-function join(strings: TemplateStringsArray | string[] | null, values: unknown[] | null): unknown {
+function join(strings: TemplateStringsArray | string[] | null, values: unknown[] | null): any {
 	if (!strings) {
 		return values![0]
 	}
