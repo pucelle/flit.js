@@ -64,10 +64,6 @@ export class WatchedTemplate<Item> {
 		}
 	}
 
-	removeTemplate() {
-		this.template!.remove()
-	}
-
 	remove() {
 		this.template!.remove()
 		this.watcher.disconnect()

@@ -582,7 +582,14 @@ export class LiveRepeatDirective<T> extends RepeatDirective<T> {
 	}
 
 	protected onWatchedTemplateNotInUse(wtem: WatchedTemplate<T>) {
-		wtem.removeTemplate()
+		wtem.remove()
+		
+		// Note than we doesn't cache the removed wtem,
+		// The reason is the component will trigger disconnect,
+		// And when reconnect, it will update, even if we keep watcher alive here.
+		if (this.options.get('preRendering')) {
+			this.preRendered.delete(wtem.item)
+		}
 	}
 
 
