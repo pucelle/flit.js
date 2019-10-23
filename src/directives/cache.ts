@@ -5,13 +5,13 @@ import {NodeAnchorType, NodeAnchor} from "../libs/node-helper"
 import {DirectiveTransition, DirectiveTransitionOptions} from '../libs/directive-transition'
 
 
-class CacheDirective implements Directive {
+export class CacheDirective implements Directive {
 
-	private anchor: NodeAnchor
-	private context: Context
-	private transition: DirectiveTransition
-	private templates: Template[] = []
-	private currentTemplate: Template | null = null
+	protected anchor: NodeAnchor
+	protected context: Context
+	protected transition: DirectiveTransition
+	protected templates: Template[] = []
+	protected currentTemplate: Template | null = null
 
 	constructor(anchor: NodeAnchor, context: Context) {
 		this.anchor = anchor
@@ -54,14 +54,14 @@ class CacheDirective implements Directive {
 		}
 	}
 	
-	private async playEnterTransition(template: Template) {
+	protected async playEnterTransition(template: Template) {
 		let firstElement = template.range.getFirstElement()
 		if (firstElement) {
 			await this.transition.playEnter(firstElement)
 		}
 	}
 
-	private initNewResult(result: TemplateResult) {
+	protected initNewResult(result: TemplateResult) {
 		let template = new Template(result, this.context)
 		let fragment = template.range.getFragment()
 		this.anchor.insert(fragment)
@@ -74,7 +74,7 @@ class CacheDirective implements Directive {
 		this.templates.push(template)
 	}
 
-	private async cacheCurrentTemplate() {
+	protected async cacheCurrentTemplate() {
 		let template = this.currentTemplate!
 		let firstElement = template.range.getFirstElement()
 

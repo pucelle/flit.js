@@ -34,20 +34,20 @@ type LiveTemplateFn<T> = (item: T | null, index: number) => TemplateResult
 /** @hidden */
 export class LiveAsyncRepeatDirective<T> extends LiveRepeatDirective<T> {
 
-	private key: keyof T | null = null
+	protected key: keyof T | null = null
 
 	/**
 	 * Whole data count when using `dataGetter`.
 	 * `-1` means the total count is not determinated yet.
 	 * We will try to get the data count value when assigning render options.
 	 */
-	private knownDataCount: number = -1
+	protected knownDataCount: number = -1
 
 	/** Need to call `updateSliderPosition` after got `knownDataCount`. */
-	private needToUpdateSliderPositionAfterDataCountKnown: boolean = false
+	protected needToUpdateSliderPositionAfterDataCountKnown: boolean = false
 
-	private dataCacher!: PageDataCacher<T>
-	private updateId: number = 0
+	protected dataCacher!: PageDataCacher<T>
+	protected updateId: number = 0
 
 	merge(options: any, templateFn: any, transitionOptions?: DirectiveTransitionOptions) {
 		let firstlyUpdate = !this.options.updated
@@ -104,7 +104,7 @@ export class LiveAsyncRepeatDirective<T> extends LiveRepeatDirective<T> {
 		}
 	}
 
-	private async updateDataCount() {
+	protected async updateDataCount() {
 		let dataCountFn = (this.options as Options<LiveAsyncRepeatOptions<T>>).get('dataCount')
 		if (!dataCountFn) {
 			return
@@ -178,7 +178,7 @@ export class LiveAsyncRepeatDirective<T> extends LiveRepeatDirective<T> {
 		await super.updateData(data)
 	}
 
-	private uniqueData(data: T[]): T[] {
+	protected uniqueData(data: T[]): T[] {
 		let set = new Set()
 		
 		return data.filter(item => {

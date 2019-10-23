@@ -217,17 +217,17 @@ export class RepeatDirective<T> implements Directive {
 		}
 	}
 
-	private useMatchedOne(wtem: WatchedTemplate<T>, index: number) {
+	protected useMatchedOne(wtem: WatchedTemplate<T>, index: number) {
 		wtem.updateIndex(index + this.startIndex)
 		this.wtems.push(wtem)
 	}
 
-	private reuseOne(wtem: WatchedTemplate<T>, item: T, index: number) {
+	protected reuseOne(wtem: WatchedTemplate<T>, item: T, index: number) {
 		wtem.update(item, index + this.startIndex)
 		this.wtems.push(wtem)
 	}
 
-	private moveOneBefore(wtem: WatchedTemplate<T>, nextOldWtem: WatchedTemplate<T> | null) {
+	protected moveOneBefore(wtem: WatchedTemplate<T>, nextOldWtem: WatchedTemplate<T> | null) {
 		let fragment = wtem.template.range.getFragment()
 
 		if (nextOldWtem) {
@@ -238,7 +238,7 @@ export class RepeatDirective<T> implements Directive {
 		}
 	}
 
-	private createOne(item: T, index: number, nextOldWtem: WatchedTemplate<T> | null): WatchedTemplate<T> {
+	protected createOne(item: T, index: number, nextOldWtem: WatchedTemplate<T> | null): WatchedTemplate<T> {
 		let wtem = new WatchedTemplate(this.context, this.templateFn, item, index + this.startIndex)
 		let template = wtem.template
 		let fragment = template.range.getFragment()
@@ -262,7 +262,7 @@ export class RepeatDirective<T> implements Directive {
 		return wtem
 	}
 
-	private removeOne(wtem: WatchedTemplate<T>) {
+	protected removeOne(wtem: WatchedTemplate<T>) {
 		let template = wtem.template
 
 		if (this.transition.shouldPlay()) {

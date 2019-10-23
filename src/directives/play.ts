@@ -10,12 +10,12 @@ import {DirectiveTransition, DirectiveTransitionOptions} from '../libs/directive
  * and don't want to cache elements or leave it in document to hide,
  * we will need this directive.
  */
-class PalyDirective implements Directive {
+export class PalyDirective implements Directive {
 
-	private anchor: NodeAnchor
-	private context: Context
-	private transition: DirectiveTransition
-	private currentTemplate: Template | null = null
+	protected anchor: NodeAnchor
+	protected context: Context
+	protected transition: DirectiveTransition
+	protected currentTemplate: Template | null = null
 
 	constructor(anchor: NodeAnchor, context: Context) {
 		this.anchor = anchor
@@ -50,14 +50,14 @@ class PalyDirective implements Directive {
 		}
 	}
 	
-	private async playEnterTransition(template: Template) {
+	protected async playEnterTransition(template: Template) {
 		let firstElement = template.range.getFirstElement()
 		if (firstElement) {
 			await this.transition.playEnter(firstElement)
 		}
 	}
 
-	private async playLeaveTransition(template: Template) {
+	protected async playLeaveTransition(template: Template) {
 		let firstElement = template.range.getFirstElement()
 		if (firstElement) {
 			let finish = await this.transition.playLeave(firstElement)
@@ -67,7 +67,7 @@ class PalyDirective implements Directive {
 		}
 	}
 
-	private initNewResult(result: TemplateResult) {
+	protected initNewResult(result: TemplateResult) {
 		let template = new Template(result, this.context)
 		let fragment = template.range.getFragment()
 		this.anchor.insert(fragment)
