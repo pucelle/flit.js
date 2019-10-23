@@ -1,8 +1,8 @@
 import {mayAddComDependency, notifyComPropertySet, isUpdating} from './dependency'
-import {proxyMap, Com, targetMap, observeTarget} from './shared'
+import {proxyMap, ComTarget, targetMap, observeTarget} from './shared'
 
 
-export function observeComTarget<T extends Com>(com: T): T {
+export function observeComTarget<T extends ComTarget>(com: T): T {
 	let proxy = new Proxy(com, proxyHandler)
 	proxyMap.set(com, proxy)
 	proxyMap.set(proxy, proxy)
@@ -13,7 +13,7 @@ export function observeComTarget<T extends Com>(com: T): T {
 
 const proxyHandler = {
 
-	get(com: Com, prop: keyof Com & PropertyKey): unknown {
+	get(com: ComTarget, prop: keyof ComTarget & PropertyKey): any {
 		let value: any = com[prop]
 
 		// It doesn't check if own property exists here.
@@ -38,18 +38,18 @@ const proxyHandler = {
 		return value
 	},
 
-	set(com: Com, prop: keyof Com & string, value: unknown): true {
+	set(com: ComTarget, prop: keyof ComTarget & string, value: unknown): true {
 		com[prop] = value
 		notifyComPropertySet(com, prop)
 		return true
 	},
 
-	has(com: Com, prop: string) {
+	has(com: ComTarget, prop: string) {
 		mayAddComDependency(com, prop)
 		return prop in com
 	},
 
-	deleteProperty(com: Com, prop: string): boolean {
+	deleteProperty(com: ComTarget, prop: string): boolean {
 		if (com.hasOwnProperty(prop)) {
 			mayAddComDependency(com, prop)
 			return delete com[prop]

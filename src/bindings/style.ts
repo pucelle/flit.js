@@ -10,7 +10,7 @@ const ALLOWED_MODIFIERS = ['px', 'percent', 'url']
  * `:style.style-name="value"`
  * `:style.style-name.px="value"`
  */
-type StyleObject = {[key: string]: unknown}
+type StyleObject = {[key: string]: any}
 
 defineBinding('style', class StyleBinding implements Binding<[string | StyleObject]> {
 

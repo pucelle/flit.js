@@ -127,13 +127,13 @@ defineBinding('model', class ModelBinding implements Binding<[string]> {
 		this.unwatch = this.context!.watchImmediately(this.getModelValueFromContext.bind(this), this.setModelValueToTarget.bind(this))
 	}
 
-	private getModelValueFromContext(): unknown {
+	private getModelValueFromContext(): any {
 		let properties = this.modelName.split('.')
-		let value: unknown = this.context
+		let value: any = this.context
 
 		for (let property of properties) {
 			if (value && typeof value === 'object') {
-				value = (value as any)[property]
+				value = value[property]
 			}
 			else {
 				value = undefined
@@ -166,14 +166,14 @@ defineBinding('model', class ModelBinding implements Binding<[string]> {
 	}
 
 	private onEventInputOrChange(_e: Event) {
-		let value: unknown
+		let value: any
 		let isNumber = this.modifiers && this.modifiers.includes('number')
 
 		if (this.isMultiSelect) {
 			value = Array.from((this.el as HTMLSelectElement).options).filter(o => o.selected).map(o => o.value)
 
 			if (isNumber) {
-				value = (value as string[]).map(Number)
+				value = value.map(Number)
 			}
 		}
 		else {

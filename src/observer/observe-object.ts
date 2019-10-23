@@ -13,7 +13,7 @@ export function observePlainObjectTarget(obj: object) {
 
 const proxyHandler = {
 
-	get(obj: object, prop: keyof typeof obj): unknown {
+	get(obj: object, prop: keyof typeof obj): any {
 		let value: any = obj[prop]
 
 		mayAddDependency(obj)

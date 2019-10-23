@@ -2,7 +2,7 @@ import {notifyObjectSet, mayAddDependency} from './dependency'
 import {proxyMap, targetMap} from './shared'
 
 
-type MapOrSet = Map<unknown, unknown> | Set<unknown>
+type MapOrSet = Map<any, any> | Set<any>
 
 const MAP_SET_METHODS = ['add', 'set', 'delete', 'clear']
 
@@ -22,7 +22,7 @@ export function observeMapOrSetTarget(ms: MapOrSet) {
 // We will fix this when we indeed meet this.
 const proxyHandler = {
 
-	get(ms: MapOrSet, prop: PropertyKey): unknown {
+	get(ms: MapOrSet, prop: PropertyKey): any {
 		let value = (ms as any)[prop]
 		let type = typeof value
 

@@ -16,7 +16,7 @@ export function observeArrayTarget(arr: unknown[]) {
 
 const proxyHandler = {
 
-	get(arr: unknown[], prop: string | number): unknown {
+	get(arr: unknown[], prop: string | number): any {
 		let value = (arr as any)[prop]
 		let type = typeof value
 
