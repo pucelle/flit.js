@@ -83,6 +83,8 @@ export class RepeatDirective<T> implements Directive {
 	//   reuse: reuse not in use item and update item on it.
 
 	protected updateData(data: T[]) {
+		let shouldPaly = this.transition.shouldPlay()
+
 		// Old
 		let oldData = this.data
 		let oldItemIndexMap: Map<T, number> = new Map()
@@ -181,7 +183,7 @@ export class RepeatDirective<T> implements Directive {
 			}
 
 			// Reuse template that will be removed and rerender it
-			if (this.shouldReuse() && notInUseIndexSet.size > 0) {
+			if (!shouldPaly && this.shouldReuse(item) && notInUseIndexSet.size > 0) {
 				let reuseIndex = notInUseIndexSet.keys().next().value	// index in `notInUseIndexSet` is ordered.
 
 				// If the index betweens `lastStayedOldIndex + 1` and `nextMatchedOldIndex`, no need to move it.
@@ -218,8 +220,8 @@ export class RepeatDirective<T> implements Directive {
 		}
 	}
 
-	protected shouldReuse() {
-		return !this.transition.shouldPlay()
+	protected shouldReuse(_item: T) {
+		return true
 	}
 
 	protected useMatchedOne(wtem: WatchedTemplate<T>, index: number) {

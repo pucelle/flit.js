@@ -490,36 +490,22 @@ export class LiveRepeatDirective<T> extends RepeatDirective<T> {
 			return
 		}
 
-		this.toCompletePreRendering = this.mayDoPreRendering()
+		this.toCompletePreRendering = this.doingUpdatePreRendering()
 		await this.toCompletePreRendering
 		this.toCompletePreRendering = null
 	}
 
-	protected async mayDoPreRendering() {
+	protected async doingUpdatePreRendering() {
 		// Wait page to layout & render
 		await untilNextFrame()
-
-		if (this.shouldUpdatePreRendering()) {
-			await this.updatePreRendering()
-		}
-	}
-
-	protected shouldUpdatePreRendering() {
-		let totalCount = this.getTotalDataCount()
-		let renderCount = this.options.get('pageSize') * this.options.get('renderPageCount')
-		let preRenderCount = Math.min(renderCount * 3, totalCount)
-		let startIndex = Math.max(0, this.startIndex - renderCount)
-		let shouldUpdate = startIndex !== this.preRenderStartIndex || this.preRendered.size < preRenderCount
-
-		return shouldUpdate
+		await this.updatePreRendering()
 	}
 
 	protected async updatePreRendering() {
 		let totalCount = this.getTotalDataCount()
 		let renderCount = this.options.get('pageSize') * this.options.get('renderPageCount')
-		let preRenderCount = Math.min(renderCount * 3, totalCount)
 		let startIndex = Math.max(0, this.startIndex - renderCount)
-		let endIndex = startIndex + preRenderCount
+		let endIndex = Math.min(totalCount, this.startIndex + renderCount * 2)
 		let startTime: number = performance.now()
 
 		let data = await this.getDataBetweens(startIndex, endIndex)
@@ -566,8 +552,17 @@ export class LiveRepeatDirective<T> extends RepeatDirective<T> {
 	}
 	
 	// Overwrites methods of super class
-	protected shouldReuse() {
-		return !this.transition.shouldPlay() && !this.options.get('preRendering')
+	protected shouldReuse(item: T) {
+		return !this.options.get('preRendering') || !this.preRendered.has(item)
+	}
+
+	protected reuseOne(wtem: WatchedTemplate<T>, item: T, index: number) {
+		if (this.options.get('preRendering')) {
+			this.preRendered.delete(wtem.item)
+			this.preRendered.set(item, wtem)
+		}
+
+		super.reuseOne(wtem, item, index)
 	}
 
 	protected createWatchedTemplate(item: T, index: number): WatchedTemplate<T> {
