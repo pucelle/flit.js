@@ -16,7 +16,7 @@ defineBinding('style', class StyleBinding implements Binding<[string | StyleObje
 
 	private el: HTMLElement | SVGElement
 	private modifiers: string[] | undefined
-	private lastStyle: StyleObject | null = null
+	private lastStyle: StyleObject = {}
 
 	constructor(el: Element, _context: any, modifiers?: string[]) {
 		if (modifiers) {
@@ -38,48 +38,48 @@ defineBinding('style', class StyleBinding implements Binding<[string | StyleObje
 	}
 
 	update(value: string | StyleObject) {
-		if (this.lastStyle) {
-			this.removeStyle(this.lastStyle)
+		let oldStyleNames = Object.keys(this.lastStyle)
+		let newStyle = this.parseStyle(value)
+		let newStyleNames = Object.keys(newStyle)
+
+		for (let name of oldStyleNames) {
+			if (!newStyleNames.includes(name)) {
+				(this.el.style as any)[name] = ''
+			}
 		}
 
-		if (value !== '' && value !== null && value !== undefined) {
-			this.addStyle(this.lastStyle = this.parseStyle(value))
+		for (let name of newStyleNames) {
+			if (!oldStyleNames.includes(name)) {
+				this.addStyle(name, newStyle[name])
+			}
 		}
+
+		this.lastStyle = newStyle
 	}
 
-	private removeStyle(style: StyleObject) {
-		for (let name of Object.keys(style)) {
-			(this.el.style as any)[name] = ''
-		}
-	}
-
-	private addStyle(style: StyleObject) {
+	private addStyle(name: string, value: unknown) {
 		let unit = this.modifiers ? this.modifiers[1] : ''
 		
-		for (let name of Object.keys(style)) {
-			let value = style[name]
-
-			if (value === null || value === undefined) {
-				value = ''
-			}
-
-			// Units like `s`, `deg` is very rare to use.
-			else if (unit === 'px') {
-				value = value + 'px'
-			}
-			else if (unit === 'percent') {
-				value = value + '%'
-			}
-			else if (unit === 'url') {
-				value = 'url("' + value + '")'
-			}
-
-			if (typeof value === 'number') {
-				value = value + 'px'
-			}
-
-			(this.el.style as any)[name] = value
+		if (value === null || value === undefined) {
+			value = ''
 		}
+
+		// Units like `s`, `deg` is very rare to use.
+		else if (unit === 'px') {
+			value = value + 'px'
+		}
+		else if (unit === 'percent') {
+			value = value + '%'
+		}
+		else if (unit === 'url') {
+			value = 'url("' + value + '")'
+		}
+
+		if (typeof value === 'number') {
+			value = value + 'px'
+		}
+
+		(this.el.style as any)[name] = value
 	}
 
 	private parseStyle(style: unknown): StyleObject {
@@ -115,7 +115,9 @@ defineBinding('style', class StyleBinding implements Binding<[string | StyleObje
 
 	remove() {
 		if (this.lastStyle) {
-			this.removeStyle(this.lastStyle)
+			for (let name of Object.keys(this.lastStyle)) {
+				(this.el.style as any)[name] = ''
+			}
 		}
 	}
 })

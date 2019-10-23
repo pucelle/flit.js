@@ -10,9 +10,10 @@ export class WatchedTemplate<Item> {
 
 	private context: Context
 	private templateFn: TemplateFn<Item>
-	private item: Item
-	private index: number
 	private watcher!: Watcher<TemplateResult>
+
+	item: Item
+	index: number
 	template!: Template
 
 	constructor(context: Context, templateFn: TemplateFn<Item>, item: Item, index: number) {
@@ -61,6 +62,10 @@ export class WatchedTemplate<Item> {
 			this.index = index
 			this.watcher.__updateImmediately()
 		}
+	}
+
+	removeTemplate() {
+		this.template!.remove()
 	}
 
 	remove() {

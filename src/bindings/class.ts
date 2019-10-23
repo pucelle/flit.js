@@ -17,7 +17,7 @@ defineBinding('class', class ClassNameBinding implements Binding<[string | Class
 
 	private el: Element
 	private modifiers: string[] | undefined
-	private lastClassNames: string[] | null = null
+	private lastClassNames: string[] = []
 	private scopeName: string
 	private scopedClassNameSet: Set<string> | undefined
 
@@ -39,14 +39,25 @@ defineBinding('class', class ClassNameBinding implements Binding<[string | Class
 	}
 
 	update(value: string | ClassObject) {
-		if (this.lastClassNames) {
-			this.el.classList.remove(...this.lastClassNames)
-		}
+		let newClassNames: string[] = []
 
 		if (value) {
-			let classNames = this.lastClassNames = this.parseClass(value)
-			this.el.classList.add(...classNames)
+			newClassNames = this.parseClass(value)
 		}
+
+		for (let name of this.lastClassNames) {
+			if (!newClassNames.includes(name)) {
+				this.el.classList.remove(name)
+			}
+		}
+
+		for (let name of newClassNames) {
+			if (!this.lastClassNames.includes(name)) {
+				this.el.classList.add(name)
+			}
+		}
+		
+		this.lastClassNames = newClassNames
 	}
 
 	private parseClass(value: string | ClassObject): string[] {

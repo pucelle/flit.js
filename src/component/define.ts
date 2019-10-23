@@ -134,6 +134,13 @@ function connectElement(el: HTMLElement, Com: ComponentConstructor) {
 	com!.__emitConnected()
 }
 
+function disconnectElement(el: HTMLElement) {
+	let com = getComponent(el)
+	if (com) {
+		com.__emitDisconnected()
+	}
+}
+
 /** Export for `renderComponent`, which will create component manually. */
 /** @hidden */
 export function createComponent(el: HTMLElement, Com: ComponentConstructor): Component {
@@ -141,11 +148,4 @@ export function createComponent(el: HTMLElement, Com: ComponentConstructor): Com
 	let com = new Com(el)
 	com.__emitCreated()
 	return com
-}
-
-function disconnectElement(el: HTMLElement) {
-	let com = getComponent(el)
-	if (com) {
-		com.__emitDisconnected()
-	}
 }

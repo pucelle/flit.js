@@ -145,8 +145,9 @@ export class RepeatDirective<T> implements Directive {
 		let lastStayedOldIndex = -1
 
 
-		for (let index = 0; index < newData.length; index++) {
-			let item = newData[index]
+		for (let i = 0; i < newData.length; i++) {
+			let item = newData[i]
+			let index = i + this.startIndex
 
 			// May reuse
 			if (oldItemIndexMap.has(item)) {
@@ -180,7 +181,7 @@ export class RepeatDirective<T> implements Directive {
 			}
 
 			// Reuse template that will be removed and rerender it
-			if (!this.transition.shouldPlay() && notInUseIndexSet.size > 0) {
+			if (this.shouldReuse() && notInUseIndexSet.size > 0) {
 				let reuseIndex = notInUseIndexSet.keys().next().value	// index in `notInUseIndexSet` is ordered.
 
 				// If the index betweens `lastStayedOldIndex + 1` and `nextMatchedOldIndex`, no need to move it.
@@ -217,13 +218,17 @@ export class RepeatDirective<T> implements Directive {
 		}
 	}
 
+	protected shouldReuse() {
+		return !this.transition.shouldPlay()
+	}
+
 	protected useMatchedOne(wtem: WatchedTemplate<T>, index: number) {
-		wtem.updateIndex(index + this.startIndex)
+		wtem.updateIndex(index)
 		this.wtems.push(wtem)
 	}
 
 	protected reuseOne(wtem: WatchedTemplate<T>, item: T, index: number) {
-		wtem.update(item, index + this.startIndex)
+		wtem.update(item, index)
 		this.wtems.push(wtem)
 	}
 
@@ -239,7 +244,7 @@ export class RepeatDirective<T> implements Directive {
 	}
 
 	protected createOne(item: T, index: number, nextOldWtem: WatchedTemplate<T> | null): WatchedTemplate<T> {
-		let wtem = new WatchedTemplate(this.context, this.templateFn, item, index + this.startIndex)
+		let wtem = this.createWatchedTemplate(item, index)
 		let template = wtem.template
 		let fragment = template.range.getFragment()
 		let firstElement: HTMLElement | null = null
@@ -262,6 +267,10 @@ export class RepeatDirective<T> implements Directive {
 		return wtem
 	}
 
+	protected createWatchedTemplate(item: T, index: number) {
+		return new WatchedTemplate(this.context, this.templateFn, item, index)
+	}
+
 	protected removeOne(wtem: WatchedTemplate<T>) {
 		let template = wtem.template
 
@@ -270,17 +279,21 @@ export class RepeatDirective<T> implements Directive {
 			if (firstElement) {
 				this.transition.playLeave(firstElement).then((finish: boolean) => {
 					if (finish) {
-						wtem.remove()
+						this.onWatchedTemplateNotInUse(wtem)
 					}
 				})
 			}
 			else {
-				wtem.remove()
+				this.onWatchedTemplateNotInUse(wtem)
 			}
 		}
 		else {
-			wtem.remove()
+			this.onWatchedTemplateNotInUse(wtem)
 		}
+	}
+
+	protected onWatchedTemplateNotInUse(wtem: WatchedTemplate<T>) {
+		wtem.remove()
 	}
 
 	remove() {

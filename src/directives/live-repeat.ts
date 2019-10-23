@@ -36,6 +36,12 @@ export interface LiveRepeatOptions<T> {
 	*/
 	renderPageCount?: number
 
+	/**
+	* When can't render partial contents in an animation frame, you should set this to `true`.
+	* It will prerender more templates before and after current partial contents.
+	*/
+	preRendering?: boolean
+
 	/** Raw data to only render part of it. */
 	data?: Iterable<T> | null
 
@@ -50,6 +56,7 @@ export interface LiveRepeatOptions<T> {
 const defaultLiveRepeatOptions: LiveRepeatOptions<any> = {
 	pageSize: 50,
 	renderPageCount: 1,
+	preRendering: false,
 }
 
 
@@ -91,21 +98,29 @@ export class LiveRepeatDirective<T> extends RepeatDirective<T> {
 	 * When we scrolled up or down, we don't know about the height of just inserted or removed elements.
 	 * But we can keep it's scrolling position by adjusting `top` or `bottom` property of slider element.
 	 */
-	private continuousScrollDirection: 'up' | 'down' | null = null
-	private continuousSliderPosition: number | null = null
-	private scrollerBorderTopWidth: number = 0
-	private scrollerBorderBottomWidth: number = 0
-	private toCompleteRendering: Promise<void> | null = null
+	protected continuousScrollDirection: 'up' | 'down' | null = null
+	protected continuousSliderPosition: number | null = null
+	protected scrollerBorderTopWidth: number = 0
+	protected scrollerBorderBottomWidth: number = 0
+	protected toCompleteRendering: Promise<void> | null = null
 
 	/** Whole data from options. */
-	private rawData: T[] | null = null
+	protected rawData: T[] | null = null
+
+	/** 
+	 * PreRender renders 3x of templates, includes before, current, after.
+	 * So it doesn't affect by scrolling direction.
+	 */
+	protected toCompletePreRendering: Promise<void> | null = null
+	protected preRenderStartIndex: number = 0
+	protected preRendered: Map<T, WatchedTemplate<T>> = new Map()
 
 	constructor(anchor: NodeAnchor, context: Context) {
 		super(anchor, context)
 		this.initElements()
 	}
 
-	private async initElements() {
+	protected async initElements() {
 		this.slider = this.anchor.el.parentElement as HTMLElement
 		this.scroller = this.slider.parentElement as HTMLElement
 
@@ -163,7 +178,7 @@ export class LiveRepeatDirective<T> extends RepeatDirective<T> {
 		}
 	}
 
-	private watchRawDataAndUpdate(data: Iterable<T> | null) {
+	protected watchRawDataAndUpdate(data: Iterable<T> | null) {
 		if (this.unwatchData) {
 			this.unwatchData()
 			this.unwatchData = null
@@ -195,6 +210,10 @@ export class LiveRepeatDirective<T> extends RepeatDirective<T> {
 		this.toCompleteRendering = this.updateData(data)
 		await this.toCompleteRendering
 		this.toCompleteRendering = null
+
+		if (this.options.get('preRendering')) {
+			this.checkPreRendering()
+		}
 	}
 
 	protected async updateData(data: T[]) {
@@ -292,7 +311,7 @@ export class LiveRepeatDirective<T> extends RepeatDirective<T> {
 		this.slider.style.transform = `translateY(${translateY}px)`
 	}
 
-	private measureAverageItemHeight() {
+	protected measureAverageItemHeight() {
 		if (this.data.length === 0) {
 			return
 		}
@@ -308,7 +327,7 @@ export class LiveRepeatDirective<T> extends RepeatDirective<T> {
 		this.averageItemHeight = Math.round(sliderHeight / this.data.length)
 	}
 
-	private getElementOfIndex(index: number) {
+	protected getElementOfIndex(index: number) {
 		let wtem = this.wtems[index - this.startIndex]
 		if (wtem) {
 			return wtem.template.range.getFirstElement()
@@ -317,14 +336,11 @@ export class LiveRepeatDirective<T> extends RepeatDirective<T> {
 		return null
 	}
 
-	private async onScroll() {
-		if (this.toCompleteRendering) {
-			await this.toCompleteRendering
-		}
+	protected async onScroll() {
 		this.checkRenderedRange()
 	}
 
-	private checkRenderedRange() {
+	protected checkRenderedRange() {
 		let scrollerRect = this.scroller.getBoundingClientRect()
 		let sliderRect = this.slider.getBoundingClientRect()
 
@@ -337,7 +353,7 @@ export class LiveRepeatDirective<T> extends RepeatDirective<T> {
 	}
 
 	// `direction` means where we render new items, and also the direction that the value of `startIndex` will change to.
-	private updateToCover(scrollDirection: 'up' | 'down') {
+	protected async updateToCover(scrollDirection: 'up' | 'down') {
 		let renderCount = this.options.get('pageSize') * this.options.get('renderPageCount')
 		let startIndex = -1
 
@@ -373,15 +389,15 @@ export class LiveRepeatDirective<T> extends RepeatDirective<T> {
 		this.update()
 	}
 
-	private locateFirstVisibleIndex(): number {
+	protected locateFirstVisibleIndex(): number {
 		return this.locateVisibleIndex(true)
 	}
 
-	private locateLastVisibleIndex(): number {
+	protected locateLastVisibleIndex(): number {
 		return this.locateVisibleIndex(false)
 	}
 
-	private locateVisibleIndex(isFirst: boolean): number {
+	protected locateVisibleIndex(isFirst: boolean): number {
 		let scrollerRect = this.scroller.getBoundingClientRect()
 
 		let visibleIndex = binaryFindIndexToInsert(this.wtems as WatchedTemplate<T>[], (wtem) => {
@@ -429,7 +445,7 @@ export class LiveRepeatDirective<T> extends RepeatDirective<T> {
 		return -1
 	}
 
-	private validateContinuousScrolling(scrollDirection: 'up' | 'down', startIndex: number, endIndex: number) {
+	protected validateContinuousScrolling(scrollDirection: 'up' | 'down', startIndex: number, endIndex: number) {
 		let indexToKeepPosition = scrollDirection === 'down' ? startIndex : endIndex
 		let isSameScrollDirection = this.continuousScrollDirection === scrollDirection
 
@@ -453,25 +469,116 @@ export class LiveRepeatDirective<T> extends RepeatDirective<T> {
 		}
 	}
 
-	private getSliderTopPosition() {
+	protected getSliderTopPosition() {
 		let scrollerPaddingAreaTop = this.scroller.getBoundingClientRect().top - this.scrollerBorderTopWidth!
 		let sliderAreaTop = this.slider.getBoundingClientRect().top
 
 		return sliderAreaTop - scrollerPaddingAreaTop + this.scroller.scrollTop
 	}
 
-	private getSliderBottomPosition() {
+	protected getSliderBottomPosition() {
 		let scrollerPaddingAreaBottom = this.scroller.getBoundingClientRect().bottom + this.scrollerBorderBottomWidth
 		let sliderAreaBottom = this.slider.getBoundingClientRect().bottom
 		
 		return sliderAreaBottom - scrollerPaddingAreaBottom + this.scroller.scrollTop
 	}
 
-	remove() {
-		for (let wtem of this.wtems) {
-			wtem.remove()
+
+	// Handle pre rendering
+	protected async checkPreRendering() {
+		if (this.toCompletePreRendering) {
+			return
+		}
+
+		this.toCompletePreRendering = this.mayDoPreRendering()
+		await this.toCompletePreRendering
+		this.toCompletePreRendering = null
+	}
+
+	protected async mayDoPreRendering() {
+		// Wait page to layout & render
+		await untilFrame()
+
+		if (this.shouldUpdatePreRendering()) {
+			await this.updatePreRendering()
 		}
 	}
+
+	protected shouldUpdatePreRendering() {
+		let totalCount = this.getTotalDataCount()
+		let renderCount = this.options.get('pageSize') * this.options.get('renderPageCount')
+		let preRenderCount = Math.min(renderCount * 3, totalCount)
+		let startIndex = Math.max(0, this.startIndex - renderCount)
+		let shouldUpdate = startIndex !== this.preRenderStartIndex || this.preRendered.size < preRenderCount
+
+		return shouldUpdate
+	}
+
+	protected async updatePreRendering() {
+		let totalCount = this.getTotalDataCount()
+		let renderCount = this.options.get('pageSize') * this.options.get('renderPageCount')
+		let preRenderCount = Math.min(renderCount * 3, totalCount)
+		let startIndex = Math.max(0, this.startIndex - renderCount)
+		let endIndex = startIndex + preRenderCount
+		let startTime: number = performance.now()
+
+		let data = await this.getDataBetweens(startIndex, endIndex)
+		let dataSet: Set<T> = new Set(data)
+
+		for (let item of this.preRendered.keys()) {
+			if (!dataSet.has(item)) {
+				let wtem = this.preRendered.get(item)!
+				wtem.remove()
+				this.preRendered.delete(item)
+			}
+		}
+
+		for (let i = 0; i < data.length; i++) {
+			let item = data[i]
+			let index = i + startIndex
+
+			if (!this.preRendered.has(item)) {
+				let wtem = new WatchedTemplate(this.context, this.templateFn, item, index)
+				wtem.template.preConnect()
+				this.preRendered.set(item, wtem)
+			}
+
+			if (i % 10 === 0) {
+				let currentTime = performance.now()
+				if (currentTime - startTime > 10) {
+					startTime = currentTime
+					await untilFrame()
+				}
+			}
+		}
+
+		this.preRenderStartIndex = startIndex
+	}
+
+	protected async getDataBetweens(startIndex: number, endIndex: number) {
+		return this.rawData ? this.rawData.slice(startIndex, endIndex) : []
+	}
+	
+	// Overwrites methods of super class
+	protected shouldReuse() {
+		return !this.transition.shouldPlay() && !this.options.get('preRendering')
+	}
+
+	protected createWatchedTemplate(item: T, index: number): WatchedTemplate<T> {
+		if (this.preRendered.has(item)) {
+			return this.preRendered.get(item)!
+		}
+		else {
+			let wtem = super.createWatchedTemplate(item, index)
+			this.preRendered.set(wtem.item, wtem)
+			return wtem
+		}
+	}
+
+	protected onWatchedTemplateNotInUse(wtem: WatchedTemplate<T>) {
+		wtem.removeTemplate()
+	}
+
 
 	/** Get `startIndex` property. */
 	getStartIndex() {
@@ -557,3 +664,9 @@ export const liveRepeat = defineDirective(LiveRepeatDirective) as <Item>(
 	transitionOptions?: DirectiveTransitionOptions
 ) => DirectiveResult
 
+
+function untilFrame() {
+	return new Promise(resolve => {
+		requestAnimationFrame(resolve)
+	})
+}

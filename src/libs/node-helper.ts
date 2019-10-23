@@ -37,8 +37,7 @@ export class NodeAnchor {
  */
 export class NodeRange {
 
-	private fragment: DocumentFragment | null = null
-
+	fragment: DocumentFragment | null = null
 	startNode: ChildNode
 	endNode: ChildNode
 

@@ -8,7 +8,7 @@ import {EventPart} from './event-part'
 import {AttrPart} from './attr-part'
 import {BindingPart, FixedBindingPart} from './binding-part'
 import {PropertyPart} from './property-part'
-import {Context} from '../component'
+import {Context, getComponentConstructor, getComponent, createComponent} from '../component'
 
 
 interface CanUpdateParts {
@@ -143,6 +143,30 @@ export class Template {
 	// Been called when this template will never be used any more.
 	remove() {
 		this.range.remove()
+	}
+
+	/** 
+	 * Initialize components inside a template and update immediately.
+	 * Elements are not connected but will be pre rendered.
+	 */
+	preConnect() {
+		let fragment = this.range.fragment
+		if (!fragment) {
+			return
+		}
+
+		let walker = document.createTreeWalker(fragment, NodeFilter.SHOW_ELEMENT, null)
+		let el: Node | null
+
+		while (el = walker.nextNode()) {
+			if (el instanceof HTMLElement && el.localName.includes('-')) {
+				let Com = getComponentConstructor(el.localName)
+				if (Com && !getComponent(el)) {
+					let com = createComponent(el, Com)
+					com.__updateImmediately()
+				}
+			}
+		}
 	}
 }
 

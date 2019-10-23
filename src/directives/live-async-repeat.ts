@@ -209,6 +209,10 @@ export class LiveAsyncRepeatDirective<T> extends LiveRepeatDirective<T> {
 		return this.knownDataCount
 	}
 
+	protected async getDataBetweens(startIndex: number, endIndex: number) {
+		return await this.dataCacher.getFreshData(startIndex, endIndex)
+	}
+
 	/** When data ordering changed and you want to keep scroll position, e.g., after sorting by columns. */ 
 	async reload() {
 		this.dataCacher.beStale()
