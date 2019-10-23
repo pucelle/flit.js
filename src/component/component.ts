@@ -75,6 +75,7 @@ export abstract class Component<E = any> extends Emitter<E & ComponentEvents> {
 
 	// Should be `Element` type, but in 99% scenarios it's HTMLElement.
 	refs: {[key: string]: HTMLElement} = {}
+	slots: {[key: string]: HTMLElement[]} = {}
 
 	private __slotProcesser: SlotProcesser | null = null
 	private __rootPart: NodePart | null = null

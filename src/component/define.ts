@@ -100,17 +100,11 @@ function enqueueUpdate() {
 
 function update() {
 	let connectMap = connectSoonMap
-	let disconnectMap = disconnectSoonMap
 
-	// Very import, more connect and disconnect map may be added when updating.
+	// Very import, more connect and disconnect requests may be added when updating.
 	// So we must reset `connectSoonMap` and `disconnectSoonMap` and set `willUpdate` to false before updating.
 	connectSoonMap = new Map()
-	disconnectSoonMap = new Map()
 	willUpdate = false
-
-	for (let [el] of disconnectMap.entries()) {
-		disconnectElement(el)
-	}
 
 	// `el` was sorted inside map.
 	for (let [el, Com] of connectMap.entries()) {
@@ -123,6 +117,16 @@ function update() {
 		// Here also have a small rate document not contains el.
 		connectElement(el, Com)
 	}
+
+	// We disconnect elements later to avoid it slow following rendering.
+	requestAnimationFrame(() => {
+		let disconnectMap = disconnectSoonMap
+		disconnectSoonMap = new Map()
+
+		for (let el of disconnectMap.keys()) {
+			disconnectElement(el)
+		}
+	})
 }
 
 function connectElement(el: HTMLElement, Com: ComponentConstructor) {

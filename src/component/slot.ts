@@ -5,7 +5,6 @@ import {NodeRange} from '../libs/node-helper'
 export class SlotProcesser {
 
 	private com: Component
-	private slots: {[key: string]: HTMLElement[]} = {}
 	private restSlotNodeRange: NodeRange | null = null
 
 	// When updated inner templates and found there are slots need to be filled, This value will become `true`.
@@ -25,7 +24,7 @@ export class SlotProcesser {
 	// So if those named slot element were removed before or created dynamically in the future,
 	// We can't capture this and update name slot elements.
 	private initNamedSlotNodes() {
-		let slots = this.slots
+		let slots = this.com.slots
 
 		// We only check `[slot]` in the children, or:
 		// <com1><com2><el slot="for com2"></com2></com1>
@@ -64,7 +63,7 @@ export class SlotProcesser {
 			return
 		}
 
-		let slots = this.slots
+		let slots = this.com.slots
 		let slotAnchors = this.com.el.querySelectorAll('slot')
 
 		for (let slotAnchor of slotAnchors) {
