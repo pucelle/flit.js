@@ -571,13 +571,18 @@ export class LiveRepeatDirective<T> extends RepeatDirective<T> {
 	}
 
 	protected createWatchedTemplate(item: T, index: number): WatchedTemplate<T> {
-		if (this.preRendered.has(item)) {
-			return this.preRendered.get(item)!
+		if (this.options.get('preRendering')) {
+			if (this.preRendered.has(item)) {
+				return this.preRendered.get(item)!
+			}
+			else {
+				let wtem = super.createWatchedTemplate(item, index)
+				this.preRendered.set(wtem.item, wtem)
+				return wtem
+			}
 		}
 		else {
-			let wtem = super.createWatchedTemplate(item, index)
-			this.preRendered.set(wtem.item, wtem)
-			return wtem
+			return super.createWatchedTemplate(item, index)
 		}
 	}
 
