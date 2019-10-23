@@ -119,9 +119,9 @@ function update() {
 		// e.g., inserted into a fragment.
 		// No need to worry about forgetting to instantiate it,
 		// it will trigger `connectedCallback` again after insert into document.
-		if (document.contains(el)) {
-			connectElement(el, Com)
-		}
+
+		// Here also have a small rate document not contains el.
+		connectElement(el, Com)
 	}
 }
 

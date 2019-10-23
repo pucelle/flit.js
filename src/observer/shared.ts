@@ -3,13 +3,16 @@ import {observeArrayTarget} from './observe-array'
 import {observeMapOrSetTarget} from './observe-set-or-map'
 
 
-/** Normal object or array, whose changing will trigger Updatable to update. */
+/** Object or array target(unproxied), whose changing will trigger Updatable to update. */
 export type Dependency = object
 
-/** Component instance, whose property changing will trigger Updatable to update. */
-export type Com = {[key: string]: unknown} & Dependency
+/** Component target (unproxied) instance, whose property changing will trigger Updatable to update. */
+export type ComTarget = {[key: string]: any} & Dependency
 
-/** Component instance, whose property changing will trigger Updatable to update. */
+/** 
+ * Component instance (after proxied), or a watcher.
+ * Property changes of their related dependencies will trigger Updatable to update.
+ */
 export interface Updatable {
 	update(): void
 }
@@ -28,7 +31,7 @@ export function observeTarget<T extends object>(obj: T): T {
 	let str = originalToString.call(obj)
 
 	if (str === '[object Array]') {
-		return observeArrayTarget(obj as unknown[]) as T
+		return observeArrayTarget(obj as any[]) as T
 	}
 	
 	if (str === '[object Object]') {

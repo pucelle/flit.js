@@ -1,4 +1,4 @@
-import {Updatable, Dependency, Com} from './shared'
+import {Updatable, Dependency, ComTarget, targetMap} from './shared'
 import {Weak2WayMap} from '../libs/weak-2way-map'
 import {Weak2WayPropMap} from '../libs/weak-2way-prop-map'
 
@@ -9,7 +9,7 @@ import {Weak2WayPropMap} from '../libs/weak-2way-prop-map'
  * Otherwise we need to remove from left when component disconnected.
  * 
  * If the dependent objects were removed, the component or watchers should be updated, And it will clear dependencies before.
- * So cached the objects will not prevent their GC.
+ * So cached the objects will not prevent GC.
  */
 const depMap = new Weak2WayMap<Updatable, Dependency>()
 
@@ -24,14 +24,14 @@ const depMap = new Weak2WayMap<Updatable, Dependency>()
  * Otherwise, now we are using not 100% precise updating, and update whole component part for once.
  * no need to observe every details.
  */
-const comPropMap = new Weak2WayPropMap<Updatable, Com>()
+const comPropMap = new Weak2WayPropMap<Updatable, ComTarget>()
 
 
 /** Currently rendering component or running watcher, and their dependencies. */
 interface Updating {
 	target: Updatable
 	deps: Set<Dependency>
-	depPropMap: Map<Com, Set<PropertyKey>>
+	depPropMap: Map<ComTarget, Set<PropertyKey>>
 }
 
 let updating: Updating | null = null
@@ -79,9 +79,10 @@ export function clearDependencies(updating: Updatable) {
  * Called when don't want to obserse object or component changing.
  * In fact `dep` can only be component target.
  */
-export function clearAsDependency(dep: Dependency) {
+export function clearAsDependency(proxiedDep: Dependency) {
+	let dep = targetMap.get(proxiedDep)!
 	depMap.clearFromRight(dep)
-	comPropMap.clearFromRight(dep as Com)
+	comPropMap.clearFromRight(dep as ComTarget)
 }
 
 // when one component or watcher was disconnected and connect again,
@@ -89,9 +90,10 @@ export function clearAsDependency(dep: Dependency) {
 // But an dependency, we can't restore it's influenced components or watchers .
 // So we keep the `dep -> prop -> upt` map, and restore `upt -> dep -> prop` map when `dep` connected again.
 
-/** When one component or watcher connected again, here to restore the what it can update. */
-export function restoreAsDependency(dep: Dependency) {
-	comPropMap.restoreFromRight(dep as Com)
+/** When one component or watcher connected again, here to restore that what it can update. */
+export function restoreAsDependency(proxiedDep: Dependency) {
+	let dep = targetMap.get(proxiedDep)!
+	comPropMap.restoreFromRight(dep as ComTarget)
 }
 
 // We split adding dependencies to two steps:
@@ -113,7 +115,7 @@ export function mayAddDependency(dep: Dependency) {
 }
 
 /** Called when in component's proxy.get. */
-export function mayAddComDependency(com: Com, prop: PropertyKey) {
+export function mayAddComDependency(com: ComTarget, prop: PropertyKey) {
 	if (!updating) {
 		return
 	}
@@ -128,7 +130,7 @@ export function mayAddComDependency(com: Com, prop: PropertyKey) {
 }
 
 /** Called when in component's proxy.set. */
-export function notifyComPropertySet(com: Com, prop: PropertyKey) {
+export function notifyComPropertySet(com: ComTarget, prop: PropertyKey) {
 	let upts = comPropMap.getFromRight(com, prop)
 	if (upts) {
 		for (let upt of upts) {
