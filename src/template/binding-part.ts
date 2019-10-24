@@ -23,6 +23,10 @@ export class FixedBindingPart implements Part {
 	update(value: unknown) {
 		this.binding.update(value)
 	}
+
+	remove() {
+		this.binding.remove()
+	}
 }
 
 
@@ -68,6 +72,12 @@ export class BindingPart implements Part {
 			this.name = null
 			this.binding.remove()
 			this.binding = null
+		}
+	}
+
+	remove() {
+		if (this.binding) {
+			this.binding.remove()
 		}
 	}
 }

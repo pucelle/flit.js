@@ -582,14 +582,15 @@ export class LiveRepeatDirective<T> extends RepeatDirective<T> {
 	}
 
 	protected onWatchedTemplateNotInUse(wtem: WatchedTemplate<T>) {
-		wtem.remove()
-		
+
 		// Note than we doesn't cache the removed wtem,
 		// The reason is the component will trigger disconnect,
 		// And when reconnect, it will update, even if we keep watcher alive here.
 		if (this.options.get('preRendering')) {
 			this.preRendered.delete(wtem.item)
 		}
+		
+		wtem.remove()
 	}
 
 
@@ -659,6 +660,23 @@ export class LiveRepeatDirective<T> extends RepeatDirective<T> {
 		// Above it, need to scroll down
 		else if (rect.top < scrollerRect.top) {
 			this.scroller.scrollTop = this.scroller.scrollTop + (scrollerRect.top - rect.top)
+		}
+	}
+
+	remove() {
+		if (this.unwatchData) {
+			this.unwatchData()
+		}
+
+		if (this.options.get('preRendering')) {
+			for (let wtem of this.preRendered.values()) {
+				wtem.remove()
+			}
+		}
+		else {
+			for (let wtem of this.wtems) {
+				wtem.remove()
+			}
 		}
 	}
 }

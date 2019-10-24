@@ -23,4 +23,6 @@ export class AttrPart implements Part {
 	update(value: unknown) {
 		this.setValue(value)
 	}
+
+	remove() {}
 }

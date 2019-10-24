@@ -5,6 +5,8 @@ import {enqueueWatcherToUpdate} from './queue'
 /** 
  * Used to watch a function returns and trigger callback if it is changed.
  * You need to know that when callback was called, it doesn't ensure the watched datas are truly changed.
+ * Normally you should create watcher but using `context.watch` or `globalWatcherGroup.watch`.
+ * If you use created watcher, makesure to add it to a `context` or the `globalWatcherGroup`.
  */
 export class Watcher<T = any> {
 

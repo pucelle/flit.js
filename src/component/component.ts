@@ -2,7 +2,7 @@ import {Emitter} from '../libs/emitter'
 import {NodePart, TemplateResult} from '../template'
 import {enqueueComponentToUpdate} from '../queue'
 import {startUpdating, endUpdating, observeComTarget, clearDependencies, clearAsDependency, restoreAsDependency} from '../observer'
-import {WatcherGroup} from '../watcher'
+import {WatcherGroup, Watcher} from '../watcher'
 import {getScopedClassNameSet, ComponentStyle} from './style'
 import {NodeAnchorType, NodeAnchor} from '../libs/node-helper'
 import {DirectiveResult} from '../directives'
@@ -309,6 +309,18 @@ export abstract class Component<E = any> extends Emitter<E & ComponentEvents> {
 	watchUntil<T>(fn: () => T, callback: () => void): () => void {
 		this.__watcherGroup = this.__watcherGroup || new WatcherGroup()
 		return this.__watcherGroup!.watchUntil(fn, callback.bind(this))
+	}
+
+	/** @hidden */
+	__addWatcher(watcher: Watcher) {
+		this.__watcherGroup = this.__watcherGroup || new WatcherGroup()
+		this.__watcherGroup.add(watcher)
+	}
+
+	/** @hidden */
+	__deleteWatcher(watcher: Watcher) {
+		this.__watcherGroup = this.__watcherGroup || new WatcherGroup()
+		this.__watcherGroup.delete(watcher)
 	}
 
 	/** returns scoped class name E `.name -> .name__com-name` */

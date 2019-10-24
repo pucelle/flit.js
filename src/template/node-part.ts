@@ -7,7 +7,7 @@ import {Context} from '../component'
 import {trim} from '../libs/util'
 
 
-enum ChildContentType {
+enum ContentType {
 	Templates,
 	Directive,
 	Text
@@ -20,7 +20,7 @@ export class NodePart implements Part {
 	private templates: Template[] | null = null
 	private directive: Directive | null = null
 	private textNode: Text | null = null
-	private contentType: ChildContentType | null = null
+	private contentType: ContentType | null = null
 
 	constructor(anchor: NodeAnchor, value: unknown, context: Context) {
 		this.anchor = anchor
@@ -36,11 +36,11 @@ export class NodePart implements Part {
 		}
 
 		switch (contentType) {
-			case ChildContentType.Directive:
+			case ContentType.Directive:
 				this.updateDirective(value as DirectiveResult)
 				break
 
-			case ChildContentType.Templates:
+			case ContentType.Templates:
 				if (Array.isArray(value)) {
 					this.updateTemplates(value.filter(v => v) as TemplateResult[])
 				}
@@ -54,15 +54,15 @@ export class NodePart implements Part {
 		}
 	}
 
-	private getContentType(value: unknown): ChildContentType {
+	private getContentType(value: unknown): ContentType {
 		if (value instanceof DirectiveResult) {
-			return ChildContentType.Directive
+			return ContentType.Directive
 		}
 		else if (value instanceof TemplateResult || Array.isArray(value)) {
-			return ChildContentType.Templates
+			return ContentType.Templates
 		}
 		else {
-			return ChildContentType.Text
+			return ContentType.Text
 		}
 	}
 
@@ -72,17 +72,17 @@ export class NodePart implements Part {
 			return
 		}
 
-		if (contentType === ChildContentType.Directive) {
+		if (contentType === ContentType.Directive) {
 			this.directive!.remove()
 			this.directive = null
 		}
-		else if (contentType === ChildContentType.Templates) {
+		else if (contentType === ContentType.Templates) {
 			for (let template of this.templates!) {
 				template.remove()
 			}
 			this.templates = null
 		}
-		else if (contentType === ChildContentType.Text) {
+		else if (contentType === ContentType.Text) {
 			if (this.textNode) {
 				this.textNode.remove()
 				this.textNode = null
@@ -165,5 +165,9 @@ export class NodePart implements Part {
 				this.textNode.textContent = ''
 			}
 		}
+	}
+
+	remove() {
+		this.clearContent()
 	}
 }

@@ -143,6 +143,10 @@ export class Template {
 	// Been called when this template will never be used any more.
 	remove() {
 		this.range.remove()
+
+		for (let {part} of this.canUpdateParts) {
+			part.remove()
+		}
 	}
 
 	/** 

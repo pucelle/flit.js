@@ -299,6 +299,10 @@ export class RepeatDirective<T> implements Directive {
 	}
 
 	remove() {
+		if (this.unwatchData) {
+			this.unwatchData()
+		}
+
 		for (let wtem of this.wtems) {
 			wtem.remove()
 		}
