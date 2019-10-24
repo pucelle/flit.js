@@ -2,7 +2,7 @@ import {Part} from './types'
 
 
 /**
- * `attr=${...}`, set attribute value.
+ * `<tag attr=${...}`, to set attribute value.
  */
 export class AttrPart implements Part {
 

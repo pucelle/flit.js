@@ -32,7 +32,7 @@ export class FixedBindingPart implements Part {
 
 /**
  * Transfer arguments to binding module, used in:
- * `show(...)`, `hide(...)`, `cache(...)`.
+ * `<tag show(...)>`, `<tag hide(...)>`, `<tag cache(...)>`.
  */
 export class BindingPart implements Part {
 
