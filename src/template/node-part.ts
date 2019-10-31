@@ -13,6 +13,7 @@ enum ContentType {
 	Text
 }
 
+
 /**
  * Related to the content betweens `<tag>${...}</tag>`, may be a template result, text, template result array, or a directive.
  */
