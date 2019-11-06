@@ -68,18 +68,28 @@ export class PropertyPart implements Part {
 	private setFixedComProperty(value: string) {
 		let com = this.com as any
 		let type = typeof com[this.name]
-		
-		if (type === 'boolean') {
-			com[this.name] = value === 'false' ? false : true
-		}
-		else if (type === 'number') {
-			com[this.name] = Number(value)
-		}
-		else if (type !== 'undefined') {
-			com[this.name] = value
-		}
-		else {
-			console.warn(`Please makesure value of property "${this.name}" exist on "<${com.el.localName} />" when assigning fixed property!`)
+
+		switch (type) {
+
+			case 'boolean':
+				com[this.name] = value === 'false' ? false : true
+				break
+
+			case 'number':
+				com[this.name] = Number(value)
+				break
+
+			case 'object':
+				com[this.name] = JSON.parse(value)
+				break
+			
+			default:
+				if (type !== 'undefined') {
+					com[this.name] = value
+				}
+				else {
+					console.warn(`Please makesure value of property "${this.name}" exist on "<${com.el.localName} />" when assigning fixed property!`)
+				}
 		}
 	}
 
