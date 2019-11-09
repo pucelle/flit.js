@@ -96,7 +96,9 @@
 								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="liveasyncrepeatoptions.html#key" class="tsd-kind-icon">key</a></li>
 								<li class="tsd-kind-property tsd-parent-kind-interface tsd-is-inherited"><a href="liveasyncrepeatoptions.html#onupdated" class="tsd-kind-icon">on<wbr>Updated</a></li>
 								<li class="tsd-kind-property tsd-parent-kind-interface tsd-is-inherited"><a href="liveasyncrepeatoptions.html#pagesize" class="tsd-kind-icon">page<wbr>Size</a></li>
+								<li class="tsd-kind-property tsd-parent-kind-interface tsd-is-inherited"><a href="liveasyncrepeatoptions.html#prerendering" class="tsd-kind-icon">pre<wbr>Rendering</a></li>
 								<li class="tsd-kind-property tsd-parent-kind-interface tsd-is-inherited"><a href="liveasyncrepeatoptions.html#renderpagecount" class="tsd-kind-icon">render<wbr>Page<wbr>Count</a></li>
+								<li class="tsd-kind-property tsd-parent-kind-interface tsd-is-inherited"><a href="liveasyncrepeatoptions.html#startindex" class="tsd-kind-icon">start<wbr>Index</a></li>
 							</ul>
 						</section>
 					</div>
@@ -111,7 +113,7 @@
 					<aside class="tsd-sources">
 						<p>Inherited from <a href="liverepeatoptions.html">LiveRepeatOptions</a>.<a href="liverepeatoptions.html#data">data</a></p>
 						<ul>
-							<li>Defined in <a href="https://github.com/pucelle/flit/blob/558b897/src/directives/live-repeat.ts#L34">directives/live-repeat.ts:34</a></li>
+							<li>Defined in <a href="https://github.com/pucelle/flit/blob/fc35d91/src/directives/live-repeat.ts#L46">directives/live-repeat.ts:46</a></li>
 						</ul>
 					</aside>
 					<div class="tsd-comment tsd-typography">
@@ -126,7 +128,7 @@
 					<div class="tsd-signature tsd-kind-icon">data<wbr>Count<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">function</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/pucelle/flit/blob/558b897/src/directives/live-async-repeat.ts#L12">directives/live-async-repeat.ts:12</a></li>
+							<li>Defined in <a href="https://github.com/pucelle/flit/blob/fc35d91/src/directives/live-async-repeat.ts#L13">directives/live-async-repeat.ts:13</a></li>
 						</ul>
 					</aside>
 				</section>
@@ -136,7 +138,7 @@
 					<div class="tsd-signature tsd-kind-icon">data<wbr>Getter<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">PageDataGetter</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">T</span><span class="tsd-signature-symbol">&gt;</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/pucelle/flit/blob/558b897/src/directives/live-async-repeat.ts#L11">directives/live-async-repeat.ts:11</a></li>
+							<li>Defined in <a href="https://github.com/pucelle/flit/blob/fc35d91/src/directives/live-async-repeat.ts#L12">directives/live-async-repeat.ts:12</a></li>
 						</ul>
 					</aside>
 				</section>
@@ -146,7 +148,7 @@
 					<div class="tsd-signature tsd-kind-icon">key<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">keyof T</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/pucelle/flit/blob/558b897/src/directives/live-async-repeat.ts#L10">directives/live-async-repeat.ts:10</a></li>
+							<li>Defined in <a href="https://github.com/pucelle/flit/blob/fc35d91/src/directives/live-async-repeat.ts#L11">directives/live-async-repeat.ts:11</a></li>
 						</ul>
 					</aside>
 				</section>
@@ -157,7 +159,7 @@
 					<aside class="tsd-sources">
 						<p>Inherited from <a href="liverepeatoptions.html">LiveRepeatOptions</a>.<a href="liverepeatoptions.html#onupdated">onUpdated</a></p>
 						<ul>
-							<li>Defined in <a href="https://github.com/pucelle/flit/blob/558b897/src/directives/live-repeat.ts#L40">directives/live-repeat.ts:40</a></li>
+							<li>Defined in <a href="https://github.com/pucelle/flit/blob/fc35d91/src/directives/live-repeat.ts#L52">directives/live-repeat.ts:52</a></li>
 						</ul>
 					</aside>
 					<div class="tsd-comment tsd-typography">
@@ -174,7 +176,7 @@
 					<aside class="tsd-sources">
 						<p>Inherited from <a href="liverepeatoptions.html">LiveRepeatOptions</a>.<a href="liverepeatoptions.html#pagesize">pageSize</a></p>
 						<ul>
-							<li>Defined in <a href="https://github.com/pucelle/flit/blob/558b897/src/directives/live-repeat.ts#L23">directives/live-repeat.ts:23</a></li>
+							<li>Defined in <a href="https://github.com/pucelle/flit/blob/fc35d91/src/directives/live-repeat.ts#L29">directives/live-repeat.ts:29</a></li>
 						</ul>
 					</aside>
 					<div class="tsd-comment tsd-typography">
@@ -188,13 +190,30 @@
 					</div>
 				</section>
 				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface tsd-is-inherited">
+					<a name="prerendering" class="tsd-anchor"></a>
+					<h3><span class="tsd-flag ts-flagOptional">Optional</span> pre<wbr>Rendering</h3>
+					<div class="tsd-signature tsd-kind-icon">pre<wbr>Rendering<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">false</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">true</span></div>
+					<aside class="tsd-sources">
+						<p>Inherited from <a href="liverepeatoptions.html">LiveRepeatOptions</a>.<a href="liverepeatoptions.html#prerendering">preRendering</a></p>
+						<ul>
+							<li>Defined in <a href="https://github.com/pucelle/flit/blob/fc35d91/src/directives/live-repeat.ts#L43">directives/live-repeat.ts:43</a></li>
+						</ul>
+					</aside>
+					<div class="tsd-comment tsd-typography">
+						<div class="lead">
+							<p>When can&#39;t render partial contents in an animation frame, you should set this to <code>true</code>.
+							It will prerender more templates before and after current partial contents.</p>
+						</div>
+					</div>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface tsd-is-inherited">
 					<a name="renderpagecount" class="tsd-anchor"></a>
 					<h3><span class="tsd-flag ts-flagOptional">Optional</span> render<wbr>Page<wbr>Count</h3>
 					<div class="tsd-signature tsd-kind-icon">render<wbr>Page<wbr>Count<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">number</span></div>
 					<aside class="tsd-sources">
 						<p>Inherited from <a href="liverepeatoptions.html">LiveRepeatOptions</a>.<a href="liverepeatoptions.html#renderpagecount">renderPageCount</a></p>
 						<ul>
-							<li>Defined in <a href="https://github.com/pucelle/flit/blob/558b897/src/directives/live-repeat.ts#L31">directives/live-repeat.ts:31</a></li>
+							<li>Defined in <a href="https://github.com/pucelle/flit/blob/fc35d91/src/directives/live-repeat.ts#L37">directives/live-repeat.ts:37</a></li>
 						</ul>
 					</aside>
 					<div class="tsd-comment tsd-typography">
@@ -203,6 +222,23 @@
 								If the render result can&#39;t cover viewport, will double this value.
 								Normally you don&#39;t need to set this, it&#39;s value will be automatically detected.
 							Set this value only if you can makesure <code>1</code> is not enough and don&#39;t want the rerendering at the beginning.</p>
+						</div>
+					</div>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface tsd-is-inherited">
+					<a name="startindex" class="tsd-anchor"></a>
+					<h3><span class="tsd-flag ts-flagOptional">Optional</span> start<wbr>Index</h3>
+					<div class="tsd-signature tsd-kind-icon">start<wbr>Index<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">number</span></div>
+					<aside class="tsd-sources">
+						<p>Inherited from <a href="liverepeatoptions.html">LiveRepeatOptions</a>.<a href="liverepeatoptions.html#startindex">startIndex</a></p>
+						<ul>
+							<li>Defined in <a href="https://github.com/pucelle/flit/blob/fc35d91/src/directives/live-repeat.ts#L20">directives/live-repeat.ts:20</a></li>
+						</ul>
+					</aside>
+					<div class="tsd-comment tsd-typography">
+						<div class="lead">
+							<p>If you want it renders from <code>startIndex</code> when initialize, set this value.
+							It works only for first time.</p>
 						</div>
 					</div>
 				</section>
@@ -242,7 +278,13 @@
 								<a href="liveasyncrepeatoptions.html#pagesize" class="tsd-kind-icon">page<wbr>Size</a>
 							</li>
 							<li class=" tsd-kind-property tsd-parent-kind-interface tsd-is-inherited">
+								<a href="liveasyncrepeatoptions.html#prerendering" class="tsd-kind-icon">pre<wbr>Rendering</a>
+							</li>
+							<li class=" tsd-kind-property tsd-parent-kind-interface tsd-is-inherited">
 								<a href="liveasyncrepeatoptions.html#renderpagecount" class="tsd-kind-icon">render<wbr>Page<wbr>Count</a>
+							</li>
+							<li class=" tsd-kind-property tsd-parent-kind-interface tsd-is-inherited">
+								<a href="liveasyncrepeatoptions.html#startindex" class="tsd-kind-icon">start<wbr>Index</a>
 							</li>
 						</ul>
 					</li>
