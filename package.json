@@ -1,6 +1,6 @@
 {
 	"name": "@pucelle/flit",
-	"version": "1.2.0",
+	"version": "1.2.1",
 	"description": "A light weight Web Component framework using ES template literal and Proxy.",
 	"author": "pucelle",
 	"license": "MIT",
