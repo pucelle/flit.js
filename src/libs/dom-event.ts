@@ -56,6 +56,7 @@ function keyEventFilter(e: KeyboardEvent, filters: string[]): boolean {
 
 	return keyOrCodeFilters.length === 0
 		|| keyOrCodeFilters.includes(e.key.toLowerCase())
+		|| keyOrCodeFilters.includes(e.code.toLowerCase())
 }
 
 function mouseEventFilter(e: MouseEvent, filters: string[]): boolean {
