@@ -60,7 +60,7 @@ function parseTemplateResultForExtending(string: string, superString: string): S
 
 function parseToRootPropertiesAndSlots(tokens: HTMLToken[]) {
 	let firstTagStartIndex = tokens.findIndex(token => token.type === HTMLTokenType.StartTag)!
-	let firstTagEndIndex = 0
+	let firstTagEndIndex = tokens.length - 1
 	let tabCount = 0
 	let firstTag = tokens[firstTagStartIndex]
 
@@ -74,10 +74,6 @@ function parseToRootPropertiesAndSlots(tokens: HTMLToken[]) {
 		let token = tokens[i]
 		switch (token.type) {
 			case HTMLTokenType.StartTag:				
-				if (!token.selfClose) {
-					tabCount++
-				}
-
 				if (/slot\s*=\s*['"](\w+)/.test(token.attributes!)) {
 					let name = token.attributes!.match(/slot\s*=\s*['"](\w+)/)![1]
 					let wholeTokensBelows = outOuterNestingTokens(tokens, i)
@@ -85,6 +81,10 @@ function parseToRootPropertiesAndSlots(tokens: HTMLToken[]) {
 					slots[name].push(...wholeTokensBelows)
 					i--
 				}
+				else if (!token.selfClose) {
+					tabCount++
+				}
+
 				break
 
 			case HTMLTokenType.EndTag:
