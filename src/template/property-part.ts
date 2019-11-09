@@ -69,8 +69,11 @@ export class PropertyPart implements Part {
 		let com = this.com as any
 		let type = typeof com[this.name]
 
-		switch (type) {
+		if (type === 'object' && /^\s*(?:\{.+?\}|\[.+?\])\s*$/.test(value)) {
+			type = 'undefined'
+		}
 
+		switch (type) {
 			case 'boolean':
 				com[this.name] = value === 'false' ? false : true
 				break
