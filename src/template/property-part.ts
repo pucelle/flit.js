@@ -69,8 +69,8 @@ export class PropertyPart implements Part {
 		let com = this.com as any
 		let type = typeof com[this.name]
 
-		if (type === 'object' && /^\s*(?:\{.+?\}|\[.+?\])\s*$/.test(value)) {
-			type = 'undefined'
+		if (type === 'object' && !/^\s*(?:\{.+?\}|\[.+?\])\s*$/.test(value)) {
+			type = 'string'
 		}
 
 		switch (type) {
