@@ -44,3 +44,9 @@ export function observeTarget<T extends object>(obj: T): T {
 
 	return obj
 }
+
+
+/** Returns target of observed object, or returns the argument if not been observed. */
+export function getObservedTarget<T extends object>(observed: T): T {
+	return targetMap.get(observed) as T || observed
+}
