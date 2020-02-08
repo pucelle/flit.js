@@ -29,6 +29,7 @@ function task(name) {
 	function bundle() {
 		return browser
 			.bundle()
+			.on('error', (err) => gutil.log(err.message))
 			//.pipe(exorcist(__dirname + '/' + dir + '/bundle.js.map'))
 			.pipe(source('bundle.js'))
 			.pipe(gulp.dest(dir))
