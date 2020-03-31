@@ -187,14 +187,20 @@ export abstract class Component<E = any> extends Emitter<E & ComponentEvents> {
 		this.__mustUpdate = false
 
 		startUpdating(this)
-		let result = this.render()
-		endUpdating(this)
+		try{
+			let result = this.render()
+			endUpdating(this)
 
-		if (this.__rootPart) {
-			this.__rootPart.update(result)
+			if (this.__rootPart) {
+				this.__rootPart.update(result)
+			}
+			else if (result !== null) {
+				this.__rootPart = new NodePart(new NodeAnchor(this.el, NodeAnchorType.Root), result, this)
+			}
 		}
-		else if (result !== null) {
-			this.__rootPart = new NodePart(new NodeAnchor(this.el, NodeAnchorType.Root), result, this)
+		catch (err) {
+			endUpdating(this)
+			console.warn(err)
 		}
 
 		if (this.__slotProcesser) {
