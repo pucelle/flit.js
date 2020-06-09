@@ -10,7 +10,7 @@ import {DirectiveTransition, DirectiveTransitionOptions} from '../libs/directive
  * and don't want to cache elements or leave it in document to hide,
  * we will need this directive.
  */
-export class PalyDirective implements Directive {
+export class PlayDirective implements Directive {
 
 	protected anchor: NodeAnchor
 	protected context: Context
@@ -91,4 +91,4 @@ export class PalyDirective implements Directive {
  * Play enter transition when have rendering result, please leave transition when no result anymore.
  * @param result The html`...` result, can be null or empty string.
  */
-export const play = defineDirective(PalyDirective) as (result: TemplateResult | '' | null, options?: DirectiveTransitionOptions) => DirectiveResult
+export const play = defineDirective(PlayDirective) as (result: TemplateResult | '' | null, options?: DirectiveTransitionOptions) => DirectiveResult
