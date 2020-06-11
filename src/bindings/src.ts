@@ -21,7 +21,7 @@ defineBinding('src', class SrcBinding implements Binding<[string]> {
 		if (SrcLoadedURLs.has(value)) {
 			this.el.src = value
 		}
-		else {
+		else if (value) {
 			this.el.src = ''
 
 			let img = new Image()
@@ -32,6 +32,9 @@ defineBinding('src', class SrcBinding implements Binding<[string]> {
 			}
 
 			img.src = value
+		}
+		else {
+			this.el.src = ''
 		}
 	}
 
