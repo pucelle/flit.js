@@ -65,7 +65,7 @@ export class RepeatDirective<T> implements Directive {
 		this.watchAndUpdateDataImmediately(data)
 	}
 
-	// We want to reduce moving times, the best way is here:
+	// We want to reduce times of moving times, the best way is:
 	// http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.4.6927&rep=rep1&type=pdf
 
 	// Another way in `lit-html` is to check from start and end position,
