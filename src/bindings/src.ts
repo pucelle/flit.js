@@ -13,11 +13,16 @@ defineBinding('src', class SrcBinding implements Binding<[string]> {
 
 	private el: HTMLImageElement
 
+	/** Current resource location. */
+	private src: string = ''
+
 	constructor(el: Element) {
 		this.el = el as HTMLImageElement
 	}
 
 	update(value: string) {
+		this.src = value
+
 		if (SrcLoadedURLs.has(value)) {
 			this.el.src = value
 		}
@@ -28,7 +33,10 @@ defineBinding('src', class SrcBinding implements Binding<[string]> {
 
 			img.onload = () => {
 				SrcLoadedURLs.add(value)
-				this.el.src = value
+
+				if (value === this.src) {
+					this.el.src = value
+				}
 			}
 
 			img.src = value
