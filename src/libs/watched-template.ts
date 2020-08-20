@@ -1,6 +1,6 @@
 import {Context} from '../component'
 import {Template, TemplateResult} from '../template'
-import {Watcher, globalWatcherGroup} from '../watcher'
+import {InnerWatcher, globalWatcherGroup} from '../watcher'
 
 
 export type TemplateFn<Item> = (item: Item, index: number) => TemplateResult
@@ -10,7 +10,7 @@ export class WatchedTemplate<Item> {
 
 	private context: Context
 	private templateFn: TemplateFn<Item>
-	private watcher!: Watcher<TemplateResult>
+	private watcher!: InnerWatcher<TemplateResult>
 
 	item: Item
 	index: number
@@ -45,7 +45,7 @@ export class WatchedTemplate<Item> {
 			}
 		}
 	
-		let watcher = new Watcher(watchFn, onUpdate)
+		let watcher = new InnerWatcher(watchFn, onUpdate)
 		this.watcher = watcher
 		this.template = new Template(watcher.value, this.context)
 		

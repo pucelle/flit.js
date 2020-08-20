@@ -4,10 +4,12 @@ import {Watcher} from './watcher'
 
 let componentSet: Set<Component> = new Set()
 let watcherSet: Set<Watcher> = new Set()
+let innerWatcherSet: Set<Watcher> = new Set()
 let renderCompleteCallbacks: (() => void)[] = []
 let willUpdate = false
 let updatingComponents = false
 let watchersToUpdate: Watcher[] = []
+let innerWatchersToUpdate: Watcher[] = []
 let componentsToUpdate: Component[] = []
 let updatedTimesMap: Map<Watcher | Component, number> = new Map()
 
@@ -51,6 +53,19 @@ export function enqueueWatcherToUpdate(watcher: Watcher) {
 		if (!willUpdate) {
 			enqueueUpdate()
 		}
+	}
+}
+
+/** @hidden */
+export function enqueueInnerWatcherToUpdate(watcher: Watcher) {
+	// If updating watcher trigger another watcher or component, we should update it in the same update function.
+	if (!innerWatcherSet.has(watcher)) {
+		innerWatcherSet.add(watcher)
+		innerWatchersToUpdate.push(watcher)
+	}
+
+	if (!willUpdate) {
+		enqueueUpdate()
 	}
 }
 
@@ -101,7 +116,7 @@ async function update() {
 		// And updating watchers later can ensure components which requires the watched properties are rendered.
 
 		// So finally we decided to update watchers before components,
-		// And if components is updating, we update watchers immediately.
+		// And if components are updating, we update watchers immediately.
 		
 		for (let i = 0; i < watchersToUpdate.length; i++) {
 			let watcher = watchersToUpdate[i]
@@ -144,6 +159,31 @@ async function update() {
 
 		componentsToUpdate = []
 		updatingComponents = false
+
+
+		for (let i = 0; i < innerWatchersToUpdate.length; i++) {
+			let watcher = innerWatchersToUpdate[i]
+
+			// Delete it so it can be added again.
+			innerWatcherSet.delete(watcher)
+
+			let updatedTimes = updatedTimesMap.get(watcher) || 0
+			updatedTimesMap.set(watcher, updatedTimes + 1)
+		
+			if (updatedTimes > 3) {
+				console.warn(`Watcher "${watcher.toString()}" may change values in the watcher callback and cause infinite updating!`)
+			}
+			else {
+				try {
+					watcher.__updateImmediately()
+				}
+				catch (err) {
+					console.error(err)
+				}
+			}
+		}
+		
+		innerWatchersToUpdate = []
 
 		// If elements were added when updating, they will be connected in micro task queue.
 		// Here we must wait them to be instantiated.

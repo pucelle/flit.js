@@ -1,5 +1,5 @@
 import {startUpdating, endUpdating, clearDependencies} from './observer'
-import {enqueueWatcherToUpdate} from './queue'
+import {enqueueWatcherToUpdate, enqueueInnerWatcherToUpdate} from './queue'
 
 
 /** 
@@ -80,6 +80,15 @@ export class Watcher<T = any> {
 	connect() {
 		this.connected = true
 		this.update()
+	}
+}
+
+
+export class InnerWatcher<T = any> extends Watcher<T> {
+
+	/** When detected dependencies changed. trigger this immediately. */
+	update() {
+		enqueueInnerWatcherToUpdate(this)
 	}
 }
 
