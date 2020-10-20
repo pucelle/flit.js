@@ -1,10 +1,10 @@
 import {TemplateResult} from './template-result'
 import {Part} from './types'
-import {NodeAnchor} from '../Internal/node-helper'
+import {NodeAnchor} from '../internal/node-helper'
 import {Template} from './template'
 import {DirectiveResult, Directive, createDirectiveFromResult} from '../directives'
 import {Context} from '../component'
-import {trim} from '../Internal/util'
+import {trim} from '../internal/util'
 
 
 enum ContentType {

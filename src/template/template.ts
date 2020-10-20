@@ -1,5 +1,5 @@
 import {Part} from './types'
-import {NodeAnchor, NodeAnchorType, NodeRange} from "../Internal/node-helper"
+import {NodeAnchor, NodeAnchorType, NodeRange} from "../internal/node-helper"
 import {TemplateResult} from './template-result'
 import {parse, Place, PartType} from './template-parser'
 import {NodePart} from './node-part'

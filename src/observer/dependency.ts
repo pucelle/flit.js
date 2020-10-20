@@ -1,6 +1,6 @@
 import {Updatable, Dependency, ComTarget, targetMap} from './shared'
-import {Weak2WayMap} from '../Internal/weak-2way-map'
-import {Weak2WayPropMap} from '../Internal/weak-2way-prop-map'
+import {Weak2WayMap} from '../internal/weak-2way-map'
+import {Weak2WayPropMap} from '../internal/weak-2way-prop-map'
 
 
 /**

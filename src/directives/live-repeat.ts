@@ -1,15 +1,15 @@
 import {defineDirective, DirectiveResult} from './define'
 import {Context} from '../component'
-import {DirectiveTransitionOptions} from '../Internal/directive-transition'
-import {WatchedTemplate, TemplateFn} from '../Internal/watched-template'
-import {NodeAnchor} from '../Internal/node-helper'
-import {on} from '../Internal/dom-event'
+import {DirectiveTransitionOptions} from '../internal/directive-transition'
+import {WatchedTemplate, TemplateFn} from '../internal/watched-template'
+import {NodeAnchor} from '../internal/node-helper'
+import {on} from '../internal/dom-event'
 import {globalWatcherGroup} from '../watcher'
 import {RepeatDirective} from './repeat'
 import {renderComplete, onRenderComplete} from '../queue'
-import {binaryFindIndexToInsert} from '../Internal/util'
+import {binaryFindIndexToInsert} from '../internal/util'
 import {observe} from '../observer'
-import {Options} from '../Internal/options'
+import {Options} from '../internal/options'
 
 
 export interface LiveRepeatOptions<T> {

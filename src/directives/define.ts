@@ -1,5 +1,5 @@
 import {Context} from '../component'
-import {NodeAnchor} from '../Internal/node-helper'
+import {NodeAnchor} from '../internal/node-helper'
 
 
 export interface DirectiveConstructor<A extends any[] = any[]> {

@@ -1,4 +1,4 @@
-import {parseToHTMLTokens, HTMLTokenType, HTMLToken, joinHTMLTokens} from '../Internal/html-token'
+import {parseToHTMLTokens, HTMLTokenType, HTMLToken, joinHTMLTokens} from '../internal/html-token'
 import {TemplateResult} from './template-result'
 import {StringsAndValueIndexes, joinWithOrderedMarkers, splitByOrderedMarkers} from './template-result-operate'
 

@@ -1,9 +1,9 @@
 import {defineDirective, Directive, DirectiveResult} from './define'
 import {globalWatcherGroup} from '../watcher'
 import {Context} from '../component'
-import {DirectiveTransition, DirectiveTransitionOptions} from '../Internal/directive-transition'
-import {WatchedTemplate, TemplateFn} from '../Internal/watched-template'
-import {NodeAnchor} from '../Internal/node-helper'
+import {DirectiveTransition, DirectiveTransitionOptions} from '../internal/directive-transition'
+import {WatchedTemplate, TemplateFn} from '../internal/watched-template'
+import {NodeAnchor} from '../internal/node-helper'
 import {observe} from '../observer'
 
 

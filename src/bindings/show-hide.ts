@@ -1,6 +1,6 @@
 import {Binding, defineBinding, BindingResult} from './define'
 import {Context} from '../component'
-import {DirectiveTransition, DirectiveTransitionOptions} from '../Internal/directive-transition'
+import {DirectiveTransition, DirectiveTransitionOptions} from '../internal/directive-transition'
 
 
 /**
