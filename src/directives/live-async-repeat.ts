@@ -1,10 +1,10 @@
 import {defineDirective, DirectiveResult} from './define'
-import {DirectiveTransitionOptions} from '../libs/directive-transition'
+import {DirectiveTransitionOptions} from '../core/directive-transition'
 import {TemplateResult} from '../template'
 import {LiveRepeatDirective, LiveRepeatOptions} from './live-repeat'
-import {PageDataGetter, PageDataCacher} from '../libs/page-data-cacher'
+import {PageDataGetter, PageDataCacher} from '../core/page-data-cacher'
 import {observe} from '../observer'
-import {Options} from '../libs/options'
+import {Options} from '../core/options'
 
 
 export interface LiveAsyncRepeatOptions<T> extends LiveRepeatOptions<T> {

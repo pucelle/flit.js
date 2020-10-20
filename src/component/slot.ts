@@ -1,5 +1,5 @@
 import {Component} from './component'
-import {NodeRange} from '../libs/node-helper'
+import {NodeRange} from '../core/node-helper'
 
 
 export class SlotProcesser {

@@ -1,8 +1,8 @@
 import {defineDirective, Directive, DirectiveResult} from './define'
 import {TemplateResult, Template} from '../template'
 import {Context} from '../component'
-import {NodeAnchor} from "../libs/node-helper"
-import {DirectiveTransition, DirectiveTransitionOptions} from '../libs/directive-transition'
+import {NodeAnchor} from "../core/node-helper"
+import {DirectiveTransition, DirectiveTransitionOptions} from '../core/directive-transition'
 
 
 /** 
