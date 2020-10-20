@@ -1,8 +1,8 @@
 import {defineDirective, Directive, DirectiveResult} from './define'
 import {TemplateResult, Template} from '../template'
 import {Context} from '../component'
-import {NodeAnchorType, NodeAnchor} from "../core/node-helper"
-import {DirectiveTransition, DirectiveTransitionOptions} from '../core/directive-transition'
+import {NodeAnchorType, NodeAnchor} from "../Internal/node-helper"
+import {DirectiveTransition, DirectiveTransitionOptions} from '../Internal/directive-transition'
 
 
 export class CacheDirective implements Directive {

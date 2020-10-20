@@ -1,5 +1,5 @@
 import {observeTarget} from './observer'
-import {Emitter} from './core/emitter'
+import {Emitter} from './Internal/emitter'
 
 
 /** Observed base class, changes it's sub properties will cause the components depend on them to update. */

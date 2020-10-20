@@ -1,8 +1,8 @@
 import {TemplateType} from './template-result'
 import {joinWithOrderedMarkers, containsOrderedMarker, parseOrderedMarkers, splitByOrderedMarkers} from './template-result-operate'
 import {getScopedClassNameSet} from '../component'
-import {cloneAttributes, trim} from '../core/util'
-import {parseToHTMLTokens, HTMLTokenType} from '../core/html-token'
+import {cloneAttributes, trim} from '../Internal/util'
+import {parseToHTMLTokens, HTMLTokenType} from '../Internal/html-token'
 
 
 export enum PartType {
