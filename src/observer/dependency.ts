@@ -71,8 +71,8 @@ export function isUpdating(): boolean {
 
 /** Called when start rendering component or running watch functions, or component and watcher disconnected. */
 export function clearDependencies(updating: Updatable) {
-	depMap.clearFromLeft(updating)
-	comPropMap.clearFromLeft(updating)
+	depMap.deleteLeft(updating)
+	comPropMap.deleteLeft(updating)
 }
 
 /**
@@ -81,8 +81,8 @@ export function clearDependencies(updating: Updatable) {
  */
 export function clearAsDependency(proxiedDep: Dependency) {
 	let dep = targetMap.get(proxiedDep)!
-	depMap.clearFromRight(dep)
-	comPropMap.clearFromRight(dep as ComTarget)
+	depMap.deleteRight(dep)
+	comPropMap.deleteRight(dep as ComTarget)
 }
 
 // when one component or watcher was disconnected and connect again,
