@@ -15,14 +15,17 @@ export class Weak2WayMap<L extends object, R extends object> {
 	updateFromLeft(l: L, rs: Set<R>) {
 		let oldRs = this.lm.get(l)
 
-		if (!oldRs || oldRs.size === 0) {
+		if (!oldRs) {
 			for (let r of rs) {
 				this.addRightLeftMap(r, l)
 			}
 		}
+		else if (rs.size === 0) {
+			this.clearFromLeft(l)
+		}
 		else {
-			// Very high rate no need to add or remove.
-			// So we test if should add or remove firstly.
+			// Very high rate no need to add or delete.
+			// So we test if should add or delete firstly.
 			for (let r of rs) {
 				if (!oldRs.has(r)) {
 					this.addRightLeftMap(r, l)
@@ -31,7 +34,7 @@ export class Weak2WayMap<L extends object, R extends object> {
 
 			for (let r of oldRs) {
 				if (!rs.has(r)) {
-					this.removeRightLeftMap(r, l)
+					this.deleteRightLeftMap(r, l)
 				}
 			}
 		}
@@ -50,16 +53,16 @@ export class Weak2WayMap<L extends object, R extends object> {
 		ls.add(l)
 	}
 
-	/** Remove one `R -> L` map. */
-	private removeRightLeftMap(r: R, l: L) {
+	/** Deletes one `R -> L` map. */
+	private deleteRightLeftMap(r: R, l: L) {
 		let ls = this.rm.get(r)
 		if (ls) {
 			ls.delete(l)
 		}
 	}
 
-	/** Removes one `L -> R` map. */
-	private removeLeftRightMap(l: L, r: R) {
+	/** Deletes one `L -> R` map. */
+	private deleteLeftRightMap(l: L, r: R) {
 		let rs = this.lm.get(l)
 		if (rs) {
 			rs.delete(r)
@@ -76,8 +79,8 @@ export class Weak2WayMap<L extends object, R extends object> {
 		let rs = this.lm.get(l)
 		if (rs) {
 			for (let r of rs) {
-				this.removeRightLeftMap(r, l)
-				this.removeLeftRightMap(l, r)
+				this.deleteRightLeftMap(r, l)
+				this.deleteLeftRightMap(l, r)
 			}
 
 			// No need to delete WeakMap key.
