@@ -1,47 +1,49 @@
 import {extendsTemplateResult} from './template-extends'
 
 
+/** All template types. */
 export type TemplateType = 'html' | 'css' | 'svg'
 
 
-/** HTML template literal that can be used to render or update a component. */
-export function html(strings: TemplateStringsArray, ...values: unknown[]): TemplateResult {
+/** Returns a HTML template literal, can be used to render or update a component. */
+export function html(strings: TemplateStringsArray, ...values: any[]): TemplateResult {
 	return new TemplateResult('html', strings, values)
 }
 
-/** SVG template literal that can be used to render or update a component. */
-export function svg(strings: TemplateStringsArray, ...values: unknown[]): TemplateResult {
+
+/** Returns a SVG template literal, can be used to render or update a component. */
+export function svg(strings: TemplateStringsArray, ...values: any[]): TemplateResult {
 	return new TemplateResult('svg', strings, values)
 }
 
-/** CSS template literal that can be used as component's static style property. */
-export function css(strings: TemplateStringsArray, ...values: unknown[]): TemplateResult {
+
+/** Returns a CSS template literal, can be used as component's static style property. */
+export function css(strings: TemplateStringsArray, ...values: any[]): TemplateResult {
 	return new TemplateResult('css', strings, values)
 }
 
 
 /**
- * Returned from html`...`, it represents a render result,
- * and can be used to merge with the last result.
+ * Created from each html`...` or svg`...`.
+ * Every time call `component.update` will generate a new template result,
+ * then we will use this result to merge or replaced old one.
  */
 export class TemplateResult {
 
-	type: TemplateType
-	strings: TemplateStringsArray | string[]
-	values: unknown[]
+	readonly type: TemplateType
+	readonly strings: TemplateStringsArray | string[]
+	readonly values: any[]
 
-	/**
-	 * Created from each html`...` or svg`...`.
-	 * Every time call `Component.update` will generate a new template result tree.
-	 * Then we will check if each result can be merged or need to be replaced recursively.
-	 */
-	constructor(type: TemplateType, strings: TemplateStringsArray | string[], values: unknown[]) {
+	constructor(type: TemplateType, strings: TemplateStringsArray | string[], values: any[]) {
 		this.type = type
 		this.strings = strings
 		this.values = values
 	}
 
-	/** Join strings and values to string. */
+	/** 
+	 * Join strings and values to string.
+	 * Just for debugging.
+	 */
 	toString(): string {
 		let text = this.strings[0]
 
@@ -64,15 +66,12 @@ export class TemplateResult {
 	}
 
 	/** 
-	 * Used for `TemplateResult` to merge root attributes and slot elements into super.
-	 * Sometimes you want to reuse super rendering result and add some classes and set soem slots,
-	 * but normally this can only work when instantiation, not working inside a new defined component.
-	 * Now using `CurrentRenderingResult.extends(super.render())`, you can do this.
+	 * A template result can extend another:
+	 * "css`...`.extends(...)" will join them.
+	 * "html`...`.extends(...)" is different, see the comments below.
 	 * 
-	 * At beginning, we decided to implement this by rendering `<super-com>`,
-	 * but every time for every rendered component to update, it need to check the name.
-	 * We should makesure the rendering logic simple and easy to understand,
-	 * so finally we implement a new API `extends` to call it manually.
+	 * For `html` or `svg` template the extends will merge root attributes and slot elements into super,
+	 * so you can reuse super rendering result and add some classes or styles and set same slots,
 	 */
 	extends(superResult: TemplateResult): TemplateResult {
 		if (this.type === 'html' || this.type === 'svg') {

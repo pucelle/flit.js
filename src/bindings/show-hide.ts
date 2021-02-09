@@ -1,37 +1,36 @@
-import {Binding, defineBinding, BindingResult} from './define'
-import {Context} from '../component'
-import {DirectiveTransition, DirectiveTransitionOptions} from '../internal/directive-transition'
+import {defineBinding, BindingResult, Binding} from './define'
+import {ContextualTransition, ContextualTransitionOptions} from '../internals/contextual-transition'
+import type {Context} from '../component'
 
 
 /**
- * `:show="boolean"`
- * `show(visible: boolean, transition: TransitionOptions)`
- * `show(visible: boolean, options: {transition: TransitionOptions, enterAtStart, leaveAtStart, onend})`
+ * `:show` binding will update element's visibility state.
+ * 
+ * `:show=${anyValue}`
  */
-class ShowBinding implements Binding<[any, DirectiveTransitionOptions | undefined]> {
+export class ShowBinding implements Binding<any> {
 
-	private el: HTMLElement
+	private readonly el: HTMLElement
+	private readonly transition: ContextualTransition
+
 	private value: boolean | undefined = undefined
-	private transition: DirectiveTransition
 
 	constructor(el: Element, context: Context) {
 		this.el = el as HTMLElement
-		this.transition = new DirectiveTransition(context)
+		this.transition = new ContextualTransition(context)
 	}
 
-	update(value: any, options?: DirectiveTransitionOptions) {
+	update(value: any, options?: ContextualTransitionOptions) {
 		value = !!value
 		this.transition.updateOptions(options)
 
 		if (value !== this.value) {
-
 			if (value) {
 				this.el.hidden = false
 
 				if (this.transition.shouldPlayEnter()) {
 					this.transition.playEnter(this.el)
-				}
-				
+				}	
 			}
 			else {
 				if (this.transition.shouldPlayLeave()) {
@@ -55,19 +54,32 @@ class ShowBinding implements Binding<[any, DirectiveTransitionOptions | undefine
 	}
 }
 
-export const show = defineBinding('show', ShowBinding) as (value: any, options?: DirectiveTransitionOptions) => BindingResult
+/**
+ * `show(...)` binding will update element's visibility state.
+ * You may also use `:show` if no need to specify transition.
+ * 
+ * `show(visible: any, transition: TransitionOptions)`
+ * `show(visible: any, options: {transition: TransitionOptions, enterAtStart, leaveAtStart, onend})`
+ */
+export const show = defineBinding('show', ShowBinding) as (value: any, options?: ContextualTransitionOptions) => BindingResult
 
 
 /**
- * `:hide="boolean"`
- * `hide(hidden: boolean, transition: TransitionOptions)`
- * `hide(hidden: boolean, options: {transition: TransitionOptions, enterAtStart, leaveAtStart, onend})`
+ * `:hide` binding will update element's visibility state.
+ * 
+ * `:hide=${anyValue}`
  */
-class HideBinding extends ShowBinding {
+export class HideBinding extends ShowBinding {
 
-	update(value: any, options?: DirectiveTransitionOptions) {
+	update(value: any, options?: ContextualTransitionOptions) {
 		super.update(!value, options)
 	}
 }
 
-export const hide = defineBinding('hide', HideBinding) as (value: any, options?: DirectiveTransitionOptions) => BindingResult
+/**
+ * `hide()` binding will update element's visibility state.
+ * 
+ * `hide(hidden: any, transition: TransitionOptions)`
+ * `hide(hidden: any, options: {transition: TransitionOptions, enterAtStart, leaveAtStart, onend})`
+ */
+export const hide = defineBinding('hide', HideBinding) as (value: any, options?: ContextualTransitionOptions) => BindingResult

@@ -1,71 +1,79 @@
-import {parseToHTMLTokens, HTMLTokenType, HTMLToken, joinHTMLTokens} from '../internal/html-token'
+import {parseToHTMLTokens, HTMLTokenType, HTMLToken, joinHTMLTokens} from '../internals/html-token-parser'
 import {TemplateResult} from './template-result'
-import {StringsAndValueIndexes, joinWithOrderedMarkers, splitByOrderedMarkers} from './template-result-operate'
+import {joinWithOrderMarkers, splitByOrderMarkers, StringsAndValueIndices} from './utils'
 
 
-const extendsTemplateCache: Map<string, Map<string, StringsAndValueIndexes>> = new Map()
+/** 
+ * Caches template extends result.
+ * Next time extending of two same shaped template will capture a cached result.
+ */
+const TemplateExtendsCache: Map<string, Map<string, StringsAndValueIndices>> = new Map()
 
 
 /**
- * Merge root attributes and slot elements from front result to the later one.
- * This is used when one component call super template by rendering `<super-name additional-properties><tag slot="name">`.
+ * Merge root attributes and slot elements from current result to super one.
+ * This is used for `currentResult.extends(superResult)`.
  * 
- * What happens when multiple slot element with same name exists:
+ * What happens when multiple slot element `<slot name="...">` with same name exists:
  * 	 The outside most slot elements will exist, others will be removed.
  * 
- * What happens when multiple rest slot anchor elements (`<slot />`) exists in different template:
+ * What happens when multiple rest slot anchor elements `<slot />` exists in different template:
  *   The outside most rest slot elements will exist too, others will be removed.
  */
 export function extendsTemplateResult(result: TemplateResult, superResult: TemplateResult): TemplateResult {
 	let totalValues = [...result.values, ...superResult.values]
 
-	let string = joinWithOrderedMarkers(result.strings as unknown as string[])
-	let superString = joinWithOrderedMarkers(superResult.strings as unknown as string[], result.values.length)
-	let stringsAndValueIndexes: StringsAndValueIndexes
-	let cacheForSuper = extendsTemplateCache.get(string)
+	let string = joinWithOrderMarkers(result.strings as string[])
+	let superString = joinWithOrderMarkers(superResult.strings as string[], result.values.length)
+	let stringsAndValueIndices: StringsAndValueIndices | undefined
+	let cacheForSuper = TemplateExtendsCache.get(string)
 
 	if (cacheForSuper) {
-		stringsAndValueIndexes = cacheForSuper.get(superString)!
+		stringsAndValueIndices = cacheForSuper.get(superString)!
 	}
 
-	if (!stringsAndValueIndexes!) {
-		stringsAndValueIndexes = parseTemplateResultForExtending(string, superString)
+	if (!stringsAndValueIndices) {
+		stringsAndValueIndices = parseTemplateResultForExtending(string, superString)
 	}
 	
-	let {strings, valueIndexes} = stringsAndValueIndexes!
-	let reOrderedValues = valueIndexes.map(index => totalValues[index])
+	let {strings, valueIndices} = stringsAndValueIndices
+	let reOrderedValues = valueIndices.map(index => totalValues[index])
 
-	return new TemplateResult(result.type, strings as unknown as TemplateStringsArray, reOrderedValues)
+	return new TemplateResult(result.type, strings, reOrderedValues)
 }
 
-function parseTemplateResultForExtending(string: string, superString: string): StringsAndValueIndexes {
+
+/** Parse a template result to strings and value indices. */
+function parseTemplateResultForExtending(string: string, superString: string): StringsAndValueIndices {
 	let tokens = parseToHTMLTokens(string)
-	let {attributes, slots, restTokens} = parseToRootPropertiesAndSlots(tokens)
+	let {attributes, slots, restTokens} = parseToRootAttributesAndSlots(tokens)
 
-	let superTokens = parseToSuperTokens(superString)
-	assignRootPropertiesAndSlotsTo(superTokens, attributes, slots, restTokens)
+	let superTokens = wrapWithTemplateTokens(superString)
+	assignRootAttributesAndSlotsTo(superTokens, attributes, slots, restTokens)
 
-	let stringsAndValueIndexes = splitByOrderedMarkers(joinHTMLTokens(superTokens))
+	let stringsAndValueIndices = splitByOrderMarkers(joinHTMLTokens(superTokens))
 
-	let cacheForSuper = extendsTemplateCache.get(string)
+	let cacheForSuper = TemplateExtendsCache.get(string)
 	if (!cacheForSuper) {
 		cacheForSuper = new Map()
-		extendsTemplateCache.set(string, cacheForSuper)
+		TemplateExtendsCache.set(string, cacheForSuper)
 	}
 
-	cacheForSuper.set(superString, stringsAndValueIndexes)
+	cacheForSuper.set(superString, stringsAndValueIndices)
 
-	return stringsAndValueIndexes
+	return stringsAndValueIndices
 }
 
-function parseToRootPropertiesAndSlots(tokens: HTMLToken[]) {
+
+/** Parse html token list to get attributes from root element, and get all slots. */
+function parseToRootAttributesAndSlots(tokens: HTMLToken[]) {
 	let firstTagStartIndex = tokens.findIndex(token => token.type === HTMLTokenType.StartTag)!
 	let firstTagEndIndex = tokens.length - 1
 	let tabCount = 0
 	let firstTag = tokens[firstTagStartIndex]
 
 	let attributes = firstTag.attributes!
-	let slots: {[key: string]: HTMLToken[]} = {}
+	let slots: Record<string, HTMLToken[]> = {}
 
 	// Text nodes already been trimmed when parsing as tokens, no need to worry rest slot contains empty text.
 	let restTokens: HTMLToken[] = []
@@ -103,8 +111,9 @@ function parseToRootPropertiesAndSlots(tokens: HTMLToken[]) {
 	return {attributes, slots, restTokens}
 }
 
-// Will add a template tag at start if don't have.
-function parseToSuperTokens(string: string): HTMLToken[] {
+
+/** Add a `<template> to wrap current content if don't have. */
+function wrapWithTemplateTokens(string: string): HTMLToken[] {
 	let tokens = parseToHTMLTokens(string)
 	let firstToken = tokens[0]
 
@@ -124,7 +133,9 @@ function parseToSuperTokens(string: string): HTMLToken[] {
 	return tokens
 }
 
-function assignRootPropertiesAndSlotsTo(tokens: HTMLToken[], attributes: string, slots: {[key: string]: HTMLToken[]}, restTokens: HTMLToken[]) {
+
+/** Assign attributes of root element and all slots to a html token list. */
+function assignRootAttributesAndSlotsTo(tokens: HTMLToken[], attributes: string, slots: Record<string, HTMLToken[]>, restTokens: HTMLToken[]) {
 	tokens[0].attributes += attributes
 
 	if (Object.keys(slots).length > 0 || restTokens.length > 0) {
@@ -147,6 +158,7 @@ function assignRootPropertiesAndSlotsTo(tokens: HTMLToken[], attributes: string,
 							}
 						}
 						else {
+
 							// Removes `<slot />` so different levels of rest contents will be merged.
 							if (restTokens.length) {
 								outOuterNestingTokens(tokens, i)
@@ -161,14 +173,20 @@ function assignRootPropertiesAndSlotsTo(tokens: HTMLToken[], attributes: string,
 	}
 }
 
+
+/** Removes all inner tokens and current token in nesting pair. */
 function outOuterNestingTokens(tokens: HTMLToken[], startTagIndex: number): HTMLToken[] {
 	return tokens.splice(startTagIndex, findEndTagIndex(tokens, startTagIndex) + 1 - startTagIndex)
 }
 
+
+/** Removes all inner tokens in nesting pair. */
 function outInnerNestingTokens(tokens: HTMLToken[], startTagIndex: number): HTMLToken[] {
 	return tokens.splice(startTagIndex + 1, findEndTagIndex(tokens, startTagIndex) - 1 - startTagIndex)
 }
 
+
+/** Find the index of end tag that as end of current tag. */
 function findEndTagIndex(tokens: HTMLToken[], startTagIndex: number): number {
 	let tabCount = 1
 

@@ -1,193 +1,177 @@
-import {Emitter} from '../internal/emitter'
 import {NodePart, TemplateResult} from '../template'
-import {enqueueComponentToUpdate} from '../queue'
-import {startUpdating, endUpdating, observeComTarget, clearDependencies, clearAsDependency, restoreAsDependency} from '../observer'
-import {WatcherGroup, Watcher} from '../watcher'
-import {getScopedClassNameSet, ComponentStyle} from './style'
-import {NodeAnchorType, NodeAnchor} from '../internal/node-helper'
-import {DirectiveResult} from '../directives'
-import {setComponentAtElement} from './from-element'
-import {emitComponentCreatedCallbacks, onComponentConnected, onComponentDisconnected} from './life-cycle'
-import {SlotProcesser} from './slot'
+import {enqueueComponents, onRenderComplete} from '../global/queue'
+import {startUpdating, endUpdating, observeComTarget, clearDependenciesOf} from '../observer'
+import {WatcherGroup} from '../global/watcher'
+import {NodeAnchorType, NodeAnchor} from "../internals/node-anchor"
+import type {DirectiveResult} from '../directives'
+import {setElementComponentMap} from './from-element'
+import {emitComponentCreationCallbacks, onComponentConnected, onComponentDisconnected} from './life-cycle'
+import {InternalEventEmitter} from '../internals/internal-event-emitter'
+import type {ComponentStyle} from './style'
+import {getScopedClassNames} from '../internals/style-parser'
+import {NodeRange} from '../internals/node-range'
 
 
-/** Context may be `null` when using `render` or `renderAndUpdate` */
+/** 
+ * Context is the scope when compiling a template.
+ * When uses `render` or `renderComponent`, you can choose to pass a context parameter,
+ * So the `.property` and `@click=${eventHandler}` can capture right context.
+ * Context may be `null`, in this senoario template should context-free.
+ */
 export type Context = Component | null
 
+
 export interface ComponentEvents {
-	/** 
-	 * No need to register `created` event, you may just get component and do something.
-	 * Seems that the only usage of it is to handle something after all sequential `onCreated` called.
-	 */
-	// created: () => void
 
-	/** Not useful, equals to get component and await render complete. */
-	// ready: () => void
+	/** After component created and properties assigned. */
+	created: () => void
 
 	/** 
-	 * After data updated, and will reander in next tick.
-	 * Not useful because in component we can use `onUpdated` instead,
-	 * in outer other classes should only operate data and element of current component.
+	 * After element was inserted into document.
+	 * Will trigger after creation, and every time re-inserted.
 	 */
-	// updated: () => void
-
-	/**
-	 * After data rendered, you can visit element layouts now.
-	 * We dropped the support of it because it equals running `onRenderComplete` or `renderComplete` in `updated`.
-	 */ 
-	// rendered: () => void
-
-	/** After element been inserted into body, include the first time. */
 	connected: () => void
 
-	/** After element been removed from body, include the first time. */
+	/** 
+	 * After element was removed from document.
+	 * Will trigger after every time removed.
+	 */
 	disconnected: () => void
+
+	/** 
+	 * After all the data, child nodes are prepared, but child components are not prepared.
+	 * If need check computed styles on child nodes, uses `onRenderComplete` or `renderComplete`.
+	 */
+	ready: () => void
+
+	/** 
+	 * After every time all the data and child nodes updated.
+	 * If need check computed styles on child nodes, uses `onRenderComplete`, `renderComplete` or `rendered` event.
+	 */
+	updated: () => void
+
+	/**
+	 * After every time all the data and child nodes updated, and all the child nodes and components rendered.
+	 * You can safely visit computed style on child nodes.
+	 */ 
+	rendered: () => void
 }
 
 
 /** 
- * Super class of all the components, create automacially from custom elements connected into document.
+ * Super class of all the components, create automacially when element appearance in the document.
  * @typeparam E Event interface in `{eventName: (...args) => void}` format.
  */
-export abstract class Component<E = any> extends Emitter<E & ComponentEvents> {
+export abstract class Component<E = any> extends InternalEventEmitter<E & ComponentEvents> {
 
 	/**
-	 * The static `style` property contains style text used as styles for current component.
-	 * Styles in it will be partialy scoped, so we have benefits of scoped styles,
-	 * and also avoid the problems in sharing styles.
+	 * This static property contains style text used as styles for current component.
+	 * Class names will be scoped as `.className__componentName`.
+	 * Tag selector will be nested as: `p` -> `com-name p`.
 	 * 
-	 * symbol `$` in class name will be replaced to current component name:
-	 * `.$title` -> `.title__com-name`
-	 * 
-	 * tag selector will be nested in com-name selector:
-	 * `p` -> `com-name p`
+	 * You can nest css codes just like in SCSS, and use `$` to reference parent selector.
 	 */
 	static style: ComponentStyle | null = null
 
 	/** The root element of component. */
-	el: HTMLElement
+	readonly el: HTMLElement
 
 	/**
-	 * The reference map object of element inside.
-	 * You can specify `:ref="refName"` on an element,
-	 * or using `:ref=${this.onRef}` to call `this.onRef(refElement)` every time when the reference element updated.
+	 * Caches referenced elements from `:ref="refName"`.
+	 * You should redefine the type as `{name: HTMLElement, ...}`.
 	 */
+	readonly refs: Record<string, Element> = {}
 
-	// Should be `Element` type, but in 99% scenarios it's HTMLElement.
-	refs: {[key: string]: HTMLElement} = {}
-	slots: {[key: string]: HTMLElement[]} = {}
+	/**
+	 * Caches slot elements from `:slot="slotName"`.
+	 * You should redefine the type as `{name: HTMLElement[], ...}`.
+	 */
+	readonly slots: Record<string, Element[]> = {}
 
-	private __slotProcesser: SlotProcesser | null = null
-	private __rootPart: NodePart | null = null
-	private __updated: boolean = false
-	private __watcherGroup: WatcherGroup | null = null
+	/** To mark the node range of current nodes when created, use for `<slot />`. */
+	readonly __restNodeRange: NodeRange
+
+	/* Whether current component connected with a document. */
 	private __connected: boolean = false
-	private __connectedBefore: boolean = false
-	private __mustUpdate: boolean = true
+
+	/** Whether have updated for at least once. */
+	private __updated: boolean = false
+
+	private __rootPart: NodePart | null = null
+
+	/** `WatcherGroup` instance to cache watchers binded with current component. */
+	private __watcherGroup: WatcherGroup | null = null
 
 	constructor(el: HTMLElement) {
 		super()
+
 		this.el = el
-		return observeComTarget(this as any)
+		this.__restNodeRange = new NodeRange(el)
+
+		return observeComTarget(this)
 	}
 
-	/** Not called in constructor because in child classes it doesn't apply instance properties yet. */
-	/** @hidden */
+	/** Called after component created and properties assigned. */
 	__emitCreated() {
-		setComponentAtElement(this.el, this)
-		emitComponentCreatedCallbacks(this.el, this)
+		// Not called from constructor function because properties of child classes are not prepared yet.
+
+		setElementComponentMap(this.el, this)
+		emitComponentCreationCallbacks(this.el, this)
+
 		this.onCreated()
-
-		// A typescript issue here if we want to infer emitter arguments:
-		// We accept an `Events` and union it with type `ComponentEvents`,
-		// the returned type for `rendered` property will become `Events['rendered'] & () => void`,
-		// `Parmaters<...>` of it will return the arguments of `Events['rendered']`.
-		// So here show the issue that passed arguments `[]` can't be assigned to it.
-
-		// This can't be fixed right now since we can't implement a type function like `interface overwritting`
-		// But finally this was resolved by a newly defined type `ExtendEvents` in `emitter.ts`.
-		
-		// this.emit('created')
+		this.emit('created')
 	}
 
-	/** @hidden */
-	__emitConnected() {
-		// Not do following things when firstly connected.
-		if (this.__connectedBefore) {
-			// Must restore before updating, because the restored result may be changed when updating.
-			restoreAsDependency(this)
-
+	/** Called after connected each time, also after `__emitCreated`. */
+	__emitConnected(isFirstTimeConnected: boolean) {
+		if (!isFirstTimeConnected) {
 			if (this.__watcherGroup) {
 				this.__watcherGroup.connect()
 			}
 		}
-		else {
-			this.__connectedBefore = true
-		}
 
 		this.__connected = true
 
-		// Sometimes we may pre render but not connect component,
-		// In this condition watchers of component are active and they keep notify component to update.
-		// When connect the component, may no need to update.
-
-		// Why `update` here but not `__updateImmediately`?
-		// After component created, it may delete element belongs to other components in `onCreated`
-		// Then in following micro task, the deleted components's `__connected` becomes false,
-		// and they will not been updated finally as expected.
-		if (this.__mustUpdate) {
-			this.update()
-		}
+		// Why `update` but not `__updateImmediately`?
+		// On component connected callbacks, may delete a child elements as element of other components.
+		// In this scenorio using `update` will keep it not been updated.
+		this.update()
 
 		this.onConnected()
 		this.emit('connected')
+		
 		onComponentConnected(this)
 	}
 
-	/** @hidden */
+	/** Called after disconnected each time. */
 	__emitDisconnected() {
-		clearDependencies(this)
-		clearAsDependency(this)
+		clearDependenciesOf(this)
 
 		if (this.__watcherGroup) {
 			this.__watcherGroup.disconnect()
 		}
 
 		this.__connected = false
-		this.__mustUpdate = true
+
 		this.onDisconnected()
 		this.emit('disconnected')
+
 		onComponentDisconnected(this)
 	}
-
-	/** May be called in rendering, so we can avoid checking slot elements when no slot rendered. */
-	/** @hidden */
-	__foundSlotsWhenRendering() {
-		// One potential issue here:
-		// created -> child component created.
-		//         -> element of child component removed, which also used as slot element of current component.
-		//         -> render and initialize slots for current component.
-		//         -> Can't found slot element because it was removed.
-		if (!this.__slotProcesser && this.el.childNodes.length > 0) {
-			this.__slotProcesser = new SlotProcesser(this)
-		}
-
-		if (this.__slotProcesser) {
-			this.__slotProcesser.needToFillSlotsLater()
-		}
-	}
 	
-	/** @hidden */
+	/** 
+	 * Called from a global queued stack to do updating.
+	 * Set `force` to `true` to force updating happens even in a document fragment.
+	 */
 	__updateImmediately(force: boolean = false) {
-		if (!this.__connected && !force) {
-			this.__mustUpdate = true
+		// Don't update after disconnected, or the watcher will be observed and do meaningless updating.
+		if (!(this.__connected || force)) {
 			return
 		}
 
-		this.__mustUpdate = false
-
 		startUpdating(this)
-		try{
+
+		try {
 			let result = this.render()
 			endUpdating(this)
 
@@ -195,7 +179,7 @@ export abstract class Component<E = any> extends Emitter<E & ComponentEvents> {
 				this.__rootPart.update(result)
 			}
 			else if (result !== null) {
-				this.__rootPart = new NodePart(new NodeAnchor(this.el, NodeAnchorType.Root), result, this)
+				this.__rootPart = new NodePart(new NodeAnchor(this.el, NodeAnchorType.Container), result, this)
 			}
 		}
 		catch (err) {
@@ -203,67 +187,67 @@ export abstract class Component<E = any> extends Emitter<E & ComponentEvents> {
 			console.warn(err)
 		}
 
-		if (this.__slotProcesser) {
-			this.__slotProcesser.mayFillSlots()
-		}
-
-		let firstlyUpdate = !this.__updated
-		if (firstlyUpdate) {
+		if (!this.__updated) {
 			this.onReady()
 			this.__updated = true
 		}
 		
 		this.onUpdated()
-	}
+		this.emit('updated')
 
-	/** Force to update all watchers binded to current context. */
-	/** @hidden */
-	__updateWatcherGroup() {
-		if (this.__watcherGroup) {
-			this.__watcherGroup.update()
-		}
+		onRenderComplete(() => {
+			this.onRendered()
+			this.emit('rendered')
+		})
 	}
 
 	/** 
-	 * Child class should implement this method, normally returns html`...` or string.
-	 * You can choose to not overwrite `render()` to keep it returns `null` when you don't want to render any child nodes.
+	 * Defines what current component should render.
+	 * Child class should overwrite this method, normally returns html`...` or string.
+	 * You can choose to not overwrite `render()` to keep it returns `null`,
+	 * when you just need one element and don't want to render any child nodes.
 	 */
 	protected render(): TemplateResult | string | DirectiveResult | null {
 		return null
 	}
 
 	/**
-	 * Call this to partially or fully update asynchronously if needed.
-	 * You should not overwrite this method until you know what you are doing.
+	 * Call this to partially or fully update inner contents asynchronously.
+	 * Never overwrite this method until you know what you are doing.
 	 */
 	update() {
-		enqueueComponentToUpdate(this)
+		enqueueComponents(this)
 	}
 
 	/**
 	 * Called when component instance was just created and all properties assigned.
-	 * Original child nodes are prepared, but slots are not prepared right now.
-	 * You may changed some data or visit parent nodes or `this.el` and operate them here.
+	 * All the child nodes that belongs to parent context but contained in current component are prepared.
+	 * But self child nodes, `slots`, `refs`, events are not prepared until `onReady`.
+	 * You may change some data or visit parent nodes or `this.el`.
 	 */
 	protected onCreated() {}
 
 	/**
-	 * Called after all the data updated for the first time.
-	 * Child nodes are rendered, slots are prepared, but child components are not.
-	 * Will keep updating other components, so please don't check computed styles on elements.
-	 * You may visit child nodes or bind events here.
+	 * Called after all the data, child nodes are prepared, but child components are not prepared.
+	 * Later it will keep updating other components, so don't check computed styles on child nodes.
+	 * If need so, uses `onRenderComplete` or `renderComplete`.
+	 * You may visit or adjust child nodes or bind more events here.
 	 */
 	protected onReady() {}
 
 	/** 
-	 * Called after all the data updated.
-	 * Will keep updating other components, so please don't check computed style on elements.
+	 * Called after every time all the data and child nodes updated.
+	 * Seam with `onReady`, child components may not been updated yet,
+	 * so don't check computed styles on child nodes.
+	 * If need so, uses `onRenderComplete` or `renderComplete`.
+	 * You may reset some properties or capture some nodes dynamically here,
+	 * but normally you don't need to.
 	 */
 	protected onUpdated() {}
 
 	/** 
-	 * Called after all the data updated and elements have rendered.
-	 * You can visit elemenet layout properties now.
+	 * Called after all the data and child nodes, components updated.
+	 * You can visit computed styles of elemenets event component elemenet now.
 	 */
 	protected onRendered() {}
 
@@ -277,63 +261,70 @@ export abstract class Component<E = any> extends Emitter<E & ComponentEvents> {
 	/**
 	 * Called when root element removed from document.
 	 * This will be called for each time you removed the element into document.
-	 * If you registered global listeners like `resize`, don't forget to unregister them here.
+	 * If you register global listeners like `resize`, don't forget to unregister them here.
 	 */
 	protected onDisconnected() {}
 
 	/** 
-	 * Watch return value of function and trigger callback with this value as argument after it changed.
-	 * Will set callback scope as this.
+	 * Watchs returned value of `fn` and calls `callback` with this value as parameter after the value changed.
+	 * Will set callback scope as current component.
 	 */
 	watch<T>(fn: () => T, callback: (value: T) => void): () => void {
-		this.__watcherGroup = this.__watcherGroup || new WatcherGroup()
-		return this.__watcherGroup!.watch(fn, callback.bind(this))
+		return this.__getWatcherGroup().watch(fn, callback.bind(this))
 	}
 
 	/** 
-	 * Watch return value of function and trigger callback with this value as argument later and after it changed.
-	 * Will set callback scope as this.
+	 * Watchs returned value of `fn` and calls `callback` with this value as parameter after the value changed.
+	 * Will call `callback` immediately.
+	 * Will set callback scope as current component.
 	 */
 	watchImmediately<T>(fn: () => T, callback: (value: T) => void): () => void {
-		this.__watcherGroup = this.__watcherGroup || new WatcherGroup()
-		return this.__watcherGroup!.watchImmediately(fn, callback.bind(this))
+		return this.__getWatcherGroup().watchImmediately(fn, callback.bind(this))
 	}
 
 	/** 
-	 * Watch return value of function and trigger callback with this value as argument. Trigger callback for only once.
-	 * Will set callback scope as this.
+	 * Watchs returned value of `fn` and calls `callback` with this value as parameter after the value changed.
+	 * Calls `callback` for only once.
+	 * Will set callback scope as current component.
 	 */
 	watchOnce<T>(fn: () => T, callback: (value: T) => void): () => void {
-		this.__watcherGroup = this.__watcherGroup || new WatcherGroup()
-		return this.__watcherGroup!.watchOnce(fn, callback.bind(this))
+		return this.__getWatcherGroup().watchOnce(fn, callback.bind(this))
 	}
 
 	/** 
-	 * Watch return value of function and trigger callback with this value as argument. Trigger callback for only once.
-	 * Will set callback scope as this.
+	 * Watchs returned value of `fn` and calls `callback` with this value as parameter after the value becomes true like.
+	 * Will set callback scope as current component.
 	 */
 	watchUntil<T>(fn: () => T, callback: () => void): () => void {
-		this.__watcherGroup = this.__watcherGroup || new WatcherGroup()
-		return this.__watcherGroup!.watchUntil(fn, callback.bind(this))
+		return this.__getWatcherGroup().watchUntil(fn, callback.bind(this))
 	}
 
-	/** @hidden */
-	__addWatcher(watcher: Watcher) {
-		this.__watcherGroup = this.__watcherGroup || new WatcherGroup()
-		this.__watcherGroup.add(watcher)
+	/** Ensure `__watcherGroup` to be initialized. */
+	__getWatcherGroup() {
+		if (!this.__watcherGroup) {
+			this.__watcherGroup = new WatcherGroup()
+		}
+
+		return this.__watcherGroup
 	}
 
-	/** @hidden */
-	__deleteWatcher(watcher: Watcher) {
-		this.__watcherGroup = this.__watcherGroup || new WatcherGroup()
-		this.__watcherGroup.delete(watcher)
+	/** Update all watchers binded with current component. */
+	__updateWatcherGroup() {
+		// Why didn't update watcher group just in `com.__updateImmediately()`:
+		// Component collect dependencies and trigger updating when required,
+		// while watcher group do the similar things and runs indenpent.
+		// They should not affect each other.
+
+		if (this.__watcherGroup) {
+			this.__watcherGroup.update()
+		}
 	}
 
 	/** returns scoped class name E `.name -> .name__com-name` */
 	scopeClassName(className: string): string {
 		let startsWithDot = className[0] === '.'
 		let classNameWithoutDot = startsWithDot ? className.slice(1) : className
-		let scopedClassNameSet = getScopedClassNameSet(this.el.localName)
+		let scopedClassNameSet = getScopedClassNames(this.el.localName)
 
 		if (scopedClassNameSet && scopedClassNameSet.has(classNameWithoutDot)) {
 			return className + '__' + this.el.localName

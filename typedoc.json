@@ -1,19 +1,8 @@
 {
-	"src": "src",
-	"mode": "file",
 	"readme": "README.md",
 	"out": "docs",
-	"entryPoint": "",
-	"exclude": [
-		"src/component/!(component.ts|define.ts)",
-		"src/libs/*",
-		"src/observer/!(observe-getter.ts|observe.ts)*",
-		"src/template/!(template-result.ts|template.ts)*"
-	],
-	"includeDeclarations": true,
 	"excludePrivate": true,
-	"excludeProtected": false,
+	"excludeProtected": true,
 	"excludeExternals": true,
-	"excludeNotExported": true,
-	"ignoreCompilerErrors": true
+	"exclude": []
 }

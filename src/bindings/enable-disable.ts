@@ -2,12 +2,14 @@ import {Binding, defineBinding} from './define'
 
 
 /**
- * `:enabled="boolean"`, it's opposite to `:disabled=...`.
- * It can be replaced with `?disabled=!...`, but by the meaning it gives, we should use a direct word `enabled`.
+ * `:enable` binding will set `disabled` state for element.
+ * 
+ * `:enable=${booleanValue}`
  */
-defineBinding('enable', class EnableBinding implements Binding<[any]> {
+@defineBinding('enable')
+export class EnableBinding implements Binding<any> {
 
-	private el: HTMLElement
+	private readonly el: HTMLElement
 
 	constructor(el: Element) {
 		this.el = el as HTMLElement
@@ -25,15 +27,18 @@ defineBinding('enable', class EnableBinding implements Binding<[any]> {
 	remove() {
 		this.el.removeAttribute('disabled')
 	}
-})
+}
 
 
 /**
- * `:disabled="boolean"`, it's same with `?disabled=...`.
+ * `:disable` binding will set `disabled` state for element.
+ * 
+ * `:disable=${booleanValue}`
  */
-defineBinding('disable', class DisabledBinding implements Binding<[any]> {
+@defineBinding('disable')
+export class DisabledBinding implements Binding<any> {
 
-	private el: HTMLElement
+	private readonly el: HTMLElement
 
 	constructor(el: Element) {
 		this.el = el as HTMLElement
@@ -51,4 +56,4 @@ defineBinding('disable', class DisabledBinding implements Binding<[any]> {
 	remove() {
 		this.el.removeAttribute('disabled')
 	}
-})
+}

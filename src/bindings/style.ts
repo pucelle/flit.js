@@ -1,35 +1,42 @@
 import {Binding, defineBinding} from './define'
 
 
-const ALLOWED_MODIFIERS = ['px', 'percent', 'url']
+/** Type of style object. */
+type StyleObject = Record<string, string | number>
+
+
+/** All modifiers for style binding. */
+const AllowedStyleModifiers = ['px', 'percent', 'url']
 
 
 /**
- * `:style="'style1: value1; style2: value2'"`
- * `:style="{style1: value1, style2: value2}"`
- * `:style.style-name="value"`
- * `:style.style-name.px="value"`
+ * `:style` binding will update style values for current element.
+ * 
+ * `:style="normalStyleProperties"` - Just like normal style properties.
+ * `:style.style-name=${value}` - Set style value for specified style proeprty.
+ * `:style.style-name.px=${numberValue}` - Convert numberValue to `?px` and set as style value.
+ * `:style=${{styleName1: value1, styleName2: value2}}` - Add multiply styles from properties and mapped values.
  */
-type StyleObject = {[key: string]: any}
+@defineBinding('style')
+export class StyleBinding implements Binding<string | StyleObject> {
 
-defineBinding('style', class StyleBinding implements Binding<[string | StyleObject]> {
+	private readonly el: HTMLElement | SVGElement
+	private readonly modifiers: string[] | undefined
 
-	private el: HTMLElement | SVGElement
-	private modifiers: string[] | undefined
 	private lastStyle: StyleObject = {}
 
 	constructor(el: Element, _context: any, modifiers?: string[]) {
 		if (modifiers) {
 			if (modifiers.length > 2) {
-				throw new Error(`Modifier "${modifiers.join('.')}" is not allowed, at most two modifiers (as style name property value modifier) can be specified for ":style"`)
+				throw new Error(`Modifier "${modifiers.join('.')}" is not allowed, at most two modifiers (as style name property value modifier) can be specified for ":style"!`)
 			}
 
-			if (modifiers.length === 2 && !ALLOWED_MODIFIERS.includes(modifiers[1])) {
-				throw new Error(`Modifier "${modifiers[1]}" is not allowed, it must be one of ${ALLOWED_MODIFIERS.join(', ')}`)
+			if (modifiers.length === 2 && !AllowedStyleModifiers.includes(modifiers[1])) {
+				throw new Error(`Modifier "${modifiers[1]}" is not allowed, it must be one of ${AllowedStyleModifiers.join(', ')}!`)
 			}
 
-			if (!/^[\w-]+$/.test(modifiers[0]) || ALLOWED_MODIFIERS.includes(modifiers[0])) {
-				throw new Error(`Modifier "${modifiers[0]}" is not a valid style property`)
+			if (!/^[\w-]+$/.test(modifiers[0]) || AllowedStyleModifiers.includes(modifiers[0])) {
+				throw new Error(`Modifier "${modifiers[0]}" is not a valid style property!`)
 			}
 		}
 
@@ -58,14 +65,13 @@ defineBinding('style', class StyleBinding implements Binding<[string | StyleObje
 	}
 
 	private setStyle(name: string, value: unknown) {
-		let unit = this.modifiers ? this.modifiers[1] : ''
+		let unit = this.modifiers?.[1] || ''
 		
 		if (value === null || value === undefined) {
 			value = ''
 		}
-
-		// Units like `s`, `deg` is very rare to use.
 		else if (unit === 'px') {
+			// More units like `s`, `deg` is very rare to use.
 			value = value + 'px'
 		}
 		else if (unit === 'percent') {
@@ -86,7 +92,7 @@ defineBinding('style', class StyleBinding implements Binding<[string | StyleObje
 		let o: StyleObject = {}
 
 		if (this.modifiers) {
-			if (style !== '' && style !== null && style !== undefined) {
+			if (typeof style === 'string' && style !== '' || typeof style === 'number') {
 				o[this.modifiers[0]] = style
 			}
 		}
@@ -99,7 +105,7 @@ defineBinding('style', class StyleBinding implements Binding<[string | StyleObje
 			}
 		}
 		else if (style && typeof style === 'object') {
-			o = style as any
+			o = style as StyleObject
 		}
 		else if (style && typeof style === 'string') {
 			for (let item of style.split(/\s*;\s*/)) {
@@ -120,4 +126,4 @@ defineBinding('style', class StyleBinding implements Binding<[string | StyleObje
 			}
 		}
 	}
-})
+}

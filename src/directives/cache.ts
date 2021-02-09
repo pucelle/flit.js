@@ -1,100 +1,109 @@
 import {defineDirective, Directive, DirectiveResult} from './define'
 import {TemplateResult, Template} from '../template'
-import {Context} from '../component'
-import {NodeAnchorType, NodeAnchor} from "../internal/node-helper"
-import {DirectiveTransition, DirectiveTransitionOptions} from '../internal/directive-transition'
+import type {Context} from '../component'
+import {NodeAnchor} from "../internals/node-anchor"
+import {ContextualTransition, ContextualTransitionOptions} from '../internals/contextual-transition'
 
 
 export class CacheDirective implements Directive {
 
-	protected anchor: NodeAnchor
-	protected context: Context
-	protected transition: DirectiveTransition
-	protected templates: Template[] = []
+	protected readonly anchor: NodeAnchor
+	protected readonly context: Context
+	protected readonly transition: ContextualTransition
+	protected readonly templates: Template[] = []
+
 	protected currentTemplate: Template | null = null
 
 	constructor(anchor: NodeAnchor, context: Context) {
 		this.anchor = anchor
 		this.context = context
-		this.transition = new DirectiveTransition(context)
+		this.transition = new ContextualTransition(context)
 	}
 
-	canMergeWith(_result: TemplateResult | string | null): boolean {
+	canMergeWith(): boolean {
 		return true
 	}
 
-	merge(result: TemplateResult | '' | null, options?: DirectiveTransitionOptions) {
+	merge(result: TemplateResult | '' | null, options?: ContextualTransitionOptions) {
 		this.transition.updateOptions(options)
 
 		if (result) {
+
+			// Matches, merge them. will not play transition.
 			if (this.currentTemplate && this.currentTemplate.canMergeWith(result)) {
 				this.currentTemplate.merge(result)
 			}
 			else {
+
+				// Moves out current.
 				if (this.currentTemplate) {
-					this.cacheCurrentTemplate()
+					this.movesOutCurrentTemplate()
 				}
 
+				// Find one that can be reused.
 				let template = this.templates.find(t => t.canMergeWith(result as TemplateResult))
 				if (template) {
 					template.merge(result)
-					this.anchor.insert(template.range.getFragment())
-					this.playEnterTransition(template)
+					this.anchor.insert(template.extractToFragment())
+					this.tryPlayEnterTransition(template)
 					this.currentTemplate = template
 				}
+
+				// Create new.
 				else {
-					this.initNewResult(result)
+					this.makeNewTemplate(result)
 				}
 			}
 		}
 		else {
+
+			// Moves out current.
 			if (this.currentTemplate) {
-				this.cacheCurrentTemplate()
+				this.movesOutCurrentTemplate()
 			}
 		}
 	}
-	
-	protected async playEnterTransition(template: Template) {
-		let firstElement = template.range.getFirstElement()
-		if (firstElement) {
-			await this.transition.playEnter(firstElement)
-		}
-	}
 
-	protected initNewResult(result: TemplateResult) {
-		let template = new Template(result, this.context)
-		let fragment = template.range.getFragment()
-		this.anchor.insert(fragment)
-
-		if (this.transition.shouldPlayEnter()) {
-			this.playEnterTransition(template)
-		}
-
-		this.currentTemplate = template
-		this.templates.push(template)
-	}
-
-	protected async cacheCurrentTemplate() {
+	protected async movesOutCurrentTemplate() {
 		let template = this.currentTemplate!
-		let firstElement = template.range.getFirstElement()
+		let playing = false
 
-		// Cached elements have been moved, reset the anchor node to current parent node.
-		if (this.anchor.type === NodeAnchorType.Next && firstElement && firstElement.parentNode && firstElement.parentNode !== this.anchor.el.parentNode) {
-			this.anchor = new NodeAnchor(firstElement.parentNode, NodeAnchorType.Parent)
+		if (this.transition.shouldPlayLeave()) {
+			let firstElement = template.getFirstElement() as HTMLElement
+			if (firstElement) {
+				this.transition.playLeave(firstElement).then((finish: boolean) => {
+					if (finish) {
+						template.movesOut()
+					}
+				})
+
+				playing = true
+			}
 		}
 
-		if (this.transition.shouldPlay() && firstElement) {
-			this.transition.playLeave(firstElement).then((finish: boolean) => {
-				if (finish) {
-					template.range.cacheFragment()
-				}
-			})
-		}
-		else {
-			template.range.cacheFragment()
+		if (!playing) {
+			template.movesOut()
 		}
 
 		this.currentTemplate = null
+	}
+
+	protected makeNewTemplate(result: TemplateResult) {
+		let template = new Template(result, this.context)
+
+		this.anchor.insert(template.extractToFragment())
+		this.tryPlayEnterTransition(template)
+		this.currentTemplate = template
+		this.templates.push(template)
+	}
+	
+	protected async tryPlayEnterTransition(template: Template) {
+		if (this.transition.shouldPlayEnter()) {
+			let firstElement = template.getFirstElement() as HTMLElement
+			if (firstElement) {
+				await this.transition.playEnter(firstElement)
+			}
+		}
 	}
 
 	remove() {
@@ -106,8 +115,10 @@ export class CacheDirective implements Directive {
 
 
 /**
- * When returned vlaue of `result` changed, this directive will try to reuse old rendered elements.
+ * `cache(changableContent, ?options)` will toggle rendering content, and also cache old content to restore it quickly.
  * Note that when old rendering result restored, the scroll positions in it will fall back to start position.
- * @param result The html`...` result, can be null or empty string. This value may change when rerendering.
+ * 
+ * @param result The html`...` result, can be `null` or an empty string.
+ * @param options Options for transition.
  */
-export const cache = defineDirective(CacheDirective) as (result: TemplateResult | '' | null, options?: DirectiveTransitionOptions) => DirectiveResult
+export const cache = defineDirective(CacheDirective) as (result: TemplateResult | '' | null, options?: ContextualTransitionOptions) => DirectiveResult

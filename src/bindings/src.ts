@@ -1,23 +1,31 @@
 import {Binding, defineBinding} from './define'
 
 
+/** Caches global loaded URLs. */
 const SrcLoadedURLs: Set<string> = new Set()
 
 
 /**
- * `:src="${URL}"`
- * When reusing an image and reset it's src, it will keep old image until the new one loaded,
- * Which always confuse us.
+ * `:src` binding will update the src property of media element.
+ * 
+ * `:src=${URL}`
+ * 
+ * Note after reuse an image and reset it's src, it will keep old image until the new one loaded.
  */
-defineBinding('src', class SrcBinding implements Binding<[string]> {
+@defineBinding('src')
+export class SrcBinding implements Binding<string> {
 
-	private el: HTMLImageElement
+	private readonly el: HTMLMediaElement
 
 	/** Current resource location. */
 	private src: string = ''
 
 	constructor(el: Element) {
-		this.el = el as HTMLImageElement
+		if (el instanceof HTMLMediaElement) {
+			throw new Error('":src" binding can only binded with HTMLMediaElement!')
+		}
+		
+		this.el = el as HTMLMediaElement
 	}
 
 	update(value: string) {
@@ -34,6 +42,7 @@ defineBinding('src', class SrcBinding implements Binding<[string]> {
 			img.onload = () => {
 				SrcLoadedURLs.add(value)
 
+				// Must re validate it, or src will be wrongly updated.
 				if (value === this.src) {
 					this.el.src = value
 				}
@@ -49,4 +58,4 @@ defineBinding('src', class SrcBinding implements Binding<[string]> {
 	remove() {
 		this.el.src = ''
 	}
-})
+}

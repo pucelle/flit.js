@@ -1,19 +1,22 @@
+import type {Component, Context} from '../component'
 import {Binding, defineBinding} from './define'
-import {Component, Context} from '../component'
 
 
 /**
- * `:ref="name"`
- * `:ref="${this.onRef}"`
+ * To reference current element as a `refs` property or captures and passes to a handler.
+ * 
+ * `:ref="name"` - Reference as a value in current component at `.refs.refName`, note it will be updated everytime after element changed.
+ * `:ref=${this.onRef}` - Call reference function with current element as parameter, note it will be called everytime after element changed.
  */
-defineBinding('ref', class RefBinding implements Binding<[string | ((el: Element) => void)]> {
+@defineBinding('ref')
+export class RefBinding implements Binding<string | ((el: Element) => void)> {
 
-	private el: Element
-	private context: Component
+	private readonly el: Element
+	private readonly context: Component
 
 	constructor(el: Element, context: Context) {
 		if (!context) {
-			throw new Error(`A context must be provided when using ":ref"`)
+			throw new ReferenceError(`A context must be provided when using ":ref" binding!`)
 		}
 
 		this.el = el
@@ -30,4 +33,4 @@ defineBinding('ref', class RefBinding implements Binding<[string | ((el: Element
 	}
 
 	remove() {}
-})
+}

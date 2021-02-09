@@ -1,112 +1,106 @@
-import {Updatable, Dependency, ComTarget, targetMap} from './shared'
-import {Weak2WayMap} from '../internal/weak-2way-map'
-import {Weak2WayPropMap} from '../internal/weak-2way-prop-map'
-
-
-/**
- * To know when rendering component, which objects we used.
- * And to know when object changed, which component or watcher should be update.
- * Otherwise we need to remove from left when component disconnected.
- * 
- * If the dependent objects were removed, the component or watchers should be updated, And it will clear dependencies before.
- * So cached the objects will not prevent GC.
- */
-const depMap = new Weak2WayMap<Updatable, Dependency>()
-
-
-/**
- * To know when rendering component, which component and what's the properties it called.
- * And to know when specified property in object changed, which component should be update.
- * 
- * Why we don't observe properties for all the object but only component?
- * In fact I do so at beginning, until one day I found 1M dependencies in my app.
- * There is no memory leak, my app just may load more than 20K data records.
- * Otherwise, now we are using not 100% precise updating, and update whole component part for once.
- * no need to observe every details.
- */
-const comPropMap = new Weak2WayPropMap<Updatable, ComTarget>()
+import {Weak2WayMap} from '../helpers/weak-2way-map'
+import {Weak2WayPropMap} from '../helpers/weak-2way-prop-map'
 
 
 /** Currently rendering component or running watcher, and their dependencies. */
 interface Updating {
-	target: Updatable
+
+	/** The source where updating come from. */
+	source: UpdatableProxied
+
+	/** Dependent objects that collected when updating. */
 	deps: Set<Dependency>
-	depPropMap: Map<ComTarget, Set<PropertyKey>>
+
+	/** Dependent components and their properties that collected when updating. */
+	depProps: Map<UpdatableTarget, Set<PropertyKey>>
 }
 
+
+/**
+ * `Updatable <-> Dependency` map.
+ * 
+ * To know when rendering a component or update a watcher, all the dependent objects it used.
+ * So after any of those object changed, we know which components or watchers should be updated.
+ *
+ * If the dependent objects were removed, the component or watchers should be updated,
+ * and it will clear useless dependencies before.
+ * So cached the objects will not prevent GC.
+ */
+const DepMap = new Weak2WayMap<UpdatableProxied, Dependency>()
+
+/**
+ * `Updatable <-> Dependency -> Property` map.
+ * 
+ * To know when rendering a component or update a watcher, all dependent components and what's the properties it used.
+ * So after any of those properties changed, we know which components or watchers should be updated.
+ * 
+ * Why we don't observe properties for all the objects but only components?
+ * In fact I do so at beginning, until one day I found 1M dependencies in my app.
+ * There is no memory leak, my app just may load more than 10K data records.
+ * 
+ * Otherwise, our implementation for updating is not 100% precise,
+ * and update whole component part at once, not update each properties, bindings, directives.
+ * So no need to observe all the details.
+ */
+const ComPropMap = new Weak2WayPropMap<UpdatableProxied, UpdatableTarget>()
+
+/** The updating component or watcher. */
 let updating: Updating | null = null
 
-// a stack is required, `watchImmediately` need to be update immediately,
-// but an component may be updating recently.
+/** May one updating is not completed and start a new one, so a stack is required. */
 const updatingStack: Updating[] = []
 
 
-/** Called when start rendering proxied component or running watch functions. */
-export function startUpdating(upt: Updatable) {
+/** 
+ * Called when a component or a watcher disconnected,
+ * No need to trigger updating on the component or watcher any more.
+ */
+export function clearDependenciesOf(updating: UpdatableProxied) {
+	DepMap.clearFromLeft(updating)
+	ComPropMap.clearFromLeft(updating)
+}
+
+
+/** Called when start rendering a component or running a watcher function. */
+export function startUpdating(source: UpdatableProxied) {
 	if (updating) {
 		updatingStack.push(updating)
 	}
 
 	updating = {
-		target: upt,
+		source,
 		deps: new Set(),
-		depPropMap: new Map()
+		depProps: new Map(),
 	}
 }
 
+
 /** Called when complete rendering component or complete running watch functions. */
-export function endUpdating(_upt: Updatable) {
+export function endUpdating(_source: UpdatableProxied) {
+	
+	// We split updating dependencies to two steps:
+	//   1. Collect dependencies, cache them.
+	//   2. Merge them into dependency tree.
+	// 
+	// It's common to use one object dependency for moren than 100 times in one updating,
+	// no need to update dependency tree each time.
+
 	if (updating) {
-		depMap.updateFromLeft(updating.target, updating.deps)
-		comPropMap.updateFromLeft(updating.target, updating.depPropMap)
+		DepMap.updateFromLeft(updating.source, updating.deps)
+		ComPropMap.updateFromLeft(updating.source, updating.depProps)
 		updating = updatingStack.pop() || null
 	}
 }
 
-/** Returns if is updating recently. */
+
+/** Whether is updating recently. */
 export function isUpdating(): boolean {
 	return !!updating
 }
 
 
-/** Called when start rendering component or running watch functions, or component and watcher disconnected. */
-export function clearDependencies(updating: Updatable) {
-	depMap.clearFromLeft(updating)
-	comPropMap.clearFromLeft(updating)
-}
-
-/**
- * Called when don't want to obserse object or component changing.
- * In fact `dep` can only be component target.
- */
-export function clearAsDependency(proxiedDep: Dependency) {
-	let dep = targetMap.get(proxiedDep)!
-	depMap.clearFromRight(dep)
-	comPropMap.clearFromRight(dep as ComTarget)
-}
-
-// when one component or watcher was disconnected and connect again,
-// it can easily restore it's dependencies by `update()`,
-// But an dependency, we can't restore it's influenced components or watchers .
-// So we keep the `dep -> prop -> upt` map, and restore `upt -> dep -> prop` map when `dep` connected again.
-
-/** When one component or watcher connected again, here to restore that what it can update. */
-export function restoreAsDependency(proxiedDep: Dependency) {
-	let dep = targetMap.get(proxiedDep)!
-	comPropMap.restoreFromRight(dep as ComTarget)
-}
-
-// We split adding dependencies to two steps:
-//   1. Collect dependencies, cache them.
-//   2. Merge them into dependency tree.
-// 
-// May use one object dependency for moren than 100 times in one updating,
-// no need to update dependency tree for each calling.
-// 
-// Otherwise, a very high rate the dependencies are no need to update.
-
-/** Called when in object's or array's proxy.get. */
-export function mayAddDependency(dep: Dependency) {
+/** Called when uses an object or array. */
+export function addDependency(dep: Dependency) {
 	if (!updating) {
 		return
 	}
@@ -114,24 +108,37 @@ export function mayAddDependency(dep: Dependency) {
 	updating.deps.add(dep)
 }
 
-/** Called when in component's proxy.get. */
-export function mayAddComDependency(com: ComTarget, prop: PropertyKey) {
+
+/** Called when changing an array or object. */
+export function notifyObjectSet(obj: Dependency) {
+	let upts = DepMap.getFromRight(obj)
+	if (upts) {
+		for (let upt of upts) {
+			upt.update()
+		}
+	}
+}
+
+
+/** Called when uses one property of component. */
+export function addComDependency(com: UpdatableTarget, prop: PropertyKey) {
 	if (!updating) {
 		return
 	}
 
-	let propertySet = updating.depPropMap.get(com)
+	let propertySet = updating.depProps.get(com)
 	if (!propertySet) {
 		propertySet = new Set()
-		updating.depPropMap.set(com, propertySet)
+		updating.depProps.set(com, propertySet)
 	}
 
 	propertySet.add(prop)		
 }
 
-/** Called when in component's proxy.set. */
-export function notifyComPropertySet(com: ComTarget, prop: PropertyKey) {
-	let upts = comPropMap.getFromRight(com, prop)
+
+/** Called when setting one property of component. */
+export function notifyComPropertySet(com: UpdatableTarget, prop: PropertyKey) {
+	let upts = ComPropMap.getFromRight(com, prop)
 	if (upts) {
 		for (let upt of upts) {
 			upt.update()
@@ -139,12 +146,3 @@ export function notifyComPropertySet(com: ComTarget, prop: PropertyKey) {
 	}
 }
 
-/** Called when in array's or object's proxy.set. */
-export function notifyObjectSet(obj: Dependency) {
-	let upts = depMap.getFromRight(obj)
-	if (upts) {
-		for (let upt of upts) {
-			upt.update()
-		}
-	}
-}

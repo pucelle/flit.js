@@ -2,11 +2,14 @@ import {Binding, defineBinding} from './define'
 
 
 /**
- * `:html="${HTMLCodes}"`
+ * `:html` binding will update html content for element.
+ * 
+ * `:html=${InnerHTMLCodes}`
  */
-defineBinding('html', class HTMLBinding implements Binding<[string]> {
+@defineBinding('html')
+export class HTMLBinding implements Binding<string> {
 
-	private el: HTMLElement
+	private readonly el: HTMLElement
 
 	constructor(el: Element) {
 		this.el = el as HTMLElement
@@ -19,4 +22,4 @@ defineBinding('html', class HTMLBinding implements Binding<[string]> {
 	remove() {
 		this.el.innerHTML = ''
 	}
-})
+}

@@ -1,45 +1,58 @@
 import {Binding, defineBinding} from './define'
-import {Component, getComponent, onComponentCreatedAt, Context} from '../component'
-import {on} from '../internal/dom-event'
+import {getComponentEarly} from '../component'
+import type {Component, Context} from '../component'
+import {on} from '../internals/dom-event'
 
 
-const ALLOWED_MODIFIERS = ['lazy', 'number']
+/** All modifiers for model binding. */
+const AllowedModelModifiers = ['lazy', 'number']
 
 
 /** 
- * Handle `:model="name"`, it binds and auto update a specified property name in current context
- * with the `<input>` or `<com>` which has `value` or `checked` property, and `change` event.
- * Supports `:model="a.b"`.
- * Model bind should only handle fixed model name.
+ * `:model` binding will bind inputable element's value with specified property of current component.
+ * 
+ * `:model="propertyName"` - Bind with property of current component.
+ * `:model="objectProperty.propertyName"` - Bind with sub property of one object in current component.
+ * `:model.lazy="propertyName"` - Uses `change` event to update component value, not `input`.
+ * `:model.number="propertyName"` - Convert input value to number and then update component value.
  */
-defineBinding('model', class ModelBinding implements Binding<[string]> {
+@defineBinding('model')
+export class ModelBinding implements Binding<string> {
 
-	private el: HTMLElement
-	private modifiers: string[] | undefined
-	private context: Component
-	private isComModel: boolean
-	private isBooleanValue: boolean = false
-	private isMultiSelect: boolean = false
+	private readonly el: HTMLElement
+	private readonly modifiers: string[] | undefined
+	private readonly context: Component
+
+	/** If is `<com :model=${...}>`, this value is true. */
+	private readonly isComModel: boolean
+
+	/** Is boolean value, `true` for checkbox or radio. */
+	private readonly isBooleanValue: boolean = false
+
+	/** Is `<select multiple>`. */
+	private readonly isMultiSelect: boolean = false
+
+	/** Event name, `change` or `input`. */
+	private readonly eventName: string
+
 	private property: string
-	private eventName: string
-
 	private modelName!: string
-	private com: Component | undefined
+	private com: Component | null = null
 	private unwatch: (() => void) | null = null
 
 	constructor(el: Element, context: Context, modifiers?: string[]) {
 		if (!context) {
-			throw new Error(`A context must be provided when using ":model=property"`)
+			throw new ReferenceError(`A context must be provided when using ":model=property"!`)
 		}
 
 		if (modifiers) {
 			if (modifiers.length > 2) {
-				throw new Error(`Modifier "${modifiers.join('.')}" is not allowed, at most two modifiers can be specified for ":model"`)
+				throw new Error(`Modifier "${modifiers.join('.')}" is not allowed, at most two modifiers can be specified for ":model"!`)
 			}
 
 			for (let modifier of modifiers) {
-				if (!ALLOWED_MODIFIERS.includes(modifier)) {
-					throw new Error(`Modifier "${modifiers}" is not allowed, it must be one of ${ALLOWED_MODIFIERS.map(m => `"${m}"`).join(', ')}`)
+				if (!AllowedModelModifiers.includes(modifier)) {
+					throw new Error(`Modifier "${modifiers}" is not allowed, it must be one of ${AllowedModelModifiers.map(m => `"${m}"`).join(', ')}!`)
 				}
 			}
 		}
@@ -50,8 +63,8 @@ defineBinding('model', class ModelBinding implements Binding<[string]> {
 		this.isComModel = el.localName.includes('-')
 
 		if (this.isComModel) {
-			this.property = 'value' // or checked
-			this.eventName = 'change'
+			this.property = 'value'	 	// will check `checked` property later.
+			this.eventName = 'change'	// never be `input`.
 		}
 		else {
 			let isFormField = ['input', 'select', 'textarea'].includes(el.localName)
@@ -77,41 +90,44 @@ defineBinding('model', class ModelBinding implements Binding<[string]> {
 		}
 	}
 
-	// Normally this should only be called for once.
+	// Normally this method should only be called for once.
 	update(modelName: string) {
 		if (!modelName || typeof modelName !== 'string') {
-			throw new Error(`"${modelName}" is not a valid model name`)
+			throw new Error(`"${modelName}" is not a valid model name!`)
 		}
 
 		this.modelName = modelName
 
 		if (this.isComModel) {
-			let com = getComponent(this.el)
-			if (com) {
-				this.bindCom(com)
+			if (this.com) {
+				this.updateComModel()
 			}
 			else {
-				onComponentCreatedAt(this.el, this.bindCom.bind(this))
+				getComponentEarly(this.el, com => {
+					this.bindComModel(com!)
+					this.updateComModel()
+				})
 			}
 		}
 		else {
+			this.updateElementModel()
 			this.watchContextModelValue()
-			on(this.el, this.eventName, this.onEventInputOrChange.bind(this))
 		}
 	}
 
-	private bindCom(com: Component) {
-		// Avoid bind event twice when model changed.
-		if (!this.com) {
-			this.com = com
+	private bindComModel(com: Component) {
+		this.com = com
+	}
 
-			// Some component use `checked` property as model value.
-			if (com.hasOwnProperty('checked') && typeof (com as any).checked === 'boolean') {
-				this.property = 'checked'
-			}
+	private updateComModel() {
+		let com = this.com!
 
-			com.on(this.eventName, this.setModelValueToContext, this)
+		// Some component use `checked` property as model value.
+		if (com.hasOwnProperty('checked') && typeof (com as any).checked === 'boolean') {
+			this.property = 'checked'
 		}
+
+		com.on(this.eventName as any, this.assignModelValueToContext as any, this)
 
 		this.watchContextModelValue()
 	}
@@ -122,7 +138,7 @@ defineBinding('model', class ModelBinding implements Binding<[string]> {
 		}
 
 		// There is a problem here:
-		// When the `:model` was included in a `if` part, it can't be unwatch after relatated element removed.
+		// When the `:model` part was removed, it can't be unwatch after relatated element removed.
 		// `:model` is convient but eval, isn't it?
 		this.unwatch = this.context!.watchImmediately(this.getModelValueFromContext.bind(this), this.setModelValueToTarget.bind(this))
 	}
@@ -144,7 +160,7 @@ defineBinding('model', class ModelBinding implements Binding<[string]> {
 		return value
 	}
 
-	private setModelValueToContext(value: unknown) {
+	private assignModelValueToContext(value: unknown) {
 		let properties = this.modelName.split('.')
 		let object: object = this.context
 
@@ -163,6 +179,10 @@ defineBinding('model', class ModelBinding implements Binding<[string]> {
 				break
 			}
 		}
+	}
+
+	private updateElementModel() {
+		on(this.el, this.eventName, this.onEventInputOrChange.bind(this))
 	}
 
 	private onEventInputOrChange(_e: Event) {
@@ -184,7 +204,7 @@ defineBinding('model', class ModelBinding implements Binding<[string]> {
 			}
 		}
 		
-		this.setModelValueToContext(value)
+		this.assignModelValueToContext(value)
 	}
 
 	private setModelValueToTarget(value: unknown) {
@@ -201,7 +221,7 @@ defineBinding('model', class ModelBinding implements Binding<[string]> {
 
 	private setInputValue(value: unknown) {
 		if (this.isMultiSelect && !Array.isArray(value)) {
-			throw new Error(`:model="${this.modelName}" of select[multiple] requires an array as value`)
+			throw new Error(`:model="${this.modelName}" of select[multiple] requires an array as value!`)
 		}
 
 		if (this.isMultiSelect) {
@@ -230,4 +250,4 @@ defineBinding('model', class ModelBinding implements Binding<[string]> {
 	remove() {
 		this.setInputValue('')
 	}
-})
+}

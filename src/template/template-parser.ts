@@ -1,87 +1,143 @@
 import {TemplateType} from './template-result'
-import {joinWithOrderedMarkers, containsOrderedMarker, parseOrderedMarkers, splitByOrderedMarkers} from './template-result-operate'
-import {getScopedClassNameSet} from '../component'
-import {cloneAttributes, trim} from '../internal/util'
-import {parseToHTMLTokens, HTMLTokenType} from '../internal/html-token'
+import {joinWithOrderMarkers, containsOrderMarker, parseOrderMarkers, splitByOrderMarkers, extendsAttributes} from './utils'
+import {trim} from '../helpers/utils'
+import {parseToHTMLTokens, HTMLTokenType} from '../internals/html-token-parser'
+import {getScopedClassNames} from '../internals/style-parser'
 
 
-export enum PartType {
+/** Type of each slot, respresent the type of `????=${...}`. */
+export enum SlotType {
+
+	/** `>${...}<` */
 	Node,
+
+	/** `<slot>` */
+	SlotTag,
+
+	/** `<tag attr=...>` */
 	Attr,
+
+	/** `<tag ?attr=...>` */
 	MayAttr,
+
+	/** `<tag .property=...>` */
 	Property,
+
+	/** `<tag @event=...>` */
 	Event,
+
+	/** `<tag :class=...>` */
 	FixedBinging,
-	Binding
+
+	/** `<tag ...>` */
+	DynamicBinding,
 }
 
-export interface ParseResult {
+/** Result parsed from a template. */
+export interface ParsedResult {
+
+	/** Fragment contains all the nodes that parsed from template strings. */
 	fragment: DocumentFragment
-	places: Place[] | null
-	nodesInPlaces: Node[] | null
-	hasSlots: boolean
+
+	/** All the slots included in template, each one respresent a `${...}`. */
+	slots: Slot[]
+
+	/** Nodes that each slot place at. */
+	nodes: Node[]
 }
 
-export interface Place {
-	type: PartType
+/** Already parsed result, can be shared with all the templates that having same strings. */
+export interface SharedParsedReulst {
+
+	/** The template element contains all the nodes that parsed from template strings. */
+	template: HTMLTemplateElement
+
+	/**  All the slots included in template, each one respresent a `???=${...}`. */
+	slots: Slot[]
+
+	/** 
+	 * Attributes of root element.
+	 * Be `null` if root element is not `<template>`.
+	 */
+	rootAttributes: {name: string, value: string}[] | null
+}
+
+/** Each slot respresent a `???=${...}`. */
+export interface Slot {
+
+	/** Slot type. */
+	type: SlotType
+
+	/** Slot attribute name, be `null` for dynamic binding `<tag ${...}>`. */
 	name: string | null
 
-	// Some holes line ${html``}, it has not strings besides, such that it's strings is `null`.
+	/** If defined as `???="a${...}b"`, be `[a, b]`. Otherwise be `null`. */
 	strings: string[] | null
 
-	// Some binds like `:ref="name"`, it needs to be initialized but take no place, it's valueIndexes is `null`.
-	valueIndexes: number[] | null
+	/** 
+	 * Value indices in the whole template.
+	 * Having more than one values for `???="a${...}b${...}c"`.
+	 * Is `null` if slot is a fixed slot defined like `???="..."`.
+	 */
+	valueIndices: number[] | null
 
+	/** Index of the node the slot place at within the whole document fragment. */
 	nodeIndex: number
 }
 
-export interface SharedParseReulst {
-	template: HTMLTemplateElement
-	places: Place[]
-	hasSlots: boolean
-	attributes: {name: string, value: string}[] | null
-}
 
-// context name -> template string -> parse result
-const parseResultCache: Map<string, Map<string, SharedParseReulst>> = new Map()
+/** Caches map of `scope name -> template string -> parsed result`. */
+const ParsedResultCache: Map<string, Map<string, SharedParsedReulst>> = new Map()
+
+/** Caches map of `scope name -> parser`. */
+const ParserCache: Map<string, HTMLAndSVGTemplateParser> = new Map()
 
 
 /**
- * Parse template strings to an fragment and interlations and their related nodes.
- * Always prepend a comment in the front to mark current template start position.
- * @param type 
- * @param strings 
+ * Parses template strings to a document fragment and marks all slots and their associated nodes.
+ * Will always prepend a comment in the front to mark current template start position.
  */
-export function parse(type: TemplateType, strings: TemplateStringsArray | string[], el: HTMLElement | null): ParseResult {
-	let scopeName = el ? el.localName : 'global'
+export function parseTemplate(type: TemplateType, strings: TemplateStringsArray | string[], el: HTMLElement | null): ParsedResult {
+	let scopeName = el?.localName || 'global'
 
-	if ((type === 'html' || type === 'svg')) {
-		let string = joinWithOrderedMarkers(strings as unknown as string[])
-		let sharedResultMap = parseResultCache.get(scopeName)
-		let sharedResult = sharedResultMap ? sharedResultMap.get(string) : null
+	// Parse it.
+	if (type === 'html' || type === 'svg') {
+		let string = joinWithOrderMarkers(strings as string[])
+		let sharedResultMap = ParsedResultCache.get(scopeName)
+		let sharedResult = sharedResultMap?.get(string)
 
 		if (!sharedResult) {
 			if (!sharedResultMap) {
 				sharedResultMap = new Map()
-				parseResultCache.set(scopeName, sharedResultMap)
+				ParsedResultCache.set(scopeName, sharedResultMap)
 			}
-			sharedResult = new HTMLSVGTemplateParser(type, string, scopeName).parse()
+
+			let parser = ParserCache.get(scopeName)
+			if (!parser) {
+				parser = new HTMLAndSVGTemplateParser(scopeName)
+				ParserCache.set(scopeName, parser)
+			}
+
+			sharedResult = parser.parse(type, string)
 			sharedResultMap.set(string, sharedResult)
 		}
 
-		return cloneParseResult(sharedResult, el)
+		return cloneParsedResult(sharedResult, el)
 	}
+
+	// No slots, just create.
 	else if (type === 'css') {
 		let html = `<style>${strings[0]}</style>`
 		let fragment = createTemplateFromHTML(html).content
 
 		return {
 			fragment,
-			nodesInPlaces: null,
-			places: null,
-			hasSlots: false
+			nodes: [],
+			slots: [],
 		}
 	}
+
+	// No slots too.
 	else {
 		let text = strings[0]
 		let fragment = document.createDocumentFragment()
@@ -89,60 +145,59 @@ export function parse(type: TemplateType, strings: TemplateStringsArray | string
 
 		return {
 			fragment,
-			nodesInPlaces: null,
-			places: null,
-			hasSlots: false
+			nodes: [],
+			slots: [],
 		}
 	}
 }
 
+
+/** Create a template element with `html` as content. */
 function createTemplateFromHTML(html: string) {
 	let template = document.createElement('template')
 	template.innerHTML = html
+
 	return template
 }
 
 
-class HTMLSVGTemplateParser {
+class HTMLAndSVGTemplateParser {
 
-	private type: TemplateType
-	private string: string
-	private nodeIndex = 0
-	private places: Place[] = []
+	private readonly scopeName: string
+	private readonly scopedClassNameSet: Set<string> | undefined
+
 	private nodeIndexs: number[] = []
-	private scopeName: string
-	private scopedClassNameSet: Set<string> | undefined
+	private slots: Slot[] = []
+	private currentNodeIndex = 0
 
-	constructor(type: TemplateType, string: string, scopeName: string) {
-		this.type = type
-		this.string = string
+	constructor(scopeName: string) {
 		this.scopeName = scopeName
-		this.scopedClassNameSet = getScopedClassNameSet(this.scopeName)
+		this.scopedClassNameSet = getScopedClassNames(this.scopeName)
 	}
 
-	// Benchmark: https://jsperf.com/regexp-exec-match-replace-speed
-	parse(): SharedParseReulst {
-		let tokens = parseToHTMLTokens(this.string)
+	parse(type: TemplateType, string: string): SharedParsedReulst {
+		this.nodeIndexs = []
+
+		let tokens = parseToHTMLTokens(string)
 		let codes = ''
-		let hasSlots = false
 
 		for (let token of tokens) {
 			switch (token.type) {
 				case HTMLTokenType.StartTag:
 					let tagName = token.tagName!
 					let attributes = token.attributes!
-		
+
 					if (tagName === 'slot') {
-						hasSlots = true
+						this.parseSlotTag(attributes)
 					}
 
-					// ` {flit:0}` be at least 
+					// At least contains ` {flit:0}`.
 					if (attributes.length >= 9) {
 						attributes = this.parseAttribute(attributes)
 					}
 		
 					codes += '<' + tagName + attributes + '>'
-					this.nodeIndex++
+					this.currentNodeIndex++
 					break
 
 				case HTMLTokenType.EndTag:
@@ -159,7 +214,7 @@ class HTMLSVGTemplateParser {
 		let svgWrapped = false
 
 		if (firstTag) {
-			if (this.type === 'svg' && firstTag.tagName !== 'svg') {
+			if (type === 'svg' && firstTag.tagName !== 'svg') {
 				codes = '<svg>' + codes + '</svg>'
 				svgWrapped = true
 			}
@@ -180,78 +235,63 @@ class HTMLSVGTemplateParser {
 			attributes = [...template.attributes].map(({name, value}) => ({name, value}))
 		}
 
+		this.clean()
+
 		return {
 			template,
-			places: this.places,
-			hasSlots,
-			attributes
+			slots: this.slots,
+			rootAttributes: attributes
 		}
 	}
 
-	parseText(text: string): string {
-		// `text` has already been trimmed here when parsing as tokens.
-		if (!text) {
-			return text
-		}
+	private parseSlotTag(attr: string) {
+		let name = attr.match(/name=['"](.+?)['"]/)?.[1] || null
 
-		if (containsOrderedMarker(text)) {
-			let {strings, valueIndexes} = splitByOrderedMarkers(text)
-
-			// Each hole may be a string, or a `TemplateResult`, so must unique them, but can't join them to a string.
-			for (let i = 1; i < strings.length; i++) {
-				this.places.push({
-					type: PartType.Node,
-					name: null,
-					strings: null,
-					valueIndexes: valueIndexes.slice(i - 1, i),
-					nodeIndex: this.nodeIndex
-				})
-
-				this.nodeIndexs.push(this.nodeIndex)
-				this.nodeIndex += 1
-			}
-
-			text = strings.map(trim).join('<!--->')
-		}
-
-		return text
+		this.slots.push({
+			type: SlotType.SlotTag,
+			name,
+			strings: null,
+			valueIndices: null,
+			nodeIndex: this.currentNodeIndex,
+		})
 	}
 
-	parseAttribute(attr: string): string {
+	/** Parses `???=${...}`. */
+	private parseAttribute(attr: string): string {
 		const attrRE = /([.:?@\w-]+)\s*(?:=\s*(".*?"|'.*?'|\{flit:\d+\})\s*)?|\{flit:(\d+)\}\s*/g
 
 		return attr.replace(attrRE, (m0, name: string, value: string = '', markerId: string) => {
 			if (markerId) {
-				this.places.push({
-					type: PartType.Binding,
+				this.slots.push({
+					type: SlotType.DynamicBinding,
 					name: null,
 					strings: null,
-					valueIndexes: [Number(markerId)],
-					nodeIndex: this.nodeIndex
+					valueIndices: [Number(markerId)],
+					nodeIndex: this.currentNodeIndex,
 				})
 
-				this.nodeIndexs.push(this.nodeIndex)
+				this.nodeIndexs.push(this.currentNodeIndex)
 				return ''
 			}
 
-			let type: PartType | undefined
-			let hasMarker = containsOrderedMarker(value)
+			let type: SlotType | undefined
+			let hasMarker = containsOrderMarker(value)
 
 			switch (name[0]) {
 				case '.':
-					type = PartType.Property
+					type = SlotType.Property
 					break
 
 				case ':':
-					type = PartType.FixedBinging
+					type = SlotType.FixedBinging
 					break
 
 				case '?':
-					type = PartType.MayAttr
+					type = SlotType.MayAttr
 					break
 
 				case '@':
-					type = PartType.Event
+					type = SlotType.Event
 					break
 			}
 
@@ -262,10 +302,10 @@ class HTMLSVGTemplateParser {
 			if (type === undefined && hasMarker) {
 				// `class=${...}` -> `:class=${...}`, so the class value can be scoped.
 				if (name === 'class') {
-					type = PartType.FixedBinging
+					type = SlotType.FixedBinging
 				}
 				else {
-					type = PartType.Attr
+					type = SlotType.Attr
 				}
 			}
 
@@ -275,28 +315,28 @@ class HTMLSVGTemplateParser {
 				}
 
 				if (hasMarker) {
-					let {strings, valueIndexes} = parseOrderedMarkers(value)
-					this.places.push({
+					let {strings, valueIndices} = parseOrderMarkers(value)
+					this.slots.push({
 						type,
 						name,
 						strings,
-						valueIndexes,
-						nodeIndex: this.nodeIndex
+						valueIndices,
+						nodeIndex: this.currentNodeIndex,
 					})
 				}
 				else {
-					this.places.push({
+					this.slots.push({
 						type,
 						name,
 						strings: [value],
-						valueIndexes: null,
-						nodeIndex: this.nodeIndex
+						valueIndices: null,
+						nodeIndex: this.currentNodeIndex,
 					})
 				}
 
-				this.nodeIndexs.push(this.nodeIndex)
+				this.nodeIndexs.push(this.currentNodeIndex)
 
-				if (type === PartType.Attr) {
+				if (type === SlotType.Attr) {
 					return name + '="" '
 				}
 				else {
@@ -319,49 +359,82 @@ class HTMLSVGTemplateParser {
 			return m0
 		})
 	}
+
+	/** Parses `<tag>${...}</tag>`. */
+	private parseText(text: string): string {
+		// `text` has already been trimmed here when parsing as tokens.
+		if (!text) {
+			return text
+		}
+
+		if (containsOrderMarker(text)) {
+			let {strings, valueIndices} = splitByOrderMarkers(text)
+
+			// Each hole may be a string, or a `TemplateResult`, so must unique them, but can't join them to a string.
+			for (let i = 1; i < strings.length; i++) {
+				this.slots.push({
+					type: SlotType.Node,
+					name: null,
+					strings: null,
+					valueIndices: valueIndices.slice(i - 1, i),
+					nodeIndex: this.currentNodeIndex,
+				})
+
+				this.nodeIndexs.push(this.currentNodeIndex)
+				this.currentNodeIndex += 1
+			}
+
+			text = strings.map(trim).join('<!--->')
+		}
+
+		return text
+	}
+
+	/** Clean properties for next time parsing. */
+	private clean() {
+		this.slots = []
+		this.nodeIndexs = []
+		this.currentNodeIndex = 0
+	}
 }
 
 
-/**
- * Clone the result fragment and link it with node indexes from the parsed result.
- */
-// TreeWalker Benchmark: https://jsperf.com/treewalker-vs-nodeiterator
-// Clone benchmark: https://jsperf.com/clonenode-vs-importnode
-function cloneParseResult(sharedResult: SharedParseReulst, el: HTMLElement | null): ParseResult {
-	let {template, places, hasSlots, attributes} = sharedResult
+/** Clone parsed result fragment and link it with node indices from the parsed result. */
+function cloneParsedResult(sharedResult: SharedParsedReulst, el: HTMLElement | null): ParsedResult {
+	let {template, slots, rootAttributes} = sharedResult
 	let fragment = template.content.cloneNode(true) as DocumentFragment
-	let nodesInPlaces: Node[] = []
+	let nodes: Node[] = []
 
-	if (attributes) {
+	if (rootAttributes) {
 		if (!el) {
-			throw new Error('A context must be provided when rendering `<template>...`')
+			throw new Error('A context must be provided when rendering `<template>...`!')
 		}
 
-		cloneAttributes(el, attributes)
+		extendsAttributes(el, rootAttributes)
 	}
 
-	if (places.length > 0) {
+	if (slots.length > 0) {
 		let nodeIndex = 0
-		let placeIndex = 0
+		let slotIndex = 0
 		let walker = document.createTreeWalker(fragment, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_COMMENT, null)
 		let node: Node | null
 		let end = false
 
-		if (attributes) {
-			while (placeIndex < places.length && places[placeIndex].nodeIndex === 0) {
-				nodesInPlaces.push(el!)
-				placeIndex++
+		if (rootAttributes) {
+			while (slotIndex < slots.length && slots[slotIndex].nodeIndex === 0) {
+				nodes.push(el!)
+				slotIndex++
 			}
 			nodeIndex = 1
 		}
 
-		if (placeIndex < places.length) {
+		if (slotIndex < slots.length) {
 			while (node = walker.nextNode()) {
-				while (places[placeIndex].nodeIndex === nodeIndex) {
-					nodesInPlaces.push(node)
-					placeIndex++
+				while (slots[slotIndex].nodeIndex === nodeIndex) {
+					nodes.push(node)
+					slotIndex++
 					
-					if (placeIndex === places.length) {
+					if (slotIndex === slots.length) {
 						end = true
 						break
 					}
@@ -378,8 +451,7 @@ function cloneParseResult(sharedResult: SharedParseReulst, el: HTMLElement | nul
 
 	return {
 		fragment,
-		nodesInPlaces,
-		places,
-		hasSlots,
+		slots,
+		nodes,
 	}
 }

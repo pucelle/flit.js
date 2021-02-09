@@ -1,37 +1,37 @@
-import {notifyObjectSet, mayAddDependency} from './dependency'
-import {proxyMap, targetMap} from './shared'
+import {notifyObjectSet, addDependency} from './dependency'
+import {addTargetAndProxy} from './target-proxy'
 
 
-type MapOrSet = Map<any, any> | Set<any>
+/** Methods that will be observed. */
+const WillObserveMapSetMethods = ['add', 'set', 'delete', 'clear']
 
-const MAP_SET_METHODS = ['add', 'set', 'delete', 'clear']
 
-
-export function observeMapOrSetTarget(ms: MapOrSet) {
+/** Observe a map or a set. */
+export function observeMapOrSetTarget(ms: any) {
 	let proxy = new Proxy(ms, proxyHandler)
-	proxyMap.set(ms, proxy)
-	proxyMap.set(proxy, proxy)
-	targetMap.set(proxy, ms)
+	addTargetAndProxy(ms, proxy)
+
 	return proxy
 }
 
 
-// A potential issue in map and set:
-// We may add an item to a set, and then test if proxy of item in set,
-// or add proxy of item and cause it has duplicate values in set.
-// We will fix this when we indeed meet this.
+// A potential issue in observing map and set:
+// We may add an target item to a set, and then test if it's mapped proxy in set,
+// not exist so add proxy of item, this cause duplicate values exist in a set.
+// We will fix this when we indeed meet.
 const proxyHandler = {
 
-	get(ms: MapOrSet, prop: PropertyKey): any {
-		let value = (ms as any)[prop]
+	get(ms: any, prop: string): any {
+		let value = ms[prop]
 		let type = typeof value
 
 		if (!ms.hasOwnProperty(prop) && type === 'function') {
-			// Required, pass proxy as this to native Set or Map methods will cause error.
+			// `bind` is required, directly passs a proxy as this to native Set or Map methods will cause an error.
 			value = value.bind(ms)
-			mayAddDependency(ms)
 
-			if (MAP_SET_METHODS.includes(prop as string)) {
+			addDependency(ms)
+
+			if (WillObserveMapSetMethods.includes(prop)) {
 				notifyObjectSet(ms)
 			}
 		}

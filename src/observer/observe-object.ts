@@ -1,26 +1,27 @@
-import {mayAddDependency, notifyObjectSet, isUpdating} from './dependency'
-import {proxyMap, targetMap, observeTarget} from './shared'
+import {addDependency, notifyObjectSet, isUpdating} from './dependency'
+import {observeTarget} from './observe'
+import {addTargetAndProxy, getObservedOf} from './target-proxy'
 
 
-export function observePlainObjectTarget(obj: object) {
-	let proxy = new Proxy(obj, proxyHandler)
-	proxyMap.set(obj, proxy)
-	proxyMap.set(proxy, proxy)
-	targetMap.set(proxy, obj)
+export function observePlainObjectTarget(object: object) {
+	let proxy = new Proxy(object, proxyHandler)
+	addTargetAndProxy(object, proxy)
+
 	return proxy
 }
 
 
 const proxyHandler = {
 
-	get(obj: object, prop: keyof typeof obj): any {
-		let value: any = obj[prop]
+	get(object: any, prop: any): any {
+		let value = object[prop]
 
-		mayAddDependency(obj)
+		addDependency(object)
 
 		if (value && typeof value === 'object') {
-			if (proxyMap.has(value)) {
-				return proxyMap.get(value)
+			let observed = getObservedOf(value)
+			if (observed) {
+				return observed
 			}
 			else if (isUpdating()) {
 				return observeTarget(value)
@@ -30,20 +31,23 @@ const proxyHandler = {
 		return value
 	},
 
-	set(obj: object, prop: keyof typeof obj, value: unknown): true {
-		(obj as any)[prop] = value
+	set(obj: any, prop: any, value: any): true {
+		obj[prop] = value
 		notifyObjectSet(obj)
+
 		return true
 	},
 
-	has(obj: object, prop: string) {
-		mayAddDependency(obj)
+	has(obj: any, prop: any): boolean {
+		addDependency(obj)
+		
 		return prop in obj
 	},
 
-	deleteProperty(obj: object, prop: keyof typeof obj) {
+	deleteProperty(obj: any, prop: any): boolean {
 		if (obj.hasOwnProperty(prop)) {
-			mayAddDependency(obj)
+			addDependency(obj)
+
 			return delete obj[prop]
 		}
 		else {

@@ -1,50 +1,56 @@
-import {Component} from './component'
-import {globalWatcherGroup} from '../watcher'
+import type {Component} from './component'
 
 
 /** To cache callbacks after component initialized */
-const componentCreatedMap: WeakMap<HTMLElement, ((com: Component) => void)[]> = new WeakMap()
+const ComponentCreationCallbackCache: WeakMap<HTMLElement, ((com: Component) => void)[]> = new WeakMap()
 
-/** Call callbacks after component instance created. */
+/** To cache all the connected components that element connected. */
+const ConnectedComponents: Set<Component> = new Set()
+
+
+/** Call callbacks after component instance created, and before triggering `created` event. */
 export function onComponentCreatedAt(el: HTMLElement, callback: (com: Component) => void) {
-	let callbacks = componentCreatedMap.get(el)
+	let callbacks = ComponentCreationCallbackCache.get(el)
 	if (!callbacks) {
-		componentCreatedMap.set(el, (callbacks = []))
+		ComponentCreationCallbackCache.set(el, (callbacks = []))
 	}
 	callbacks.push(callback)
 }
 
-/** may assign properties from `:props`, or bind component events from `@com-event` */
-export function emitComponentCreatedCallbacks(el: HTMLElement, com: Component) {
-	let callbacks = componentCreatedMap.get(el)
+
+/** 
+ * Call after component created.
+ * Used to assign properties from `.props`, or bind component events by `@com-event`.
+ */
+export function emitComponentCreationCallbacks(el: HTMLElement, com: Component) {
+	let callbacks = ComponentCreationCallbackCache.get(el)
 	if (callbacks) {
 		for (let callback of callbacks) {
 			callback(com)
 		}
-		componentCreatedMap.delete(el)
+		ComponentCreationCallbackCache.delete(el)
 	}
 }
 
 
-/** To mark all the connected components */
-const connectedComponentSet: Set<Component> = new Set()
-
+/** On component element connected into document or fragment. */
 export function onComponentConnected(com: Component) {
-	connectedComponentSet.add(com)
+	ConnectedComponents.add(com)
 }
 
+
+/** On component element disconnected into document or fragment. */
 export function onComponentDisconnected(com: Component) {
-	connectedComponentSet.delete(com)
+	ConnectedComponents.delete(com)
 }
 
-/** Update all components, watchers. e.g., when language changed. */
-export function updateComponents() {
-	globalWatcherGroup.update()
 
-	for (let com of connectedComponentSet) {
-		// Why didn't handle watcher group updating in `update`:
-		// Component collect dependencies from `render` function and update it by `update`,
-		// while each watchers in watcher group do the similar thing.
+/** 
+ * Updates all the components that elements are connected nto document, and their watchers.
+ * e.g., you may call this after language changes and not automatically detected.
+ */
+export function updateAllComponents() {
+	for (let com of ConnectedComponents) {
 		com.update()
 		com.__updateWatcherGroup()
 	}

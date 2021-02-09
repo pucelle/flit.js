@@ -1,21 +1,40 @@
 import {defineDirective, DirectiveResult} from './define'
-import {DirectiveTransitionOptions} from '../internal/directive-transition'
+import {ContextualTransitionOptions} from '../internals/contextual-transition'
 import {TemplateResult} from '../template'
 import {LiveRepeatDirective, LiveRepeatOptions} from './live-repeat'
-import {PageDataGetter, PageDataCacher} from '../internal/page-data-cacher'
+import {PageDataGetter, PageDataCacher} from './helpers/page-data-cacher'
 import {observe} from '../observer'
-import {Options} from '../internal/options'
+import {TemplateFn} from './helpers/repeative-template'
+import {onRenderComplete} from '../global/queue'
 
 
-export interface LiveAsyncRepeatOptions<T> extends LiveRepeatOptions<T> {
+export interface LiveAsyncRepeatDataOptions<T> {
+
+	/** If specified, we can avoid duplicate items with same key shown in same time. */
 	key?: keyof T
+
+	/** Page data getter to get each page items. */
 	dataGetter: PageDataGetter<T>
+
+	/** Total data count getter. */
 	dataCount: number | Promise<number> | (() => (number | Promise<number>))
 }
 
 
-// Compare to `TempalteFn`, the `item` can accpet `null` as argument when data is still loading.
-type LiveTemplateFn<T> = (item: T | null, index: number) => TemplateResult
+export interface LiveAsyncRepeatEvents<T> {
+
+	/** 
+	 * Trigger after every time live data updated.
+	 * Note elements are not rendered yet, if you'd want, just uses `liveDataRendered` event.
+	 */
+	liveDataUpdated: (liveData: T[], startIndex: number, scrollDirection: 'up' | 'down', fresh: boolean) => void
+
+	/** Trigger after every time live data updated and rendered. */
+	liveDataRendered: (liveData: T[], startIndex: number, scrollDirection: 'up' | 'down', fresh: boolean) => void
+}
+
+/** Compare to `TempalteFn` in `liveRepeat`, it can accpets `null` as parameter when data is still loading. */
+export type LiveTemplateFn<T> = (item: T | null, index: number) => TemplateResult
 
 
 // One issue that is not solved:
@@ -31,154 +50,101 @@ type LiveTemplateFn<T> = (item: T | null, index: number) => TemplateResult
 // And it also cause cached paged data doesn't have fixed size,
 // such that we must count size of cached data of each page to fetch the data from `startIndex` to `endIndex`.
 
-/** @hidden */
-export class LiveAsyncRepeatDirective<T> extends LiveRepeatDirective<T> {
+export class LiveAsyncRepeatDirective<T> extends LiveRepeatDirective<T, LiveAsyncRepeatEvents<T>> {
 
-	protected key: keyof T | null = null
+	/** If specified, we can avoid duplicate items with same key shown in same time. */
+	protected readonly key: keyof T | null = null
 
-	/**
-	 * Whole data count when using `dataGetter`.
-	 * `-1` means the total count is not determinated yet.
-	 * We will try to get the data count value when assigning render options.
-	 */
-	protected knownDataCount: number = -1
+	/** Caches loaded data. */
+	protected dataCount!: number | Promise<number> | (() => (number | Promise<number>))
+
+	/** Caches loaded data. */
+	protected dataCacher!: PageDataCacher<T>
 
 	/** Need to call `updateSliderPosition` after got `knownDataCount`. */
 	protected needToUpdateSliderPositionAfterDataCountKnown: boolean = false
 
-	protected dataCacher!: PageDataCacher<T>
-	protected updateId: number = 0
-
-	merge(options: any, templateFn: any, transitionOptions?: DirectiveTransitionOptions) {
-		let firstlyUpdate = !this.options.updated
-		if (firstlyUpdate) {
-			if (options.startIndex > 0) {
-				this.startIndex = options.startIndex
-			}
-		}
-
-		this.options.update(options)
+	merge(dataOptions: any, templateFn: TemplateFn<T>, liveRepeatOptions?: LiveRepeatOptions, transitionOptions?: ContextualTransitionOptions) {
+		this.dataCount = dataOptions.dataCount
 		this.templateFn = templateFn
+		this.options.update(liveRepeatOptions)
 		this.transition.updateOptions(transitionOptions)
+		this.updatePreRendered()
 
-		if (firstlyUpdate) {
-			this.validateTemplateFn(templateFn)
-			this.dataCacher = new PageDataCacher(options.pageSize)
-		}
+		let firstTimeUpdate = !this.dataCacher
+		if (firstTimeUpdate) {
+			this.dataCacher = new PageDataCacher(dataOptions.key, dataOptions.pageSize)
 
-		this.dataCacher.setDataGetter(options.dataGetter)
-
-		if (firstlyUpdate) {
-			if (options.startIndex > 0) {
-				this.updateDataCount().then(() => {
-					this.startIndex = this.limitStartIndex(options.startIndex)
-					this.needToApplyStartIndex = true
-					this.update()
-				})
-			}
-			else {
-				this.updateDataCount()
+			this.updateDataCount().then(() => {
 				this.update()
-			}
+			})
 		}
 		else {
 			this.update()
 		}
 	}
 
-	protected validateTemplateFn(templateFn: LiveTemplateFn<T> | any) {
-		try {
-			let result = templateFn(null, 0)
-			if (!(result instanceof TemplateResult)) {
-				throw new Error()
-			}
-		}
-		catch (err) {
-			throw new Error(`Please makesure "${templateFn.toString()}" can render "null" value`)
-		}
-	}
-
-	protected updateRenderOptions(options: LiveAsyncRepeatOptions<T> | any) {
-		if (options.averageItemHeight) {
-			this.averageItemHeight = options.averageItemHeight
-		}
-	}
-
 	protected async updateDataCount() {
-		let dataCountFn = (this.options as Options<LiveAsyncRepeatOptions<T>>).get('dataCount')
-		if (!dataCountFn) {
+		let dataCountConfig = this.dataCount
+		if (!dataCountConfig) {
 			return
 		}
 
-		this.knownDataCount = -1
-
+		let knownDataCount = 0
 		let dataCount: number | Promise<number>
-		if (typeof dataCountFn === 'function') {
-			dataCount = dataCountFn()
+
+		if (typeof dataCountConfig === 'function') {
+			dataCount = dataCountConfig()
 		}
 		else {
-			dataCount = dataCountFn
+			dataCount = dataCountConfig
 		}
 		
 		if (dataCount instanceof Promise) {
-			this.knownDataCount = await dataCount
+			knownDataCount = await dataCount
 		}
 		else {
-			this.knownDataCount = dataCount
+			dataCount = knownDataCount
 		}
 
-		if (this.needToUpdateSliderPositionAfterDataCountKnown) {
-			this.updateSliderPosition()
-		}
+		this.processor.updateDataCount(knownDataCount)
 	}
 
-	protected async update(renderPalceholders: boolean = true) {
-		this.updateSliderPosition()
+	protected update() {
+		this.processor.updateDataCount(this.fullData.length)
+		this.processor.updateAlways(this.updateFromIndices.bind(this))
+	}
 
-		let renderCount = this.options.get('pageSize') * this.options.get('renderPageCount')
-		let endIndex = this.limitEndIndex(this.startIndex + renderCount)
-		let needToRenderWithFreshData = !renderPalceholders
-		let updateImmediatelyPromise: Promise<void> | undefined
+	protected updateFromIndices(startIndex: number, endIndex: number, scrollDirection: 'up' | 'down' | null) {
+		this.startIndex = startIndex
+		this.endIndex = endIndex
 
-		if (renderPalceholders) {
-			let {data, fresh} = this.dataCacher.getExistingData(this.startIndex, endIndex)
-			updateImmediatelyPromise = this.updateData(data as T[])
-			needToRenderWithFreshData = !fresh
-		}
-		
-		let updateFreshPromise: Promise<void> | undefined
-		let updateId = this.updateId += 1
+		let {items, fresh} = this.dataCacher.getExistingData(startIndex, endIndex)
+		this.updateLiveData(items, scrollDirection)
+		this.triggerLiveAsyncDataEvents(scrollDirection, fresh)
 
-		if (needToRenderWithFreshData) {
-			updateFreshPromise = this.dataCacher.getFreshData(this.startIndex, endIndex).then((data: T[]) => {
-				if (updateId === this.updateId) {
-					return this.updateData(data)
-				}
-				else {
-					return Promise.resolve()
+		if (!fresh) {
+			let updateVersion = this.updateVersion++
+
+			this.dataCacher.getFreshData(startIndex, endIndex).then((data: T[]) => {
+				if (updateVersion === this.updateVersion) {
+					this.updateLiveData(data, scrollDirection)
+					this.triggerLiveAsyncDataEvents(scrollDirection, true)
 				}
 			})
 		}
-
-		if (updateImmediatelyPromise) {
-			await updateImmediatelyPromise
-		}
-		
-		if (updateFreshPromise) {
-			await updateFreshPromise
-		}
 	}
 
-	protected async updateData(data: T[]) {
+	protected updateLiveData(data: (T | null)[], scrollDirection: 'up' | 'down' | null) {
 		if (this.key) {
-			data = this.uniqueData(data)
+			data = this.uniqueDataByKey(data)
 		}
 
 		data = data.map(observe)
-		await super.updateData(data)
+		super.updateLiveData(data as T[], scrollDirection)
 	}
 
-	protected uniqueData(data: T[]): T[] {
+	protected uniqueDataByKey(data: (T | null)[]): (T | null)[] {
 		let set = new Set()
 		
 		return data.filter(item => {
@@ -196,49 +162,87 @@ export class LiveAsyncRepeatDirective<T> extends LiveRepeatDirective<T> {
 		})
 	}
 
-	protected updateSliderPosition() {
-		if (this.knownDataCount === -1) {
-			this.needToUpdateSliderPositionAfterDataCountKnown = true
-		}
+	protected triggerLiveAsyncDataEvents(scrollDirection: 'up' | 'down' | null, fresh: boolean) {
+		this.emit('liveDataUpdated', this.liveData, this.startIndex, scrollDirection, fresh)
 
-		super.updateSliderPosition()
-	}
-
-	// Returns `-1` when total count is not determinated.
-	protected getTotalDataCount(): number {
-		return this.knownDataCount
-	}
-
-	protected async getDataBetweens(startIndex: number, endIndex: number) {
-		return await this.dataCacher.getFreshData(startIndex, endIndex)
+		onRenderComplete(() => {
+			this.emit('liveDataRendered', this.liveData, this.startIndex, scrollDirection, fresh)
+		})
 	}
 
 	/** When data ordering changed and you want to keep scroll position, e.g., after sorting by columns. */ 
-	async reload() {
-		this.dataCacher.beStale()
-		this.updateDataCount()
-		await this.update(false)
+	reload() {
+		this.dataCacher.makeStale()
+
+		this.updateDataCount().then(() => {
+			this.update()
+		})
 	}
 
 	/** 
 	 * When data changed completely and you want to move to start scroll position, e.g., after data type changed.
 	 * @param index Specified the start index you want to set by `setStartIndex`.
 	 */ 
-	async reset(index: number = 0) {
+	reset(index: number = 0) {
 		this.dataCacher.clear()
-		this.updateDataCount()
-		await this.setStartIndex(index)
+
+		this.updateDataCount().then(() => {
+			this.setStartIndex(index)
+			this.update()
+		})
+	}
+
+	/** Resolved until `liveDataUpdated` triggered. */
+	untilUpdated() {
+		return new Promise(resolve => {
+			this.once('liveDataUpdated', () => resolve())
+		}) as Promise<void>
+	}
+
+	/** Resolved until `liveDataUpdated` triggered with fresh data. */
+	untilFreshUpdated() {
+		return new Promise(resolve => {
+			let listener = (_liveData: any, _startIndex: any, _scrollDirection: any, fresh: boolean) => {
+				if (fresh) {
+					this.off('liveDataUpdated', listener)
+					resolve()
+				}
+			}
+
+			this.once('liveDataUpdated', listener)
+		}) as Promise<void>
+	}
+
+	/** Resolved until `liveDataRendered` triggered. */
+	untilRendered() {
+		return new Promise(resolve => {
+			this.once('liveDataRendered', () => resolve())
+		}) as Promise<void>
+	}
+
+	/** Resolved until `liveDataRendered` triggered with fresh data. */
+	untilFreshRendered() {
+		return new Promise(resolve => {
+			let listener = (_liveData: any, _startIndex: any, _scrollDirection: any, fresh: boolean) => {
+				if (fresh) {
+					this.off('liveDataRendered', listener)
+					resolve()
+				}
+			}
+
+			this.once('liveDataRendered', listener)
+		}) as Promise<void>
 	}
 
 	getItem(index: number): T | null {
-		return this.dataCacher.getExistingData(index, index + 1).data[0]
+		return this.dataCacher.getExistingData(index, index + 1).items[0]
 	}
 
 	/** Get currently rendered item in index. */
 	getRenderedItem(index: number): T | null {
-		let isRendered = index >= this.startIndex && index < this.startIndex + this.data.length
+		let isRendered = index >= this.startIndex && index < this.startIndex + this.liveData.length
 		if (isRendered) {
-			return this.data[index - this.startIndex]
+			return this.liveData[index - this.startIndex]
 		}
 		else {
 			return null
@@ -270,7 +274,8 @@ export class LiveAsyncRepeatDirective<T> extends LiveRepeatDirective<T> {
  * @param transitionOptions The transition options, it can be a transition name, property or properties, or {transition, enterAtStart}.
  */
 export const liveAsyncRepeat = defineDirective(LiveAsyncRepeatDirective) as <Item>(
-	options: LiveAsyncRepeatOptions<Item>,
+	options: LiveAsyncRepeatDataOptions<Item>,
 	templateFn: LiveTemplateFn<Item>,
-	transitionOptions?: DirectiveTransitionOptions
+	liveRepeatOptions?: LiveRepeatOptions,
+	transitionOptions?: ContextualTransitionOptions
 ) => DirectiveResult

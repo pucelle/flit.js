@@ -1,41 +1,49 @@
 import {Binding, defineBinding} from './define'
-import {getScopedClassNameSet} from '../component'
-import {Context} from '../component'
+import type {Context} from '../component'
+import {getScopedClassNames} from '../internals/style-parser'
 
 
-interface ClassObject {
-	[key: string]: any
-}
+/** Object used for `:class=${{class1: value1, class2: value2}}` */
+type ClassObject = Record<string, string | number>
+
 
 /**
- * `:class="'class1 class2'"`
- * `:class="[class1, class2]"`
- * `:class="{class1: value1, class2: value2}"`
- * `:class.class-name="value"`
+ * `:class` binding will add class names to current element.
+ * 
+ * `:class="class1 class2"` - Like class name strings.
+ * `:class.class-name=${booleanValue}` - Add class name if booleanValue is `true`.
+ * `:class=${[class1, class2]}` - Add multiply class names from array.
+ * `:class=${{class1: value1, class2: value2}}` - Add multiply class names from their mapped boolean values.
  */
-defineBinding('class', class ClassNameBinding implements Binding<[string | ClassObject]> {
+@defineBinding('class')
+export class ClassNameBinding implements Binding<string | ClassObject> {
 
-	private el: Element
-	private modifiers: string[] | undefined
+	private readonly el: Element
+	private readonly modifiers: string[] | undefined
+
+	/** Current component name to identify class scope. */
+	private readonly scopeName: string
+
+	/** All the scoped class names. */
+	private readonly scopedClassNames: Set<string> | undefined
+
 	private lastClassNames: string[] = []
-	private scopeName: string
-	private scopedClassNameSet: Set<string> | undefined
 
 	constructor(el: Element, context: Context, modifiers?: string[]) {
 		if (modifiers) {
 			if (modifiers.length > 1) {
-				throw new Error(`Modifier "${modifiers.join('.')}" is not allowed, at most one modifier as class name can be specified for ":class"`)
+				throw new Error(`Modifier "${modifiers.join('.')}" is not allowed, at most one modifier as class name can be specified for ":class"!`)
 			}
 
 			if (!/^\$?[\w-]+$/.test(modifiers[0])) {
-				throw new Error(`Modifier "${modifiers[0]}" is not a valid class name`)
+				throw new Error(`Modifier "${modifiers[0]}" is not a valid class name!`)
 			}
 		}
 
 		this.el = el
 		this.modifiers = modifiers
-		this.scopeName = context ? context.el.localName : ''
-		this.scopedClassNameSet = this.scopeName ? getScopedClassNameSet(this.scopeName) : undefined
+		this.scopeName = context?.el.localName || ''
+		this.scopedClassNames = this.scopeName ? getScopedClassNames(this.scopeName) : undefined
 	}
 
 	update(value: string | ClassObject) {
@@ -61,7 +69,7 @@ defineBinding('class', class ClassNameBinding implements Binding<[string | Class
 	}
 
 	private parseClass(value: string | ClassObject): string[] {
-		let o: {[key: string]: boolean} = {}
+		let o: Record<string, boolean> = {}
 
 		if (this.modifiers) {
 			if (value) {
@@ -90,7 +98,7 @@ defineBinding('class', class ClassNameBinding implements Binding<[string | Class
 
 		for (let name in o) {
 			if (o[name]) {
-				if (this.scopedClassNameSet && this.scopedClassNameSet.has(name)) {
+				if (this.scopedClassNames && this.scopedClassNames.has(name)) {
 					name = name + '__' + this.scopeName
 				}
 
@@ -106,4 +114,4 @@ defineBinding('class', class ClassNameBinding implements Binding<[string | Class
 			this.el.classList.remove(...this.lastClassNames)
 		}
 	}
-})
+}
