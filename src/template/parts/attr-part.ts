@@ -7,10 +7,9 @@ export class AttrPart implements Part {
 	private readonly el: Element
 	private readonly name: string
 
-	constructor(el: Element, name: string, value: any) {
+	constructor(el: Element, name: string) {
 		this.el = el
 		this.name = name
-		this.update(value)
 	}
 
 	update(value: any) {

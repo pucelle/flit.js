@@ -11,19 +11,30 @@ import type {Context} from '../../component'
  */
 export class FixedBindingPart implements Part {
 
-	private readonly binding: Binding
+	private readonly el: Element
+	private readonly context: Context
+	private readonly bindingName: string
+	private readonly bindingModifiers: string[] | undefined
 
-	constructor(el: Element, name: string, value: unknown, context: Context) {
+	private binding: Binding | null = null
+
+	constructor(el: Element, name: string, context: Context) {
+		this.el = el
+		this.context = context
+
 		let dotIndex = name.indexOf('.')
-		let bindingName = dotIndex > -1 ? name.slice(0, dotIndex) : name
-		let bindingModifiers = dotIndex > -1 ? name.slice(dotIndex + 1).split('.') : undefined
-		let result = new BindingResult(bindingName, value)
-
-		this.binding = createBindingFromResult(el, context, result, bindingModifiers)
+		this.bindingName = dotIndex > -1 ? name.slice(0, dotIndex) : name
+		this.bindingModifiers = dotIndex > -1 ? name.slice(dotIndex + 1).split('.') : undefined
 	}
 
 	update(value: unknown) {
-		this.binding.update(value)
+		if (!this.binding) {
+			let result = new BindingResult(this.bindingName, value)
+			this.binding = createBindingFromResult(this.el, this.context, result, this.bindingModifiers)
+		}
+		else {
+			this.binding.update(value)
+		}
 	}
 }
 
@@ -37,13 +48,12 @@ export class DynamicBindingPart implements Part {
 	private readonly el: Element
 	private readonly context: Context
 
-	private binding: Binding | null = null
 	private name: string | null = null
+	private binding: Binding | null = null
 
-	constructor(el: Element, value: unknown, context: Context) {
+	constructor(el: Element, context: Context) {
 		this.el = el
 		this.context = context
-		this.update(value)
 	}
 
 	update(value: unknown) {
@@ -53,6 +63,7 @@ export class DynamicBindingPart implements Part {
 			}
 			else {
 				this.removeCurrentBinding()
+				this.name = value.name
 				this.binding = createBindingFromResult(this.el, this.context, value)
 			}
 		}

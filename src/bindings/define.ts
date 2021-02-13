@@ -63,7 +63,6 @@ export class BindingResult<A extends any[] = any[]> {
 
 	readonly name: string
 	readonly args: A
-	ref: ((binding: Binding) => void) | null = null
 
 	constructor(name: string, ...args: A) {
 		this.name = name
@@ -81,8 +80,9 @@ export function createBindingFromResult(el: Element, context: Context, result: B
 
 	let binding = new BindingConstructor(el, context, modifiers)
 
-	if (result.ref) {
-		result.ref(binding)
+	if (BindingReferences.has(result)) {
+		BindingReferences.get(result)!(binding)
+		BindingReferences.delete(result)
 	}
 
 	binding.update(...result.args as [any])
@@ -91,8 +91,11 @@ export function createBindingFromResult(el: Element, context: Context, result: B
 }
 
 
+/** Caches referenced binding callback. */
+const BindingReferences: WeakMap<BindingResult, (binding: Binding) => void> = new WeakMap()
+
 /** Reference binding instance after it created and before updating. */
 export function refBinding(result: BindingResult, ref: (binding: Binding) => void) {
-	result.ref = ref
+	BindingReferences.set(result, ref)
 	return result
 }

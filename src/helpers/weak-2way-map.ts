@@ -20,9 +20,6 @@ export class Weak2WayMap<L extends object, R extends object> {
 				this.addRightLeftMap(r, l)
 			}
 		}
-		else if (rs.size === 0) {
-			this.clearFromLeft(l)
-		}
 		else {
 			// Very high rate no need to add or delete.
 			// So we test if should add or delete firstly.

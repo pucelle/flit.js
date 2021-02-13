@@ -27,10 +27,9 @@ export class NodePart implements Part {
 	private contentType: ContentType | null = null
 	private content: Template | Template[] | Directive | Text | null = null
 
-	constructor(anchor: NodeAnchor, value: unknown, context: Context) {
+	constructor(anchor: NodeAnchor, context: Context) {
 		this.anchor = anchor
 		this.context = context
-		this.update(value)
 	}
 
 	update(value: unknown) {
@@ -64,11 +63,11 @@ export class NodePart implements Part {
 		if (value instanceof TemplateResult) {
 			return ContentType.Template
 		}
-		if (value instanceof DirectiveResult) {
+		else if (value instanceof DirectiveResult) {
 			return ContentType.Directive
 		}
 		else if (Array.isArray(value)) {
-			return ContentType.Template
+			return ContentType.TemplateArray
 		}
 		else {
 			return ContentType.Text

@@ -176,8 +176,6 @@ class HTMLAndSVGTemplateParser {
 	}
 
 	parse(type: TemplateType, string: string): SharedParsedReulst {
-		this.nodeIndexs = []
-
 		let tokens = parseToHTMLTokens(string)
 		let codes = ''
 
@@ -235,13 +233,15 @@ class HTMLAndSVGTemplateParser {
 			attributes = [...template.attributes].map(({name, value}) => ({name, value}))
 		}
 
-		this.clean()
-
-		return {
+		let result = {
 			template,
 			slots: this.slots,
-			rootAttributes: attributes
+			rootAttributes: attributes,
 		}
+
+		this.clean()
+
+		return result
 	}
 
 	private parseSlotTag(attr: string) {

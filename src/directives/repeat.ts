@@ -79,6 +79,7 @@ export class RepeatDirective<T> implements Directive {
 		// and can also avoid unnecessary updating after total directive data updated.
 		let watcher = new LazyWatcher(watchFn, this.updateData.bind(this))
 		this.getWatcherGroup().add(watcher)
+		this.updateData(watcher.value)
 	}
 
 	/** Get watcher group to add watcher. */

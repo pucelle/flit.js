@@ -175,6 +175,7 @@ export class LiveRepeatDirective<T, E = any> extends InternalEventEmitter<LiveRe
 
 		let watcher = new LazyWatcher(watchFn, onUpdate)
 		this.getWatcherGroup().add(watcher)
+		onUpdate(watcher.value)
 	}
 
 	/** Get watcher group to add or delete watcher. */

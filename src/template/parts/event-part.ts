@@ -17,14 +17,13 @@ export class EventPart implements Part {
 
 	private handler!: (...args: any[]) => void
 
-	constructor(el: Element, name: string, handler: (...args: any[]) => void, context: Context) {
+	constructor(el: Element, name: string, context: Context) {
 		this.el = el
 		this.name = name[0] === '@' ? name.slice(1) : name
 		this.context = context
 		this.isComEvent = el.localName.includes('-') && name[0] === '@'
 
 		this.bindListener()
-		this.update(handler)
 	}
 
 	private bindListener() {

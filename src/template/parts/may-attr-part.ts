@@ -9,10 +9,9 @@ export class MayAttrPart implements Part {
 	private readonly el: Element
 	private readonly name: string
 
-	constructor(el: Element, name: string, value: unknown) {
+	constructor(el: Element, name: string) {
 		this.el = el
 		this.name = name
-		this.update(value)
 	}
 
 	update(value: unknown) {

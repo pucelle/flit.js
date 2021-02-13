@@ -9,7 +9,7 @@ export type TemplateFn<T> = (item: T, index: number) => TemplateResult
 /** 
  * A `repeat` directive can only watches top level data changes,
  * can't watch property changes of each `item`.
- * So this class is used to watch and update template result that generated from `templateFn` from an `item`.
+ * So this class is used to watch and update template result that generated from `templateFn` and one `item`.
  */
 export class RepeativeTemplate<T> {
 

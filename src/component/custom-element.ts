@@ -93,6 +93,8 @@ function update() {
 	if (toDisconnectSoonCache.size > 0) {
 		updateDisconnectRequests()
 	}
+
+	needsUpdate = false
 }
 
 
@@ -102,7 +104,6 @@ function updateConnectRequests() {
 
 	// More connect requests will come, must delay them.
 	toConnectSoonCache = new Map()
-	needsUpdate = false
 
 	// Important: elements were sorted as map keys.
 	for (let [el, Com] of toConnectImmediately.entries()) {

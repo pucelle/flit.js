@@ -1,80 +1,71 @@
-import type {Component} from '../component'
-import {Watcher} from './watcher'
+import {Component} from '../component'
+import {LazyWatcher, Watcher} from './watcher'
 
 
-/** Indicates what we are updating. */
+/** 
+ * Indicates what we are updating.
+ * Updating at a stage may cause new items added into following stages.
+ */
 enum UpdatingStage {
+
+	/** No updata tasks. */
 	NotStarted,
+
+	/** Will update in next animation frame. */
 	Prepended,
-	UpdatingWatchers,
-	UpdatingComponents,
+
+	UpdatingUpdatable,
 	UpdatingLazyWatchers,
 	CallingCallbacks,
+
+	/** Update End. */
+	End,
+}
+
+
+/** A binding or directive can be updated. */
+interface Updatable {
+	__updateImmediately(): void
 }
 
 
 /** Components wait to be updated. */
-let componentSet: Set<Component> = new Set()
-let components: Component[] = []
+let updatableSet: Set<Updatable> = new Set()
+let updatables: Updatable[] = []
 
 /** Watchers wait to be updated. */
-let normalWatcherSet: Set<Watcher> = new Set()
-let lazyWatcherSet: Set<Watcher> = new Set()
-let normalWatchers: Watcher[] = []
-let lazyWatchers: Watcher[] = []
+let lazyWatcherSet: Set<LazyWatcher> = new Set()
+let lazyWatchers: LazyWatcher[] = []
 
 /** Callbacks wait to be called after all the things update. */
 let renderCompleteCallbacks: (() => void)[] = []
 
 /** Cache the updated time of watchers and components. */
-let updatedTimesMap: Map<Watcher | Component, number> = new Map()
+let updatedTimesMap: Map<Updatable, number> = new Map()
 
 /** What's updating right now. */
 let updatingStage: UpdatingStage = UpdatingStage.NotStarted
 
 
 /** When a component should be updated. */
-export function enqueueComponents(com: Component) {
-	if (componentSet.has(com)) {
+export function enqueueUpdatable(upt: Updatable) {
+	if (updatableSet.has(upt)) {
 		return
 	}
 
-	if (updatingStage >= UpdatingStage.UpdatingComponents) {
-		if (!validateComponentUpdateTimes(com)) {
+	if (updatingStage >= UpdatingStage.UpdatingUpdatable) {
+		if (!validateUpdateTimes(upt)) {
 			return
 		}
 	}
 
-	if (updatingStage > UpdatingStage.UpdatingComponents) {
-		com.__updateImmediately()
-	}
-	else {
-		componentSet.add(com)
-		components.push(com)
-		enqueueUpdateIfNot()
-	}
-}
+	updatableSet.add(upt)
+	updatables.push(upt)
+	enqueueUpdateIfNot()
 
-
-/** When a watcher should be updated. */
-export function enqueueWatcher(watcher: Watcher) {
-	if (normalWatcherSet.has(watcher)) {
-		return
-	}
-
-	if (updatingStage >= UpdatingStage.UpdatingWatchers) {
-		if (!validateWatcherUpdateTimes(watcher)) {
-			return
-		}
-	}
-
-	if (updatingStage > UpdatingStage.UpdatingWatchers) {
-		watcher.__updateImmediately()
-	}
-	else {
-		normalWatcherSet.add(watcher)
-		normalWatchers.push(watcher)
-		enqueueUpdateIfNot()
+	// Must after enqueueUpdateIfNot.
+	if (updatingStage > UpdatingStage.UpdatingUpdatable) {
+		updatingStage = UpdatingStage.UpdatingUpdatable
 	}
 }
 
@@ -86,24 +77,23 @@ export function enqueueLazyWatcher(watcher: Watcher) {
 	}
 
 	if (updatingStage >= UpdatingStage.UpdatingLazyWatchers) {
-		if (!validateWatcherUpdateTimes(watcher)) {
+		if (!validateUpdateTimes(watcher)) {
 			return
 		}
 	}
+	lazyWatcherSet.add(watcher)
+	lazyWatchers.push(watcher)
+	enqueueUpdateIfNot()
 
+	// Must after enqueueUpdateIfNot.
 	if (updatingStage > UpdatingStage.UpdatingLazyWatchers) {
-		watcher.__updateImmediately()
-	}
-	else {
-		lazyWatcherSet.add(watcher)
-		lazyWatchers.push(watcher)
-		enqueueUpdateIfNot()
+		updatingStage = UpdatingStage.UpdatingLazyWatchers
 	}
 }
 
 
 /** Warn if component updated for many times. */
-function validateComponentUpdateTimes(com: Component): boolean {
+function validateUpdateTimes(upt: Updatable): boolean {
 
 	// We currently just check the count of updating times, if exceed 3 then warn.
 	// 
@@ -112,13 +102,19 @@ function validateComponentUpdateTimes(com: Component): boolean {
 	//     then get their referenced watchers,
 	//     then check if current watcher in it.
 
-	let updatedTimes = updatedTimesMap.get(com) || 0
-	updatedTimesMap.set(com, updatedTimes + 1)
+	let updatedTimes = updatedTimesMap.get(upt) || 0
+	updatedTimesMap.set(upt, updatedTimes + 1)
 	
 	if (updatedTimes > 3) {
-		let html = com.el.outerHTML
-		let shortHTML = html.length > 100 ? html.slice(0, 100) + '...' : html
-		console.warn(`Component with element "${shortHTML}" may change values in the render function and cause infinite updating!`)
+		if (upt instanceof Component) {
+			console.warn(upt, `may change values in the render function and cause infinite updating!`)
+		}
+		else if (upt instanceof Watcher) {
+			console.warn(upt, `may change values in the watcher callback and cause infinite updating!`)
+		}
+		else if (upt instanceof Watcher) {
+			console.warn(upt, `may change values in callback and cause infinite updating!`)
+		}
 
 		return false
 	}
@@ -126,19 +122,6 @@ function validateComponentUpdateTimes(com: Component): boolean {
 	return true
 }
 
-
-/** Warn if watcher updated for many times. */
-function validateWatcherUpdateTimes(watcher: Watcher) {
-	let updatedTimes = updatedTimesMap.get(watcher) || 0
-	updatedTimesMap.set(watcher, updatedTimes + 1)
-
-	if (updatedTimes > 3) {
-		console.warn(`Watcher "${watcher.toString()}" may change values in the watcher callback and cause infinite updating!`)
-		return false
-	}
-
-	return true
-}
 
 /** 
  * Calls `callback` after all the components and watchers updated and rendering completed.
@@ -161,7 +144,8 @@ export function renderComplete(): Promise<void> {
 
 
 function enqueueUpdateIfNot() {
-	// Why doesn't use `Promise.resolve().then` to start a micro stask:
+
+	// Why doesn't use `Promise.resolve().then` to start a micro stask normally:
 	// When initialize a component from `connectedCallback`,
 	// it's child nodes especially elements of child components are not ready,
 	// even in the following micro task queue.
@@ -169,6 +153,9 @@ function enqueueUpdateIfNot() {
 
 	// Otherwise it's very frequently to trigger updating since data are always in changing,
 	// Uses `requestAnimationFrame` can handle less data channing and callbaks.
+
+	// But sill need to wait for a micro tick,
+	// because more components will be connected in next micro task.
 
 	if (updatingStage === UpdatingStage.NotStarted) {
 		requestAnimationFrame(update)
@@ -178,80 +165,79 @@ function enqueueUpdateIfNot() {
 
 async function update() {
 
-	// At beginning, we update watchers firstly and then components,
-	// because we want to reduce the sencories that data changing in watchers cause components to updated.
-	
-	// But later we relaized the watchers were updated most possible because the components updated and applies `.property`.
-	// So updating watchers later can ensure components which requires the watched properties are rendered.
-
-	// So finally we decided to update watchers before components,
-	// And if components are updating, we update watchers immediately.
-	
-	// Stage 1
-	updatingStage = UpdatingStage.UpdatingWatchers
-
-	for (let i = 0; i < normalWatchers.length; i++) {
-		let watcher = normalWatchers[i]
-		normalWatcherSet.delete(watcher)
-
-		try {
-			watcher.__updateImmediately()
-		}
-		catch (err) {
-			console.error(err)
-		}
-	}
-	
-	normalWatchers = []
-
-
-	// Stage 2
-	updatingStage = UpdatingStage.UpdatingComponents
-
-	for (let i = 0; i < components.length; i++) {
-		let com = components[i]
-		componentSet.delete(com)
-
-		try {
-			com.__updateImmediately()
-		}
-		catch (err) {
-			console.error(err)
-		}
+	if (updatingStage === UpdatingStage.Prepended) {
+		updatingStage = UpdatingStage.UpdatingUpdatable
 	}
 
-	components = []
+	while (updatingStage !== UpdatingStage.End) {
 
+		// Stage 1, updating watchers, components and other updatable, may cause more components or watchers to update.
+		if (updatingStage === UpdatingStage.UpdatingUpdatable) {
+			for (let i = 0; i < updatables.length; i++) {
+				let upt = updatables[i]
+				updatableSet.delete(upt)
 
-	// Stage 3
-	updatingStage = UpdatingStage.UpdatingLazyWatchers
+				try {
+					upt.__updateImmediately()
+				}
+				catch (err) {
+					console.error(err)
+				}
+			}
 
-	for (let i = 0; i < lazyWatchers.length; i++) {
-		let watcher = lazyWatchers[i]
-		lazyWatcherSet.delete(watcher)
-
-		try {
-			watcher.__updateImmediately()
+			updatables = []
+			updatingStage = UpdatingStage.UpdatingLazyWatchers
 		}
-		catch (err) {
-			console.error(err)
+
+		// Stage 2, all components and watchers become stable now.
+		else if (updatingStage === UpdatingStage.UpdatingLazyWatchers) {
+			for (let i = 0; i < lazyWatchers.length; i++) {
+				let watcher = lazyWatchers[i]
+				lazyWatcherSet.delete(watcher)
+		
+				try {
+					watcher.__updateImmediately()
+				}
+				catch (err) {
+					console.error(err)
+				}
+			}
+			
+			lazyWatchers = []
+
+			if (updatingStage === UpdatingStage.UpdatingLazyWatchers) {
+				updatingStage = UpdatingStage.CallingCallbacks
+				
+				// May reset state in the micro task tick.
+				await Promise.resolve()
+			}
+		}
+
+		else if (updatingStage === UpdatingStage.CallingCallbacks) {
+			for (let i = 0; i < renderCompleteCallbacks.length; i++) {
+				try {
+					renderCompleteCallbacks[i]()
+				}
+				catch (err) {
+					console.error(err)
+				}
+			}
+		
+			renderCompleteCallbacks = []
+
+			if (updatingStage === UpdatingStage.CallingCallbacks) {
+				updatingStage = UpdatingStage.End
+
+				// May reset state in the micro task tick.
+				await Promise.resolve()
+			}
 		}
 	}
-	
-	lazyWatchers = []
 
 
-	// Stage 4
-	updatingStage = UpdatingStage.CallingCallbacks
 
-	for (let i = 0; i < renderCompleteCallbacks.length; i++) {
-		renderCompleteCallbacks[i]()
-	}
-
-	renderCompleteCallbacks = []
-
-
-	// Back to start stage.
+	// Will back to start stage.
+	// But still wait for a short micro task tick to see if there is new updating requests come.
 	updatedTimesMap = new Map()
 	updatingStage = UpdatingStage.NotStarted
 }

@@ -17,7 +17,7 @@ interface Updating {
 
 
 /**
- * `Updatable <-> Dependency` map.
+ * `UpdatableProxied <-> Dependency` map.
  * 
  * To know when rendering a component or update a watcher, all the dependent objects it used.
  * So after any of those object changed, we know which components or watchers should be updated.
@@ -29,7 +29,7 @@ interface Updating {
 const DepMap = new Weak2WayMap<UpdatableProxied, Dependency>()
 
 /**
- * `Updatable <-> Dependency -> Property` map.
+ * `UpdatableProxied <-> Dependency -> Property` map.
  * 
  * To know when rendering a component or update a watcher, all dependent components and what's the properties it used.
  * So after any of those properties changed, we know which components or watchers should be updated.

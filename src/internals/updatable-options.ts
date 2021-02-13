@@ -10,11 +10,12 @@ export class UpdatableOptions<O = any> {
 		this.defaultOptions = defaultOptions
 	}
 
+	/** Whether not been updated. */
 	isNotUpdated() {
 		return !this.updated
 	}
 
-	/** Update options. */
+	/** Update options, assign `options` to current option object. */
 	update(options: O | undefined) {
 		this.options = options || null
 		this.updated = true

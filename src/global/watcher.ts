@@ -1,5 +1,5 @@
 import {startUpdating, endUpdating, clearDependenciesOf} from '../observer'
-import {enqueueWatcher, enqueueLazyWatcher} from './queue'
+import {enqueueUpdatable, enqueueLazyWatcher} from './queue'
 
 
 /** 
@@ -43,7 +43,7 @@ export class Watcher<T = any> {
 			return
 		}
 		
-		enqueueWatcher(this)
+		enqueueUpdatable(this)
 	}
 
 	/** Update current value immediately, also keeps consitant with the same method in `Component`. */
@@ -83,7 +83,8 @@ export class Watcher<T = any> {
 
 /** 
  * Lazy watchers update later than normal watchers and components.
- * So data and nodes are prepared when watcher callback called. 
+ * So data and nodes are stabled now.
+ * A `LazyWatcher` should not cause data changing.
  */
 export class LazyWatcher<T = any> extends Watcher<T> {
 

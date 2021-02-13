@@ -47,7 +47,7 @@ export class NodeRange {
 		}
 	}
 
-	/** Get current fragment, may return `null`. */
+	/** Get current container, may return `null`. */
 	getCurrentContainer(): ParentNode & Node | null {
 		return this.container
 	}
@@ -59,6 +59,11 @@ export class NodeRange {
 	 */
 	extractToFragment(): DocumentFragment {
 		let fragment: DocumentFragment
+
+		// Ensure `startNode` because will be inserted.
+		if (!this.startNode) {
+			this.getStartNode()
+		}
 
 		if (this.container instanceof DocumentFragment) {
 			fragment = this.container

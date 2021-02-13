@@ -1,5 +1,5 @@
 import {NodePart, TemplateResult} from '../template'
-import {enqueueComponents, onRenderComplete} from '../global/queue'
+import {enqueueUpdatable, onRenderComplete} from '../global/queue'
 import {startUpdating, endUpdating, observeComTarget, clearDependenciesOf} from '../observer'
 import {WatcherGroup} from '../global/watcher'
 import {NodeAnchorType, NodeAnchor} from "../internals/node-anchor"
@@ -179,7 +179,8 @@ export abstract class Component<E = any> extends InternalEventEmitter<E & Compon
 				this.__rootPart.update(result)
 			}
 			else if (result !== null) {
-				this.__rootPart = new NodePart(new NodeAnchor(this.el, NodeAnchorType.Container), result, this)
+				this.__rootPart = new NodePart(new NodeAnchor(this.el, NodeAnchorType.Container), this)
+				this.__rootPart.update(result)
 			}
 		}
 		catch (err) {
@@ -216,14 +217,14 @@ export abstract class Component<E = any> extends InternalEventEmitter<E & Compon
 	 * Never overwrite this method until you know what you are doing.
 	 */
 	update() {
-		enqueueComponents(this)
+		enqueueUpdatable(this)
 	}
 
 	/**
 	 * Called when component instance was just created and all properties assigned.
 	 * All the child nodes that belongs to parent context but contained in current component are prepared.
 	 * But self child nodes, `slots`, `refs`, events are not prepared until `onReady`.
-	 * You may change some data or visit parent nodes or `this.el`.
+	 * You may change some data or visit parent nodes, or register events when `onCreated`.
 	 */
 	protected onCreated() {}
 
@@ -231,7 +232,7 @@ export abstract class Component<E = any> extends InternalEventEmitter<E & Compon
 	 * Called after all the data, child nodes are prepared, but child components are not prepared.
 	 * Later it will keep updating other components, so don't check computed styles on child nodes.
 	 * If need so, uses `onRenderComplete` or `renderComplete`.
-	 * You may visit or adjust child nodes or bind more events here.
+	 * You may visit or adjust child nodes or register more events when `onReady`.
 	 */
 	protected onReady() {}
 

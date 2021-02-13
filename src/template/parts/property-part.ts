@@ -21,13 +21,11 @@ export class PropertyPart implements Part {
 
 	private com: Component | null = null
 
-	constructor(el: Element, name: string, value: unknown, fixed: boolean) {
+	constructor(el: Element, name: string, fixed: boolean) {
 		this.el = el
 		this.name = name[0] === '.' ? name.slice(1) : name
 		this.isComProperty = el.localName.includes('-') && name[0] !== '.'
 		this.fixed = fixed
-
-		this.update(value)
 	}
 
 	update(value: unknown) {

@@ -66,53 +66,60 @@ export class Template {
 			for (let nodeIndex = 0; nodeIndex < nodes.length; nodeIndex++) {
 				let node = nodes[nodeIndex]
 				let slot = slots[nodeIndex]
-				let strings = slot.strings
-				let valueIndices = slot.valueIndices
-				let values = valueIndices?.map(index => resultValues[index]) || null
-				let value = joinStringsAndValues(strings, values)
 				let part: Part | undefined
 
 				switch (slot.type) {
-					case SlotType.Node:
-						part = new NodePart(new NodeAnchor(node, NodeAnchorType.Next), value, this.context)
-						break
-
 					case SlotType.SlotTag:
 						part = new SlotPart(node as Element, slot.name, this.context)
 						break
 
+					case SlotType.Node:
+						part = new NodePart(new NodeAnchor(node, NodeAnchorType.Next), this.context)
+						break
+
 					case SlotType.MayAttr:
-						part = new MayAttrPart(node as Element, slot.name!, value)
+						part = new MayAttrPart(node as Element, slot.name!)
 						break
 
 					case SlotType.Event:
-						part = new EventPart(node as Element, slot.name!, value as (...args: any) => void, this.context)
+						part = new EventPart(node as Element, slot.name!, this.context)
 						break
 
 					case SlotType.Attr:
-						part = new AttrPart(node as Element, slot.name!, value)
+						part = new AttrPart(node as Element, slot.name!)
 						break
 
 					case SlotType.Property:
-						part = new PropertyPart(node as Element, slot.name!, value, !valueIndices)
+						part = new PropertyPart(node as Element, slot.name!, !slot.valueIndices)
 						break
 	
 					case SlotType.FixedBinging:
-						part = new FixedBindingPart(node as Element, slot.name!, value, this.context)
+						part = new FixedBindingPart(node as Element, slot.name!, this.context)
 						break
 
 					case SlotType.DynamicBinding:
-						part = new DynamicBindingPart(node as Element, value, this.context)
+						part = new DynamicBindingPart(node as Element, this.context)
 						break
 				}
 
-				// Only when `valueIndices` exist this part is updatable.
-				if (part && valueIndices) {
-					this.parts.push({
-						part,
-						strings,
-						valueIndices,
-					})
+				if (slot.type === SlotType.SlotTag) {
+					(part as SlotPart).update()
+				}
+				else {
+					let {strings, valueIndices} = slot
+					let values = valueIndices?.map(index => resultValues[index]) || null
+					let value = joinStringsAndValues(strings, values)
+
+					part.update(value)
+
+					// Only when `valueIndices` exist then value is dynamic so this part is updatable.
+					if (valueIndices) {
+						this.parts.push({
+							part,
+							strings,
+							valueIndices,
+						})
+					}
 				}
 			}
 		}
