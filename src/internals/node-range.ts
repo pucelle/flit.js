@@ -23,28 +23,28 @@ export class NodeRange {
 	}
 
 	/** Get or create `startNode`. */
-	private getStartNode() {
+	private getStartNode(): ChildNode | null {
 		if (this.startNode) {
 			return this.startNode
 		}
-		else {
-
-			// `startNode` should always ahead of any other nodes inside the template or as rest slot element,
-			// But if first node is a hole - comment node, which will insert nodes before it,
-			// extracting as a fragment will break this relationship.
-			// So here prepend a new comment node as `startNode`.
-
-			let startNode = this.container!.firstChild!
-
-			if (startNode.nodeType === 8) {
-				startNode = document.createComment('')
-				this.container!.prepend(startNode)
-			}
-
-			this.startNode = startNode
-
-			return startNode
+		
+		let startNode = this.container!.firstChild!
+		if (!startNode) {
+			return null
 		}
+
+		// `startNode` should always ahead of any other nodes inside the template or as rest slot element,
+		// But if first node is a hole - comment node, which will insert nodes before it,
+		// extracting as a fragment will break this relationship.
+		// So here prepend a new comment node as `startNode`.
+		if (startNode.nodeType === 8) {
+			startNode = document.createComment('')
+			this.container!.prepend(startNode)
+		}
+
+		this.startNode = startNode
+
+		return startNode
 	}
 
 	/** Get current container, may return `null`. */
@@ -126,12 +126,12 @@ export class NodeRange {
 
 	/** Insert all the nodes of specified range before start node of current range. */
 	before(range: NodeRange) {
-		this.getStartNode().before(range.extractToFragment())
+		this.getStartNode()?.before(range.extractToFragment())
 	}
 
 	/** Replace all the nodes in the range with the nodes of specified range. */
 	replaceWith(range: NodeRange) {
-		this.getStartNode().before(range.extractToFragment())
+		this.getStartNode()?.before(range.extractToFragment())
 		this.remove()
 	}
 
