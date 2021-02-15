@@ -1,5 +1,5 @@
 import {once, off} from './dom-event'
-import {onRenderComplete} from '../global/queue'
+import {onRenderComplete} from '../queue'
 
 
 /** Transition easing identifier. */

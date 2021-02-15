@@ -1,7 +1,7 @@
 import {NodePart, TemplateResult} from '../template'
-import {enqueueUpdatable, onRenderComplete} from '../global/queue'
+import {enqueueUpdatableInOrder, onRenderComplete} from '../queue'
 import {startUpdating, endUpdating, observeComTarget, clearDependenciesOf} from '../observer'
-import {WatcherGroup} from '../global/watcher'
+import {WatcherGroup} from '../watchers'
 import {NodeAnchorType, NodeAnchor} from "../internals/node-anchor"
 import type {DirectiveResult} from '../directives'
 import {setElementComponentMap} from './from-element'
@@ -10,6 +10,7 @@ import {InternalEventEmitter} from '../internals/internal-event-emitter'
 import type {ComponentStyle} from './style'
 import {getScopedClassNames} from '../internals/style-parser'
 import {NodeRange} from '../internals/node-range'
+import {UpdatableOrder} from '../queue/helpers/updatable-queue'
 
 
 /** 
@@ -217,7 +218,7 @@ export abstract class Component<E = any> extends InternalEventEmitter<E & Compon
 	 * Never overwrite this method until you know what you are doing.
 	 */
 	update() {
-		enqueueUpdatable(this)
+		enqueueUpdatableInOrder(this, this, UpdatableOrder.Component)
 	}
 
 	/**
@@ -301,9 +302,9 @@ export abstract class Component<E = any> extends InternalEventEmitter<E & Compon
 	}
 
 	/** Ensure `__watcherGroup` to be initialized. */
-	__getWatcherGroup() {
+	__getWatcherGroup(): WatcherGroup {
 		if (!this.__watcherGroup) {
-			this.__watcherGroup = new WatcherGroup()
+			this.__watcherGroup = new WatcherGroup(this)
 		}
 
 		return this.__watcherGroup

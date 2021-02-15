@@ -39,7 +39,7 @@ export function define(name: string, Com?: ComponentConstructor) {
 	// `define(name, Com)`
 	else {
 		defineComponentConstructor(name, Com)
-		defineCustomElement(name, Com)
+		defineCustomElement(name)
 
 		return undefined
 	}
@@ -74,7 +74,8 @@ function getComponentConstructor(name: string): ComponentConstructor | undefined
 
 
 /** Create a component manually, when we exactly know this is a custom element. */
-export function createComponent(el: HTMLElement, Com: ComponentConstructor = getComponentConstructor(el.localName)!): Component {
+export function createComponent(el: HTMLElement): Component {
+	let Com: ComponentConstructor = getComponentConstructor(el.localName)!
 	ensureComponentStyle(Com, el.localName)
 	
 	let com = new Com(el)

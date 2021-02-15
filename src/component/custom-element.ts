@@ -1,5 +1,5 @@
 
-import {ComponentConstructor, createComponent} from './define'
+import {createComponent} from './define'
 import {getComponent} from './from-element'
 
 
@@ -16,28 +16,28 @@ import {getComponent} from './from-element'
 
 
 /** Using queue to delay the connect and disconnect operations for elements. */
-let toConnectSoonCache: Map<HTMLElement, ComponentConstructor> = new Map()
-let toDisconnectSoonCache: Map<HTMLElement, ComponentConstructor> = new Map()
+let toConnectSoonCache: Set<HTMLElement> = new Set()
+let toDisconnectSoonCache: Set<HTMLElement> = new Set()
 
 /** Whether having things in queue to update. */
 let needsUpdate = false
 
 
 /** Defines custom element to connect and create component automatically. */
-export function defineCustomElement(name: string, Com: ComponentConstructor) {
+export function defineCustomElement(name: string) {
 	customElements.define(name, class FlitElement extends HTMLElement {
 
 		// Although spec says connect callback will not be called when inserting element to a document fragment,
 		// but I still find it may be triggrred in a rate.
 		connectedCallback() {
 			if (!(this.ownerDocument instanceof DocumentFragment)) {
-				enqueueConnect(this, Com)
+				enqueueConnect(this)
 			}
 		}
 
 		// Moving or removing element will trigger disconnected callback each time.
 		disconnectedCallback() {
-			enqueueDisconnect(this, Com)
+			enqueueDisconnect(this)
 		}
 	})
 
@@ -45,13 +45,13 @@ export function defineCustomElement(name: string, Com: ComponentConstructor) {
 
 
 /** Enqueue connection for an element. */
-function enqueueConnect(el: HTMLElement, Com: ComponentConstructor) {
+function enqueueConnect(el: HTMLElement) {
 	// Can avoid appending elements triggers disconnect and connect soon.
 	if (toDisconnectSoonCache.has(el)) {
 		toDisconnectSoonCache.delete(el)
 	}
 	else {
-		toConnectSoonCache.set(el, Com)
+		toConnectSoonCache.add(el)
 
 		if (!needsUpdate) {
 			enqueueUpdate()
@@ -61,13 +61,13 @@ function enqueueConnect(el: HTMLElement, Com: ComponentConstructor) {
 
 
 /** Enqueue disconnection for an element. */
-function enqueueDisconnect(el: HTMLElement, Com: ComponentConstructor) {
+function enqueueDisconnect(el: HTMLElement) {
 	// Can avoid inserting elements into a fragment and then removed triggers connect.
 	if (toConnectSoonCache.has(el)) {
 		toConnectSoonCache.delete(el)
 	}
 	else {
-		toDisconnectSoonCache.set(el, Com)
+		toDisconnectSoonCache.add(el)
 
 		if (!needsUpdate) {
 			enqueueUpdate()
@@ -100,13 +100,19 @@ function update() {
 
 /** Handle all connect requests. */
 function updateConnectRequests() {
-	let toConnectImmediately = toConnectSoonCache
+	let toConnectImmediately = [...toConnectSoonCache]
+
+	// Connect element in natural element order.
+	// Important: elements were sorted as connect order, just like element order.
+	// So wouln't cost time to sort.
+	toConnectImmediately.sort((a, b) => {
+		return a.compareDocumentPosition(b) & a.DOCUMENT_POSITION_FOLLOWING ? -1 : 1
+	})
 
 	// More connect requests will come, must delay them.
-	toConnectSoonCache = new Map()
+	toConnectSoonCache = new Set()
 
-	// Important: elements were sorted as map keys.
-	for (let [el, Com] of toConnectImmediately.entries()) {
+	for (let el of toConnectImmediately) {
 		
 		// `el` may not in document,
 		// e.g., inserted into a fragment.
@@ -114,7 +120,7 @@ function updateConnectRequests() {
 		// it will trigger `connectedCallback` again after insert into document.
 
 		// Here also have a small rate document not contains el.
-		connectElement(el, Com)
+		connectElement(el)
 	}
 }
 
@@ -123,8 +129,9 @@ function updateConnectRequests() {
 function updateDisconnectRequests() {
 	// More connect requests will be added, must delay them.
 	let toDisconnectImmediately = toDisconnectSoonCache
-	toDisconnectSoonCache = new Map()
+		toDisconnectSoonCache = new Set()
 
+	// Element order of disconnect is not important.
 	for (let el of toDisconnectImmediately.keys()) {
 		disconnectElement(el)
 	}
@@ -132,12 +139,12 @@ function updateDisconnectRequests() {
 
 
 /** Connect element and create component. */
-function connectElement(el: HTMLElement, Com: ComponentConstructor) {
+function connectElement(el: HTMLElement) {
 	let com = getComponent(el)
 	let isFirstTimeCreated = false
 
 	if (!com) {
-		com = createComponent(el, Com)
+		com = createComponent(el)
 		isFirstTimeCreated = true
 	}
 	

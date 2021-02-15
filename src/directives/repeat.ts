@@ -3,7 +3,7 @@ import type {Context} from '../component'
 import {ContextualTransition, ContextualTransitionOptions} from '../internals/contextual-transition'
 import {RepeativeTemplate, TemplateFn} from './helpers/repeative-template'
 import {NodeAnchor} from "../internals/node-anchor"
-import {GlobalWatcherGroup, LazyWatcher, Watcher} from '../global/watcher'
+import {GlobalWatcherGroup, LazyWatcher, Watcher} from '../watchers'
 import {getEditRecord, EditType} from '../helpers/edit'
 
 
@@ -77,7 +77,7 @@ export class RepeatDirective<T> implements Directive {
 		// Uses lazy watcher to watch each item of data changes,
 		// So each item can be updated indepent,
 		// and can also avoid unnecessary updating after total directive data updated.
-		let watcher = new LazyWatcher(watchFn, this.updateData.bind(this))
+		let watcher = new LazyWatcher(watchFn, this.updateData.bind(this), this.context)
 		this.getWatcherGroup().add(watcher)
 		this.updateData(watcher.value)
 	}

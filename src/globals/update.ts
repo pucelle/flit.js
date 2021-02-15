@@ -1,2 +1,2 @@
 export {updateAllComponents, updateAllStyles} from '../component'
-export {updateAllGlobalWatchers} from './watcher'
+export {updateAllGlobalWatchers} from '../watchers'

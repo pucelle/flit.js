@@ -1,7 +1,7 @@
 import {TemplateResult, Template, html} from '../template'
 import {Component, Context, createComponent} from '../component'
 import {DirectiveResult} from '../directives'
-import {GlobalWatcherGroup} from './watcher'
+import {GlobalWatcherGroup} from '../watchers'
 
 
 /**

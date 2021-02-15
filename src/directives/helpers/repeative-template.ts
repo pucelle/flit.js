@@ -1,6 +1,6 @@
 import {Context} from '../../component'
 import {Template, TemplateResult} from '../../template'
-import {GlobalWatcherGroup, LazyWatcher} from '../../global/watcher'
+import {GlobalWatcherGroup, LazyWatcher} from '../../watchers'
 
 
 export type TemplateFn<T> = (item: T, index: number) => TemplateResult
@@ -29,7 +29,7 @@ export class RepeativeTemplate<T> {
 		this.index = index
 		
 		/** Update after components and top level watchers update completed. */
-		this.watcher = new LazyWatcher(this.getTemplateResult.bind(this), this.onUpdateTemplateResult.bind(this))
+		this.watcher = new LazyWatcher(this.getTemplateResult.bind(this), this.onUpdateTemplateResult.bind(this), this.context)
 		this.template = new Template(this.watcher.value, this.context)
 		this.getWatcherGroup().add(this.watcher)
 	}

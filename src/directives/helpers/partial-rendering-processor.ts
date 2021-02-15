@@ -1,4 +1,4 @@
-import {onRenderComplete} from "../../global/queue"
+import {onRenderComplete} from "../../queue"
 import {locateFirstVisibleIndex, locateLastVisibleIndex} from "./visible-index-locator"
 
 

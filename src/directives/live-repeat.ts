@@ -7,11 +7,11 @@ import {off, on} from '../internals/dom-event'
 import {UpdatableOptions} from '../internals/updatable-options'
 import {PartialRenderingProcessor} from './helpers/partial-rendering-processor'
 import {InternalEventEmitter} from '../internals/internal-event-emitter'
-import {GlobalWatcherGroup, LazyWatcher, Watcher} from '../global/watcher'
+import {GlobalWatcherGroup, LazyWatcher, Watcher} from '../watchers'
 import {EditType, getEditRecord} from '../helpers/edit'
 import {locateFirstVisibleIndex} from './helpers/visible-index-locator'
 import {untilIdle} from '../helpers/utils'
-import {onRenderComplete} from '../global/queue'
+import {enqueueUpdatable, onRenderComplete} from '../queue'
 
 
 export interface LiveRepeatOptions {
@@ -173,7 +173,7 @@ export class LiveRepeatDirective<T, E = any> extends InternalEventEmitter<LiveRe
 			this.update()
 		}
 
-		let watcher = new LazyWatcher(watchFn, onUpdate)
+		let watcher = new LazyWatcher(watchFn, onUpdate, this.context)
 		this.getWatcherGroup().add(watcher)
 		onUpdate(watcher.value)
 	}
@@ -191,7 +191,13 @@ export class LiveRepeatDirective<T, E = any> extends InternalEventEmitter<LiveRe
 		}
 	}
 
+	/** Serveral update entry: normal update; from `setStartIndex`, from `reload`. */
 	protected update() {
+		// Update after watchers and components updated.
+		enqueueUpdatable(this, this.context)
+	}
+
+	__updateImmediately() {
 		this.processor.updateDataCount(this.fullData.length)
 		this.processor.updateAlways(this.updateFromIndices.bind(this))
 	}

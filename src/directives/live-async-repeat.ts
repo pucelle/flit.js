@@ -2,10 +2,10 @@ import {defineDirective, DirectiveResult} from './define'
 import {ContextualTransitionOptions} from '../internals/contextual-transition'
 import {TemplateResult} from '../template'
 import {LiveRepeatDirective, LiveRepeatOptions} from './live-repeat'
-import {PageDataGetter, PageDataCacher} from './helpers/page-data-cacher'
 import {observe} from '../observer'
 import {TemplateFn} from './helpers/repeative-template'
-import {onRenderComplete} from '../global/queue'
+import {onRenderComplete} from '../queue'
+import {ImmediatePageDataGetter, PageDataGetter, AsyncPageDataGetter} from './helpers/page-data-getter'
 
 
 export interface LiveAsyncRepeatDataOptions<T> {
@@ -13,11 +13,14 @@ export interface LiveAsyncRepeatDataOptions<T> {
 	/** If specified, we can avoid duplicate items with same key shown in same time. */
 	key?: keyof T
 
-	/** Page data getter to get each page items. */
-	dataGetter: PageDataGetter<T>
-
 	/** Total data count getter. */
 	dataCount: number | Promise<number> | (() => (number | Promise<number>))
+
+	/** Page data getter to get data items. */
+	asyncDataGetter: AsyncPageDataGetter<T>
+
+	/** Page data getter to get data items immediately, can include `null`. */
+	immediateDataGetter?: ImmediatePageDataGetter<T>
 }
 
 
@@ -59,7 +62,7 @@ export class LiveAsyncRepeatDirective<T> extends LiveRepeatDirective<T, LiveAsyn
 	protected dataCount!: number | Promise<number> | (() => (number | Promise<number>))
 
 	/** Caches loaded data. */
-	protected dataCacher!: PageDataCacher<T>
+	protected dataGetter!: PageDataGetter<T>
 
 	/** Need to call `updateSliderPosition` after got `knownDataCount`. */
 	protected needToUpdateSliderPositionAfterDataCountKnown: boolean = false
@@ -71,9 +74,9 @@ export class LiveAsyncRepeatDirective<T> extends LiveRepeatDirective<T, LiveAsyn
 		this.transition.updateOptions(transitionOptions)
 		this.updatePreRendered()
 
-		let firstTimeUpdate = !this.dataCacher
+		let firstTimeUpdate = !this.dataGetter
 		if (firstTimeUpdate) {
-			this.dataCacher = new PageDataCacher(dataOptions.key, dataOptions.pageSize)
+			this.dataGetter = new PageDataGetter(dataOptions.dataGetter, dataOptions.immediateDataGetter)
 
 			this.updateDataCount().then(() => {
 				this.update()
@@ -110,23 +113,20 @@ export class LiveAsyncRepeatDirective<T> extends LiveRepeatDirective<T, LiveAsyn
 		this.processor.updateDataCount(knownDataCount)
 	}
 
-	protected update() {
-		this.processor.updateDataCount(this.fullData.length)
-		this.processor.updateAlways(this.updateFromIndices.bind(this))
-	}
-
 	protected updateFromIndices(startIndex: number, endIndex: number, scrollDirection: 'up' | 'down' | null) {
 		this.startIndex = startIndex
 		this.endIndex = endIndex
 
-		let {items, fresh} = this.dataCacher.getExistingData(startIndex, endIndex)
+		let items = this.dataGetter.getImmediateData(startIndex, endIndex)
+		let fresh = items.some(item => item === null || item === undefined)
+
 		this.updateLiveData(items, scrollDirection)
 		this.triggerLiveAsyncDataEvents(scrollDirection, fresh)
 
 		if (!fresh) {
 			let updateVersion = this.updateVersion++
 
-			this.dataCacher.getFreshData(startIndex, endIndex).then((data: T[]) => {
+			this.dataGetter.getFreshData(startIndex, endIndex).then((data: T[]) => {
 				if (updateVersion === this.updateVersion) {
 					this.updateLiveData(data, scrollDirection)
 					this.triggerLiveAsyncDataEvents(scrollDirection, true)
@@ -170,26 +170,12 @@ export class LiveAsyncRepeatDirective<T> extends LiveRepeatDirective<T, LiveAsyn
 		})
 	}
 
-	/** When data ordering changed and you want to keep scroll position, e.g., after sorting by columns. */ 
-	reload() {
-		this.dataCacher.makeStale()
-
-		this.updateDataCount().then(() => {
-			this.update()
-		})
-	}
-
 	/** 
-	 * When data changed completely and you want to move to start scroll position, e.g., after data type changed.
-	 * @param index Specified the start index you want to set by `setStartIndex`.
-	 */ 
-	reset(index: number = 0) {
-		this.dataCacher.clear()
-
-		this.updateDataCount().then(() => {
-			this.setStartIndex(index)
-			this.update()
-		})
+	 * Reload data count and refresh to get all needed data.
+	 * Call this when data order column changed and you want to keep scroll position, e.g., after sorting. */ 
+	async reload() {
+		await this.updateDataCount()
+		this.update()
 	}
 
 	/** Resolved until `liveDataUpdated` triggered. */
@@ -232,36 +218,6 @@ export class LiveAsyncRepeatDirective<T> extends LiveRepeatDirective<T, LiveAsyn
 
 			this.once('liveDataRendered', listener)
 		}) as Promise<void>
-	}
-
-	getItem(index: number): T | null {
-		return this.dataCacher.getExistingData(index, index + 1).items[0]
-	}
-
-	/** Get currently rendered item in index. */
-	getRenderedItem(index: number): T | null {
-		let isRendered = index >= this.startIndex && index < this.startIndex + this.liveData.length
-		if (isRendered) {
-			return this.liveData[index - this.startIndex]
-		}
-		else {
-			return null
-		}
-	}
-
-	/** When async items added at index, we need to adjust scrolling position and data count immediately,
-	 * and may add null item as placeholders for the added items.
-	 * Such that you will feel no delay after the add or delete operation.
-	 * After data loaded, new render result should be the same.
-	 */
-	notifyAdded(index: number, count: number = 1) {
-		this.dataCacher.moveData(index, count)
-		this.update()
-	}
-
-	notifyDeleted(index: number, count: number = 1) {
-		this.dataCacher.moveData(index, -count)
-		this.update()
 	}
 }
 
