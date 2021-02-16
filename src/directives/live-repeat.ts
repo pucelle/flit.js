@@ -9,8 +9,7 @@ import {PartialRenderingProcessor} from './helpers/partial-rendering-processor'
 import {InternalEventEmitter} from '../internals/internal-event-emitter'
 import {GlobalWatcherGroup, LazyWatcher, Watcher} from '../watchers'
 import {EditType, getEditRecord} from '../helpers/edit'
-import {locateFirstVisibleIndex} from './helpers/visible-index-locator'
-import {untilIdle} from '../helpers/utils'
+import {untilIdle, locateFirstVisibleIndex, locateLastVisibleIndex} from '../helpers/utils'
 import {enqueueUpdatable, onRenderComplete} from '../queue'
 
 
@@ -345,6 +344,14 @@ export class LiveRepeatDirective<T, E = any> extends InternalEventEmitter<LiveRe
 	}
 
 	/** 
+	 * Get `endIndex` for the end index of current rendered items.
+	 * The returned value equals index of last index of rendered item +1.
+	 */
+	getEndIndex() {
+		return this.startIndex
+	}
+
+	/** 
 	 * Get the index of the first visible element, which can be used to restore scrolling position by `setStartIndex`.
 	 * May cause page reflow.
 	 */
@@ -352,13 +359,23 @@ export class LiveRepeatDirective<T, E = any> extends InternalEventEmitter<LiveRe
 		return Math.max(0, locateFirstVisibleIndex(this.scroller, this.slider.children))
 	}
 
-	/** Set `startIndex`, and the item in which index will be at the top start position of the viewport. */
+	/** 
+	 * Get the index of the last visible element.
+	 * May cause page reflow.
+	 */
+	getLastVisibleIndex() {
+		return Math.max(0, locateLastVisibleIndex(this.scroller, this.slider.children))
+	}
+
+	/** Set `startIndex`, and the item in this index will be at the top start position of the viewport. */
 	setStartIndex(index: number) {
 		this.processor.setStartIndex(index)
 		this.update()
 	}
 
-	/** Adjust `startIndex` and scroll position to make item in the specified index becomes visible if it's not. */
+	/** 
+	 * Make item in the specified index becomes visible.
+	 * If element is not rendered, adjust `startIndex` and re-render firstly. */
 	scrollToViewIndex(index: number) {
 		if (this.isIndexRendered(index)) {
 			this.scrollToViewRenderedIndex(index)

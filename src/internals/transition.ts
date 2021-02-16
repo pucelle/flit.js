@@ -359,6 +359,7 @@ export class Transition {
 
 		// Here to makesure rendering complete for current frame,
 		// Then the next `requestAnimationFrame` will be called for a new frame.
+		// Then we can play transition betweens these 2 frames.
 		onRenderComplete(() => {
 			requestAnimationFrame(() => {
 				if (canceled) {

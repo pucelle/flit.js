@@ -33,11 +33,8 @@ enum UpdatingStage {
 	/** Will update in next animation frame. */
 	Prepended,
 
-	/** Updates anything that updatable, like components, watchers, etc... */
-	UpdatingUpdatable,
-
-	/** Calls `onRenderComplete` callbacks. */
-	CallingCallbacks,
+	/** Are updating. */
+	Updating,
 }
 
 
@@ -123,40 +120,43 @@ function enqueueUpdateIfNot() {
 
 /** Do updating. */
 async function update() {
-	updatingStage = UpdatingStage.UpdatingUpdatable
+	updatingStage = UpdatingStage.Updating
 
-	// Update watchers, components and other updatable, may cause more components or watchers to be enqueued.
-	while (!queue.isEmpty()) {
-		let updatableList = queue.getInOrder()
-		queue.clear()
+	while (!queue.isEmpty() || renderCompleteCallbacks.length > 0) {
 
-		for (let upt of updatableList) {
+		// Update watchers, components and other updatable, may cause more components or watchers to be enqueued.
+		while (!queue.isEmpty()) {
+			do {
+				let upt = queue.shift()!
+
+				try {
+					upt.__updateImmediately()
+				}
+				catch (err) {
+					console.error(err)
+				}
+			}
+			while (!queue.isEmpty())
+
+			// Wait for more components connect.
+			await Promise.resolve()
+		}
+
+		
+		let callbackList = renderCompleteCallbacks
+		renderCompleteCallbacks = []
+
+		// Calls callbacks, all components and watchers become stable now.
+		for (let callback of callbackList) {
 			try {
-				upt.__updateImmediately()
+				callback()
 			}
 			catch (err) {
 				console.error(err)
 			}
 		}
 
-		// Wait for more components connect.
 		await Promise.resolve()
-	}
-
-
-	updatingStage = UpdatingStage.CallingCallbacks
-
-	let callbackList = renderCompleteCallbacks
-	renderCompleteCallbacks = []
-
-	// Calls callbacks, all components and watchers become stable now.
-	for (let callback of callbackList) {
-		try {
-			callback()
-		}
-		catch (err) {
-			console.error(err)
-		}
 	}
 
 

@@ -52,7 +52,7 @@ export interface ComponentEvents {
 	updated: () => void
 
 	/**
-	 * After every time all the data and child nodes updated, and all the child nodes and components rendered.
+	 * After every time all the data and child nodes updated, and also rendered.
 	 * You can safely visit computed style on child nodes.
 	 */ 
 	rendered: () => void
@@ -93,15 +93,15 @@ export abstract class Component<E = any> extends InternalEventEmitter<E & Compon
 	readonly __restNodeRange: NodeRange
 
 	/* Whether current component connected with a document. */
-	private __connected: boolean = false
+	protected __connected: boolean = false
 
 	/** Whether have updated for at least once. */
-	private __updated: boolean = false
+	protected __updated: boolean = false
 
-	private __rootPart: NodePart | null = null
+	protected __rootPart: NodePart | null = null
 
 	/** `WatcherGroup` instance to cache watchers binded with current component. */
-	private __watcherGroup: WatcherGroup | null = null
+	protected __watcherGroup: WatcherGroup | null = null
 
 	constructor(el: HTMLElement) {
 		super()

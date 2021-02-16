@@ -1,5 +1,5 @@
-import {onRenderComplete} from "../../queue"
-import {locateFirstVisibleIndex, locateLastVisibleIndex} from "./visible-index-locator"
+import {locateLastVisibleIndex, locateFirstVisibleIndex} from '../../helpers/utils'
+import {onRenderComplete} from '../../queue'
 
 
 // What to process:
