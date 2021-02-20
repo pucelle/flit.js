@@ -76,7 +76,7 @@ export function enqueueUpdatable(upt: Updatable, context: Context) {
 
 
 /** 
- * Calls `callback` after all the components and watchers updated and rendering completed.
+ * Calls `callback` after all the components and watchers updated and rendered in next animation frame.
  * Note that it was called before `renderComplete`.
  */
 export function onRenderComplete(callback: () => void) {
@@ -86,7 +86,7 @@ export function onRenderComplete(callback: () => void) {
 
 
 /** 
- * Returns a promise which will be resolved after all the components and watchers updated and rendering completed.
+ * Returns a promise which will be resolved after all the components and watchers updated and rendered in next animation frame.
  * Note that it was called after `onRenderComplete`.
  */
 export function renderComplete(): Promise<void> {
@@ -142,7 +142,7 @@ async function update() {
 			await Promise.resolve()
 		}
 
-		
+
 		let callbackList = renderCompleteCallbacks
 		renderCompleteCallbacks = []
 

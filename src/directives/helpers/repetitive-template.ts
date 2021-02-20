@@ -11,7 +11,7 @@ export type TemplateFn<T> = (item: T, index: number) => TemplateResult
  * can't watch property changes of each `item`.
  * So this class is used to watch and update template result that generated from `templateFn` and one `item`.
  */
-export class RepeativeTemplate<T> {
+export class RepetitiveTemplate<T> {
 
 	private readonly context: Context
 	private readonly templateFn: TemplateFn<T>

@@ -1,7 +1,7 @@
 import {defineDirective, Directive, DirectiveResult} from './define'
 import type {Context} from '../component'
 import {ContextualTransition, ContextualTransitionOptions} from '../internals/contextual-transition'
-import {RepeativeTemplate, TemplateFn} from './helpers/repeative-template'
+import {RepetitiveTemplate, TemplateFn} from './helpers/repetitive-template'
 import type {NodeAnchor} from "../internals/node-anchor"
 import {off, on} from '../internals/dom-event'
 import {UpdatableOptions} from '../internals/updatable-options'
@@ -9,8 +9,9 @@ import {PartialRenderingProcessor} from './helpers/partial-rendering-processor'
 import {InternalEventEmitter} from '../internals/internal-event-emitter'
 import {GlobalWatcherGroup, LazyWatcher, Watcher} from '../watchers'
 import {EditType, getEditRecord} from '../helpers/edit'
-import {untilIdle, locateFirstVisibleIndex, locateLastVisibleIndex} from '../helpers/utils'
+import {untilIdle, locateFirstVisibleIndex, locateLastVisibleIndex, getElementCountBefore} from '../helpers/utils'
 import {enqueueUpdatable, onRenderComplete} from '../queue'
+import {OffsetChildren} from './helpers/offset-children'
 
 
 export interface LiveRepeatOptions {
@@ -24,7 +25,7 @@ export interface LiveRepeatOptions {
     *
 	* This property is not updatable.
 	*/
-	pageSize?: number
+	renderCount?: number
 
 	/**
 	* If can't render all the contents in an animation frame, you should set this to `true`.
@@ -51,7 +52,7 @@ export interface LiveRepeatEvents<T> {
 
 /** Default `liveRepeat` options. */
 const DefaultLiveRepeatOptions: LiveRepeatOptions = {
-	pageSize: 50,
+	renderCount: 50,
 	preRendering: false,
 }
 
@@ -65,6 +66,7 @@ export class LiveRepeatDirective<T, E = any> extends InternalEventEmitter<LiveRe
 	protected readonly processor: PartialRenderingProcessor
 	protected readonly scroller: HTMLElement
 	protected readonly slider: HTMLElement
+	protected readonly sliderChildren: OffsetChildren
 
 
 	/** Cached last data that comes from outside, before been processed. */
@@ -77,7 +79,7 @@ export class LiveRepeatDirective<T, E = any> extends InternalEventEmitter<LiveRe
 	protected liveData: T[] = []
 
 	/** Current rendered templates, maps with `lastData` one by one. */
-	protected repTems: RepeativeTemplate<T>[] = []
+	protected repTems: RepetitiveTemplate<T>[] = []
 
 	/** Watcher to watch data changes. */
 	protected lastWatcher: Watcher | null = null
@@ -93,11 +95,12 @@ export class LiveRepeatDirective<T, E = any> extends InternalEventEmitter<LiveRe
 	protected endIndex: number = 0
 
 	/** All current items and pre-prendered items. */
-	protected preRendered: Map<T, RepeativeTemplate<T>> | null = null
+	protected preRendered: Map<T, RepetitiveTemplate<T>> | null = null
 
 	/** Indicates current updating. */
 	protected updateVersion: number = 0
 
+	
 	constructor(anchor: NodeAnchor, context: Context) {
 		super()
 
@@ -118,12 +121,13 @@ export class LiveRepeatDirective<T, E = any> extends InternalEventEmitter<LiveRe
 		}
 
 		this.transition = new ContextualTransition(context)
-		this.processor = new PartialRenderingProcessor(slider, scroller, this.options.get('pageSize'))
+		this.sliderChildren = new OffsetChildren(slider, getElementCountBefore(anchor.el as Comment))
+		this.processor = new PartialRenderingProcessor(scroller, slider, this.sliderChildren)
 		this.scroller = scroller
 		this.slider = slider
 
 		on(scroller, 'scroll.passive', this.onScroll, this)
-	} 
+	}
 
 	canMergeWith(_data: Iterable<T> | null, templateFn: TemplateFn<T>): boolean {
 		return templateFn === this.templateFn || templateFn.toString() === this.templateFn.toString()
@@ -139,6 +143,10 @@ export class LiveRepeatDirective<T, E = any> extends InternalEventEmitter<LiveRe
 		this.options.update(liveRepeatOptions)
 		this.transition.updateOptions(transitionOptions)
 		this.updatePreRendered()
+
+		if (liveRepeatOptions?.renderCount) {
+			this.processor.updateRenderCount(liveRepeatOptions.renderCount)
+		}
 
 		if (data !== this.rawData) {
 			this.watchAndUpdateData(data)
@@ -212,16 +220,16 @@ export class LiveRepeatDirective<T, E = any> extends InternalEventEmitter<LiveRe
 		this.triggerLiveDataEvents(scrollDirection)		
 	}
 
-	protected updateLiveData(liveData: T[], scrollDirection: 'up' | 'down' | null) {
+	protected updateLiveData(newData: T[], scrollDirection: 'up' | 'down' | null) {
 		this.updateVersion++
 
 		let shouldPaly = this.transition.canPlay()
 		let shouldReuse = !shouldPaly && !this.options.get('preRendering')
 		let oldData = this.liveData
 		let oldRepTems = this.repTems
-		let editRecord = getEditRecord(oldData, liveData, shouldReuse)
+		let editRecord = getEditRecord(oldData, newData, shouldReuse)
 
-		this.liveData = liveData
+		this.liveData = newData
 		this.repTems = []
 
 		for (let record of editRecord) {
@@ -237,10 +245,10 @@ export class LiveRepeatDirective<T, E = any> extends InternalEventEmitter<LiveRe
 			}
 			else if (type === EditType.MoveModify) {
 				this.moveRepTemBefore(oldRepTems[moveFromIndex], oldRepTem)
-				this.reuseRepTem(oldRepTems[moveFromIndex], oldData[moveFromIndex], toIndex)
+				this.reuseRepTem(oldRepTems[moveFromIndex], newData[toIndex], toIndex)
 			}
 			else if (type === EditType.Insert) {
-				let newRepTem = this.createRepTem(liveData[toIndex], toIndex)
+				let newRepTem = this.createRepTem(newData[toIndex], toIndex)
 				this.moveRepTemBefore(newRepTem, oldRepTem)
 				
 				if (shouldPaly) {
@@ -267,7 +275,7 @@ export class LiveRepeatDirective<T, E = any> extends InternalEventEmitter<LiveRe
 		})
 	}
 
-	protected moveRepTemBefore(repTem: RepeativeTemplate<T>, nextOldRepTem: RepeativeTemplate<T> | null) {
+	protected moveRepTemBefore(repTem: RepetitiveTemplate<T>, nextOldRepTem: RepetitiveTemplate<T> | null) {
 		if (nextOldRepTem) {
 			nextOldRepTem.template.before(repTem.template)
 		}
@@ -276,12 +284,12 @@ export class LiveRepeatDirective<T, E = any> extends InternalEventEmitter<LiveRe
 		}
 	}
 
-	protected useMatchedRepTem(repTem: RepeativeTemplate<T>, index: number) {
+	protected useMatchedRepTem(repTem: RepetitiveTemplate<T>, index: number) {
 		repTem.updateIndex(this.startIndex + index)
 		this.repTems.push(repTem)
 	}
 
-	protected reuseRepTem(repTem: RepeativeTemplate<T>, item: T, index: number) {
+	protected reuseRepTem(repTem: RepetitiveTemplate<T>, item: T, index: number) {
 		this.preRendered?.delete(repTem.item)
 		this.preRendered?.set(item, repTem)
 
@@ -297,7 +305,7 @@ export class LiveRepeatDirective<T, E = any> extends InternalEventEmitter<LiveRe
 			return repTem
 		}
 		else {
-			let repTem = new RepeativeTemplate(this.context, this.templateFn, item, this.startIndex + index)
+			let repTem = new RepetitiveTemplate(this.context, this.templateFn, item, this.startIndex + index)
 			this.repTems.push(repTem)
 			this.preRendered?.set(item, repTem)
 
@@ -305,7 +313,7 @@ export class LiveRepeatDirective<T, E = any> extends InternalEventEmitter<LiveRe
 		}
 	}
 
-	protected mayPlayEnter(repTem: RepeativeTemplate<T>) {
+	protected mayPlayEnter(repTem: RepetitiveTemplate<T>) {
 		let template = repTem.template
 		let firstElement = template.getFirstElement() as HTMLElement
 		if (firstElement) {
@@ -313,7 +321,7 @@ export class LiveRepeatDirective<T, E = any> extends InternalEventEmitter<LiveRe
 		}
 	}
 
-	protected removeRepTemAndMayPlayLeave(repTem: RepeativeTemplate<T>, shouldPaly: boolean) {
+	protected removeRepTemAndMayPlayLeave(repTem: RepetitiveTemplate<T>, shouldPaly: boolean) {
 		let template = repTem.template
 
 		if (shouldPaly) {
@@ -334,7 +342,7 @@ export class LiveRepeatDirective<T, E = any> extends InternalEventEmitter<LiveRe
 		}
 	}
 
-	protected removeRepTem(repTem: RepeativeTemplate<T>) {
+	protected removeRepTem(repTem: RepetitiveTemplate<T>) {
 		repTem.disconnect()
 	}
 
@@ -356,7 +364,7 @@ export class LiveRepeatDirective<T, E = any> extends InternalEventEmitter<LiveRe
 	 * May cause page reflow.
 	 */
 	getFirstVisibleIndex() {
-		return Math.max(0, locateFirstVisibleIndex(this.scroller, this.slider.children))
+		return Math.max(0, locateFirstVisibleIndex(this.scroller, this.sliderChildren.getChildren()))
 	}
 
 	/** 
@@ -364,8 +372,9 @@ export class LiveRepeatDirective<T, E = any> extends InternalEventEmitter<LiveRe
 	 * May cause page reflow.
 	 */
 	getLastVisibleIndex() {
-		return Math.max(0, locateLastVisibleIndex(this.scroller, this.slider.children))
+		return Math.max(0, locateLastVisibleIndex(this.scroller, this.sliderChildren.getChildren()))
 	}
+
 
 	/** Set `startIndex`, and the item in this index will be at the top start position of the viewport. */
 	setStartIndex(index: number) {
@@ -397,7 +406,7 @@ export class LiveRepeatDirective<T, E = any> extends InternalEventEmitter<LiveRe
 	/** After item in index rendered, make it visible. */
 	protected scrollToViewRenderedIndex(index: number) {
 		let scrollerRect = this.scroller.getBoundingClientRect()
-		let el = this.slider.children[index - this.startIndex]!
+		let el = this.sliderChildren.childAt(index - this.startIndex)
 		let rect = el.getBoundingClientRect()
 
 		// Below it, need to scroll up.
@@ -416,13 +425,13 @@ export class LiveRepeatDirective<T, E = any> extends InternalEventEmitter<LiveRe
 		let version = this.updateVersion
 		let preRendered = this.preRendered!
 
-		let renderCount = this.options.get('pageSize') * this.processor.getRenderPageCount()
+		let renderCount = this.options.get('renderCount') * this.processor.getRenderGroupCount()
 		let startIndex = Math.max(0, this.startIndex - renderCount)
 		let endIndex = Math.min(this.fullData.length, this.endIndex + renderCount)
 		let data = this.fullData.slice(startIndex, endIndex)
 		let dataSet: Set<T> = new Set(data)
 		let indices: number[] = []
-		let restRepTems: RepeativeTemplate<T>[] = []
+		let restRepTems: RepetitiveTemplate<T>[] = []
 
 		for (let item of preRendered.keys()) {
 			if (!dataSet.has(item)) {
@@ -466,7 +475,7 @@ export class LiveRepeatDirective<T, E = any> extends InternalEventEmitter<LiveRe
 				preRendered.set(item, repTem)
 			}
 			else {
-				let repTem = new RepeativeTemplate(this.context, this.templateFn, item, index)
+				let repTem = new RepetitiveTemplate(this.context, this.templateFn, item, index)
 				repTem.template.preRender()
 				preRendered.set(item, repTem)
 				createCount++

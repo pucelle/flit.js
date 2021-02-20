@@ -1,7 +1,7 @@
 import {defineDirective, Directive, DirectiveResult} from './define'
 import type {Context} from '../component'
 import {ContextualTransition, ContextualTransitionOptions} from '../internals/contextual-transition'
-import {RepeativeTemplate, TemplateFn} from './helpers/repeative-template'
+import {RepetitiveTemplate, TemplateFn} from './helpers/repetitive-template'
 import {NodeAnchor} from "../internals/node-anchor"
 import {GlobalWatcherGroup, LazyWatcher, Watcher} from '../watchers'
 import {getEditRecord, EditType} from '../helpers/edit'
@@ -25,7 +25,7 @@ export class RepeatDirective<T> implements Directive {
 	protected data: T[] = []
 
 	/** Current rendered templates, maps with `lastData` one by one. */
-	protected repTems: RepeativeTemplate<T>[] = []
+	protected repTems: RepetitiveTemplate<T>[] = []
 
 	/** Watcher to watch data changes. */
 	protected lastWatcher: Watcher | null = null
@@ -118,7 +118,7 @@ export class RepeatDirective<T> implements Directive {
 			}
 			else if (type === EditType.MoveModify) {
 				this.moveRepTemBefore(oldRepTems[moveFromIndex], oldRepTem)
-				this.reuseRepTem(oldRepTems[moveFromIndex], oldData[moveFromIndex], toIndex)
+				this.reuseRepTem(oldRepTems[moveFromIndex], newData[toIndex], toIndex)
 			}
 			else if (type === EditType.Insert) {
 				let newRepTem = this.createRepTem(newData[toIndex], toIndex)
@@ -134,7 +134,7 @@ export class RepeatDirective<T> implements Directive {
 		}
 	}
 
-	protected moveRepTemBefore(repTem: RepeativeTemplate<T>, nextOldRepTem: RepeativeTemplate<T> | null) {
+	protected moveRepTemBefore(repTem: RepetitiveTemplate<T>, nextOldRepTem: RepetitiveTemplate<T> | null) {
 		if (nextOldRepTem) {
 			nextOldRepTem.template.before(repTem.template)
 		}
@@ -143,24 +143,24 @@ export class RepeatDirective<T> implements Directive {
 		}
 	}
 
-	protected useMatchedRepTem(repTem: RepeativeTemplate<T>, index: number) {
+	protected useMatchedRepTem(repTem: RepetitiveTemplate<T>, index: number) {
 		repTem.updateIndex(index)
 		this.repTems.push(repTem)
 	}
 
-	protected reuseRepTem(repTem: RepeativeTemplate<T>, item: T, index: number) {
+	protected reuseRepTem(repTem: RepetitiveTemplate<T>, item: T, index: number) {
 		repTem.update(item, index)
 		this.repTems.push(repTem)
 	}
 
 	protected createRepTem(item: T, index: number) {
-		let repTem = new RepeativeTemplate(this.context, this.templateFn, item, index)
+		let repTem = new RepetitiveTemplate(this.context, this.templateFn, item, index)
 		this.repTems.push(repTem)
 
 		return repTem
 	}
 
-	protected mayPlayEnter(repTem: RepeativeTemplate<T>) {
+	protected mayPlayEnter(repTem: RepetitiveTemplate<T>) {
 		let template = repTem.template
 		let firstElement = template.getFirstElement() as HTMLElement
 		if (firstElement) {
@@ -168,7 +168,7 @@ export class RepeatDirective<T> implements Directive {
 		}
 	}
 
-	protected removeRepTemAndMayPlayLeave(repTem: RepeativeTemplate<T>, shouldPaly: boolean) {
+	protected removeRepTemAndMayPlayLeave(repTem: RepetitiveTemplate<T>, shouldPaly: boolean) {
 		let template = repTem.template
 
 		if (shouldPaly) {
@@ -189,7 +189,7 @@ export class RepeatDirective<T> implements Directive {
 		}
 	}
 
-	protected removeRepTem(repTem: RepeativeTemplate<T>) {
+	protected removeRepTem(repTem: RepetitiveTemplate<T>) {
 		repTem.disconnect()
 	}
 

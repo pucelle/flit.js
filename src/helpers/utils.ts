@@ -1,3 +1,7 @@
+/** Rect box size and location, all properties are writable. */
+export type Rect = {-readonly [key in keyof ClientRect]: number }
+
+
 /** Trim text by removing `\r\n\t`. */
 export function trim(text: string) {
 	return text.replace(/^[\r\n\t]+|[\r\n\t]+$/g, '')
@@ -5,33 +9,30 @@ export function trim(text: string) {
 
 
 /**
- * Using binary algorithm to find index from a sorted array at where the item match `fn`.
+ * Find the closest index in a sorted array in where to insert new item.
+ * Returned index betweens `0 - array.length`, and if `array[index]` exist, `fn(array[index]) >= 0`.
  * @param array The sorted array.
- * @param fn The function to accept item in array as parameter and returns negative value to move left, positive value to move right.
+ * @param fn The function to accept item in array as argument and returns `-1` to move left, `1` to move right.
  */
-export function binaryFindIndex<T>(array: ArrayLike<T>, fn: (item: T) => number): number {
+export function binaryFindIndexToInsert<T>(array: ArrayLike<T>, fn: (item: T) => (0 | -1 | 1)): number {
 	if (array.length === 0) {
-		return -1
+		return 0
 	}
 
 	let result = fn(array[0])
-	if (result === 0) {
+	if (result === 0 || result === -1) {
 		return 0
 	}
-	if (result < 0) {
-		return -1
-	}
-
 	if (array.length === 1) {
-		return -1
+		return 1
 	}
 
 	result = fn(array[array.length - 1])
 	if (result === 0) {
 		return array.length - 1
 	}
-	if (result > 0) {
-		return -1
+	if (result === 1) {
+		return array.length
 	}
 
 	let start = 0
@@ -44,7 +45,7 @@ export function binaryFindIndex<T>(array: ArrayLike<T>, fn: (item: T) => number)
 		if (result === 0) {
 			return center
 		}
-		else if (result < 0) {
+		else if (result === -1) {
 			end = center
 		}
 		else {
@@ -52,7 +53,7 @@ export function binaryFindIndex<T>(array: ArrayLike<T>, fn: (item: T) => number)
 		}
 	}
 
-	return -1
+	return end
 }
 
 
@@ -95,7 +96,7 @@ export function untilIdle() {
  * @param els Element list to check.
  */
 export function locateFirstVisibleIndex(container: Element, els: ArrayLike<Element>): number {
-	return locateVisibleIndex(container, els, true)
+	return locateVisibleIndex(container, els, false)
 }
 
 
@@ -105,14 +106,14 @@ export function locateFirstVisibleIndex(container: Element, els: ArrayLike<Eleme
  * @param els Element list to check.
  */
 export function locateLastVisibleIndex(container: Element, els: ArrayLike<Element>): number {
-	return locateVisibleIndex(container, els, false)
+	return locateVisibleIndex(container, els, true)
 }
 
 
-function locateVisibleIndex(container: Element, els: ArrayLike<Element>, isFirst: boolean): number {
+function locateVisibleIndex(container: Element, els: ArrayLike<Element>, isLast: boolean): number {
 	let containerRect = container.getBoundingClientRect()
 
-	return binaryFindIndex(els, (el) => {
+	let index = binaryFindIndexToInsert(els, (el) => {
 		let rect = el.getBoundingClientRect()
 		if (rect.bottom <= containerRect.top) {
 			return 1
@@ -121,7 +122,43 @@ function locateVisibleIndex(container: Element, els: ArrayLike<Element>, isFirst
 			return -1
 		}
 		else {
-			return isFirst ? -1 : 1
+			// If find last, prefer move to right.
+			return isLast ? 1 : -1
 		}
 	})
+
+	if (isLast && index > 0) {
+		index -= 1
+	}
+
+	return index
+}
+
+
+/** Get count of elements before current node. */
+export function getElementCountBefore(node: Element | CharacterData): number {
+	let offset = 0
+
+	while (node.previousElementSibling) {
+		node = node.previousElementSibling
+		offset += 1
+	}
+
+	return offset
+}
+
+
+
+/** Get an rect object just like `getBoundingClientRect`, but writtable. */
+export function getRect(el: Element): Rect {
+	let rect = el.getBoundingClientRect()
+
+	return {
+		top: rect.top,
+		right: rect.right,
+		bottom: rect.bottom,
+		left: rect.left,
+		width: rect.width,
+		height: rect.height,
+	}
 }

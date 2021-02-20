@@ -3,7 +3,7 @@ import {ContextualTransitionOptions} from '../internals/contextual-transition'
 import {TemplateResult} from '../template'
 import {LiveRepeatDirective, LiveRepeatOptions} from './live-repeat'
 import {observe} from '../observer'
-import {TemplateFn} from './helpers/repeative-template'
+import {TemplateFn} from './helpers/repetitive-template'
 import {onRenderComplete} from '../queue'
 import {ImmediatePageDataGetter, PageDataGetter, AsyncPageDataGetter} from './helpers/page-data-getter'
 
@@ -74,9 +74,13 @@ export class LiveAsyncRepeatDirective<T> extends LiveRepeatDirective<T, LiveAsyn
 		this.transition.updateOptions(transitionOptions)
 		this.updatePreRendered()
 
+		if (liveRepeatOptions?.renderCount) {
+			this.processor.updateRenderCount(liveRepeatOptions.renderCount)
+		}
+
 		let firstTimeUpdate = !this.dataGetter
 		if (firstTimeUpdate) {
-			this.dataGetter = new PageDataGetter(dataOptions.dataGetter, dataOptions.immediateDataGetter)
+			this.dataGetter = new PageDataGetter(dataOptions.asyncDataGetter, dataOptions.immediateDataGetter)
 
 			this.updateDataCount().then(() => {
 				this.update()
@@ -87,14 +91,18 @@ export class LiveAsyncRepeatDirective<T> extends LiveRepeatDirective<T, LiveAsyn
 		}
 	}
 
+	__updateImmediately() {
+		this.processor.updateAlways(this.updateFromIndices.bind(this))
+	}
+
 	protected async updateDataCount() {
 		let dataCountConfig = this.dataCount
 		if (!dataCountConfig) {
 			return
 		}
 
-		let knownDataCount = 0
 		let dataCount: number | Promise<number>
+		let knownDataCount = 0
 
 		if (typeof dataCountConfig === 'function') {
 			dataCount = dataCountConfig()
@@ -107,7 +115,7 @@ export class LiveAsyncRepeatDirective<T> extends LiveRepeatDirective<T, LiveAsyn
 			knownDataCount = await dataCount
 		}
 		else {
-			dataCount = knownDataCount
+			knownDataCount = dataCount
 		}
 
 		this.processor.updateDataCount(knownDataCount)
@@ -118,13 +126,13 @@ export class LiveAsyncRepeatDirective<T> extends LiveRepeatDirective<T, LiveAsyn
 		this.endIndex = endIndex
 
 		let items = this.dataGetter.getImmediateData(startIndex, endIndex)
-		let fresh = items.some(item => item === null || item === undefined)
+		let fresh = !items.some(item => item === null || item === undefined)
 
 		this.updateLiveData(items, scrollDirection)
 		this.triggerLiveAsyncDataEvents(scrollDirection, fresh)
 
 		if (!fresh) {
-			let updateVersion = this.updateVersion++
+			let updateVersion = ++this.updateVersion
 
 			this.dataGetter.getFreshData(startIndex, endIndex).then((data: T[]) => {
 				if (updateVersion === this.updateVersion) {
