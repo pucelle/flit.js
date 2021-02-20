@@ -2,10 +2,10 @@ import {repeatForTimes} from '../../helpers/utils'
 
 
 /** Page data getter. */
-export type AsyncPageDataGetter<T> = (start: number, size: number) => Promise<T[]> | T[]
+export type AsyncPageDataGetter<T> = (startIndex: number, endIndex: number) => Promise<T[]> | T[]
 
 /** Immediate page data getter. */
-export type ImmediatePageDataGetter<T> = (start: number, size: number) => (T | null)[]
+export type ImmediatePageDataGetter<T> = (startIndex: number, endIndex: number) => (T | null)[]
 
 /** Data cache. */
 export interface PageDataCache<T> {
@@ -42,6 +42,7 @@ export class PageDataGetter<T> {
 		return items
 	}
 
+	/** Get shared part with previously loaded data. */
 	private getSharedData(startIndex: number, endIndex: number): (T | null)[] {
 		let items: (T | null)[] = []
 		let count = endIndex - startIndex
