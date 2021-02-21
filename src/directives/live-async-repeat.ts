@@ -11,16 +11,16 @@ import {ImmediatePageDataGetter, PageDataGetter, AsyncPageDataGetter} from './he
 export interface LiveAsyncRepeatDataOptions<T> {
 
 	/** If specified, we can avoid duplicate items with same key shown in same time. */
-	key?: keyof T
+	readonly key?: keyof T
 
 	/** Total data count getter. */
-	dataCount: number | Promise<number> | (() => (number | Promise<number>))
+	readonly dataCount: number | Promise<number> | (() => (number | Promise<number>))
 
 	/** Page data getter to get data items. */
-	asyncDataGetter: AsyncPageDataGetter<T>
+	readonly asyncDataGetter: AsyncPageDataGetter<T>
 
 	/** Page data getter to get data items immediately, can include `null`. */
-	immediateDataGetter?: ImmediatePageDataGetter<T>
+	readonly immediateDataGetter?: ImmediatePageDataGetter<T>
 }
 
 
