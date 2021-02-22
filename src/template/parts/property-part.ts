@@ -1,4 +1,5 @@
 import {Component, getComponentEarly} from '../../component'
+import {Part} from './types'
 
 
 /**

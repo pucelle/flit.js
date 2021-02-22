@@ -1,6 +1,7 @@
 import {addComDependency, notifyComPropertySet, isUpdating} from './dependency'
 import {observeTarget} from './observe'
 import {addTargetAndProxy, getObservedOf} from './target-proxy'
+import {UpdatableTarget} from './types'
 
 
 export function observeComTarget<T extends UpdatableTarget>(com: T): T {

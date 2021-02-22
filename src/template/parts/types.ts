@@ -1,5 +1,5 @@
 /** Part is a class to handle the expression inside slot `${...}`. */
-interface Part {
+export interface Part {
 
 	/** 
 	 * Updates part value inside `${...}`.

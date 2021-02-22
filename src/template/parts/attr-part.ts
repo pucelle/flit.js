@@ -1,3 +1,6 @@
+import {Part} from './types'
+
+
 /** 
  * To set attribute value.
  * `attr=${...}`

@@ -11,6 +11,7 @@ import {PropertyPart} from './parts/property-part'
 import {Context, createComponent} from '../component'
 import {joinStringsAndValues} from "./utils"
 import {SlotPart} from "./parts/slot-part"
+import {Part} from './parts/types'
 
 
 /** Each updatable part. */

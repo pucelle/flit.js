@@ -1,3 +1,6 @@
+import {Part} from './types'
+
+
 /**
  *  Keeps the attribute if expression returns `true`, otherwise removes the attribute.
  * 

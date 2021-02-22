@@ -1,5 +1,6 @@
 import {getComponentEarly, Context} from '../../component'
 import {on} from '../../internals/dom-event'
+import {Part} from './types'
 
 
 /**

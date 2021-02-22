@@ -4,6 +4,7 @@ import {Template} from '../template'
 import {DirectiveResult, Directive, createDirectiveFromResult} from '../../directives'
 import type {Context} from '../../component'
 import {trim} from '../../helpers/utils'
+import {Part} from './types'
 
 
 /** Contents that can be included in a `<tag>${...}<.tag>`. */

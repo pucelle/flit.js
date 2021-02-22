@@ -1,5 +1,6 @@
 import {Binding, BindingResult, createBindingFromResult} from '../../bindings'
 import type {Context} from '../../component'
+import {Part} from './types'
 
 
 /**

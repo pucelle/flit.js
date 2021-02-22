@@ -1,5 +1,6 @@
 import {Weak2WayMap} from '../helpers/weak-2way-map'
 import {Weak2WayPropMap} from '../helpers/weak-2way-prop-map'
+import {Dependency, UpdatableProxied, UpdatableTarget} from './types'
 
 
 /** Currently rendering component or running watcher, and their dependencies. */
