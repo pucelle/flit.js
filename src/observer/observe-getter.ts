@@ -10,14 +10,18 @@
  * 
  * `o = {get p(){...}}`
  * Uses `observeGetting(o, 'p')` instead of `o.p`.
+ * 
+ * @param object The source object to get property at.
+ * @param key The property key in object.
+ * @returns Value of `object[key]`.
  */
-export function observeGetting<T>(object: T, getterProperty: keyof T) {
-	let descriptor = getPropertyDescriptor(object, getterProperty)
+export function observeGetting<T>(object: T, key: keyof T) {
+	let descriptor = getPropertyDescriptor(object, key)
 	if (descriptor && descriptor.get) {
 		return descriptor.get.call(object)
 	}
 	else {
-		return object[getterProperty]
+		return object[key]
 	}
 }
 

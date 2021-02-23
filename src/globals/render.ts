@@ -12,6 +12,7 @@ import {GlobalWatcherGroup} from '../watchers'
  * 
  * @param codes The html code piece or html`...` template result, or a directive result.
  * @param context The context to use when rendering.
+ * @return A `Template` instance.
  */
 export function render(codes: TemplateResult | DirectiveResult, context: Context = null): Template {
 	if (codes instanceof DirectiveResult) {
@@ -35,6 +36,7 @@ export function render(codes: TemplateResult | DirectiveResult, context: Context
  * @param renderFn Returns template like html`...`
  * @param context The context you used when rendering.
  * @param onUpdate Called when update after referenced data changed. if new result can't merge with old, will pass a new fragment as parameter.
+ * @return A `{template, unwatch}` object, calls `unwatch` will stop watching `renderFn`. If `context` specifed, will unwatch automatically after context revoked.
  */
 export function renderUpdatable(renderFn: () => TemplateResult | DirectiveResult, context: Context = null, onUpdate?: () => void): {template: Template, unwatch: () => void} {
 	let template: Template
@@ -66,6 +68,7 @@ export function renderUpdatable(renderFn: () => TemplateResult | DirectiveResult
 /**
  * Get a component immediately from a just rendered template.
  * @param template The just rendered template from `render` or `renderUpdatable`.
+ * @returns A component if first element has a component registered, otherwise be `null`.
  */
 export function getRenderedAsComponent(template: Template): Component | null {
 	let firstElement = template.getFirstElement()

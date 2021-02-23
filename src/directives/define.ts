@@ -29,6 +29,8 @@ export interface Directive<A extends any[] = any[]> {
  * 
  * A `Directive` works like Binding, but it used to generate HTML code pieces,
  * not like `Binding` to modify properties of an element.
+ * 
+ * It's hard to define a custom directive, please read source codes before doing this.
  */
 export function defineDirective(Dir: DirectiveConstructor) {
 	return function(...args: any[]) {
@@ -74,7 +76,17 @@ export function createDirectiveFromResult(anchor: NodeAnchor, context: Context, 
 }
 
 
-/** Reference to directive instance after it created and before merge. */
+/** 
+ * Reference to directive instance after it created and before merge.
+ *  * Use it like:
+ * ```ts
+ * >refDirective(repeat(...))<
+ * ```
+ * 
+ * @param result The directive result like `repeat(...)`.
+ * @param ref Callback with the directive object as parameter.
+ * @return The `result` parameter.
+ */
 export function refDirective(result: DirectiveResult, ref: (directive: Directive) => void) {
 	result.ref = ref
 	return result

@@ -5,19 +5,37 @@ import {extendsTemplateResult} from './template-extends'
 export type TemplateType = 'html' | 'css' | 'svg'
 
 
-/** Returns a HTML template literal, can be used to render or update a component. */
+/** 
+ * Returns a HTML template literal, can be used to render or update a component.
+ * Use it like:
+ * ```ts
+ * html`...`
+ * ```
+ */
 export function html(strings: TemplateStringsArray, ...values: any[]): TemplateResult {
 	return new TemplateResult('html', strings, values)
 }
 
 
-/** Returns a SVG template literal, can be used to render or update a component. */
+/** 
+ * Returns a SVG template literal, can be used to render or update a component.
+ * Use it like:
+ * ```ts
+ * svg`...`
+ * ```
+ */
 export function svg(strings: TemplateStringsArray, ...values: any[]): TemplateResult {
 	return new TemplateResult('svg', strings, values)
 }
 
 
-/** Returns a CSS template literal, can be used as component's static style property. */
+/** 
+ * Returns a CSS template literal, can be used as component's static style property.
+ * Use it like:
+ * ```ts
+ * css`...`
+ * ```
+ */
 export function css(strings: TemplateStringsArray, ...values: any[]): TemplateResult {
 	return new TemplateResult('css', strings, values)
 }

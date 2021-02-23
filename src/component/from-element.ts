@@ -16,6 +16,7 @@ export function setElementComponentMap(el: HTMLElement, com: Component) {
 /**
  * Get component instance from custom element.
  * @param el The element to get component instance at.
+ * @return The found component or `null` if no component registered on the element.
  */
 export function getComponent(el: HTMLElement): Component | null {
 	return elementComponentMap.get(el) || null
@@ -26,6 +27,7 @@ export function getComponent(el: HTMLElement): Component | null {
  * Get component instance from root element asynchronously.
  * Returns a promise which will be resolved after component created and triggers `created` event.
  * @param el The element to get component instance at.
+ * @return The found component or `null` if is not a custom element.
  */
 export function getComponentAsync(el: HTMLElement): Promise<Component | null> {
 	if (el.localName.includes('-')) {
@@ -52,6 +54,7 @@ export function getComponentAsync(el: HTMLElement): Promise<Component | null> {
  * But you can still match super class by this method.
  * @param el The element to search from it and it's ancestors for component instance.
  * @param Com The component constructor to search.
+ * @returns The found component or `null` if no component found.
  */
 export function getClosestComponentOfType<C extends ComponentConstructor>(el: Element, Com: C): InstanceType<C> | null {
 	let parent: Element | null = el

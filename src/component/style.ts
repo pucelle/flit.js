@@ -47,7 +47,11 @@ function getStyleContent(style: ComponentStyle, scopeName: string): string {
 }
 
 
-/** Add a global style codes. */
+/** 
+ * Add a global style. compare to normal style codes, it can use variables and can be updated dinamically.
+ * @param style A string, css`...`, or a function return those.
+ * @returns A newly created style tag element.
+ */
 export function addGlobalStyle(style: ComponentStyle): HTMLStyleElement {
 	let scopeName = 'global'
 	let styleTag = createStyleElement(style, scopeName)

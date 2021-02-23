@@ -170,6 +170,7 @@ const CSS_PROPERTIES = {
 /**
  * Get `cubic-bezier(...)` as CSS easing from easing name.
  * @param easing The extended easing name.
+ * @returns CSS easing codes like `line` or `cubic-bezier(...)`.
  */
 export function getCSSEasingValue(easing: TransitionEasing): string {
 	return CUBIC_BEZIER_EASINGS.hasOwnProperty(easing)
@@ -178,7 +179,11 @@ export function getCSSEasingValue(easing: TransitionEasing): string {
 }
 
 
-/** Define a JS transiton and process all transition details internally. */
+/** 
+ * Define a JS transiton and process all transition details internally.
+ * @param name Transition name, must be unique.
+ * @param TransitionConstructor A `Transition` class.
+ */
 export function defineTransion(name: string, TransitionConstructor: JSTransitionConstructor) {
 	if (DefinedJSTransitions.has(name)) {
 		console.warn(`You are trying to overwrite transition definition "${name}"`)
@@ -426,7 +431,10 @@ export class Transition {
 }
 
 
-/** Clear the transition that is running in the element. */
+/** 
+ * Clear the transition that is running in the element.
+ * @param el The element at which to clear transition.
+ */
 export function clearTransition(el: Element) {
 	if (ElementTransitionCache.has(el)) {
 		ElementTransitionCache.get(el)!.clean()

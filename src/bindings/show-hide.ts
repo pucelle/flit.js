@@ -4,7 +4,7 @@ import type {Context} from '../component'
 
 
 /**
- * `:show` binding will update element's visibility state.
+ * `:show` binding will keep element visible if it's binded value is `true`.
  * 
  * `:show=${anyValue}`
  */
@@ -55,7 +55,7 @@ export class ShowBinding implements Binding<any> {
 }
 
 /**
- * `show(...)` binding will update element's visibility state.
+ * `show(...)` binding will keep element visible if it's binded value is `true`.
  * You may also use `:show` if no need to specify transition.
  * 
  * `show(visible: any, transition: TransitionOptions)`
@@ -65,7 +65,7 @@ export const show = defineBinding('show', ShowBinding) as (value: any, options?:
 
 
 /**
- * `:hide` binding will update element's visibility state.
+ * `:hide` binding will keep element hideen if it's binded value is `true`.
  * 
  * `:hide=${anyValue}`
  */
@@ -77,7 +77,7 @@ export class HideBinding extends ShowBinding {
 }
 
 /**
- * `hide()` binding will update element's visibility state.
+ * `hide()` binding will keep element hideen if it's binded value is `true`.
  * 
  * `hide(hidden: any, transition: TransitionOptions)`
  * `hide(hidden: any, options: {transition: TransitionOptions, enterAtStart, leaveAtStart, onend})`

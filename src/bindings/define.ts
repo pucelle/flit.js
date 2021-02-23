@@ -94,7 +94,17 @@ export function createBindingFromResult(el: Element, context: Context, result: B
 /** Caches referenced binding callback. */
 const BindingReferences: WeakMap<BindingResult, (binding: Binding) => void> = new WeakMap()
 
-/** Reference binding instance after it created and before updating. */
+/** 
+ * Reference binding instance after it created and before updating.
+ * Use it like:
+ * ```ts
+ * <tag refBinding(show(...))>
+ * ```
+ * 
+ * @param result The binding result like `show(...)`.
+ * @param ref Callback with the binding object as parameter.
+ * @return The `result` parameter.
+ */
 export function refBinding(result: BindingResult, ref: (binding: Binding) => void) {
 	BindingReferences.set(result, ref)
 	return result

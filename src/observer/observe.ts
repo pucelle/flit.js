@@ -18,6 +18,9 @@ const originalToString = Object.prototype.toString
  * 
  * Normally you don't need to call this method, properties of components will be observed automatically.
  * But once an object was observed, it can't be revoked.
+ * 
+ * @param value The object to be observed, it can also an observed object, will not observe it for twice.
+ * @returns The observed object, it's properties changes will be watched.
  */
 export function observe<T>(value: T): T {
 	if (value && typeof value === 'object') {

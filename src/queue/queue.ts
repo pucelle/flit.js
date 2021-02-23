@@ -69,7 +69,11 @@ export function enqueueUpdatableInOrder(upt: Updatable, context: Context, order:
 }
 
 
-/** Enqueue updatable things to queue, will be updated after watchers and components in same context updated. */
+/** 
+ * Enqueue updatable things to queue, will be updated after watchers and components in same context updated.
+ * @param upt An updatable object having `__updateImmediately` method.
+ * @param context A component or null as context.
+ */
 export function enqueueUpdatable(upt: Updatable, context: Context) {
 	enqueueUpdatableInOrder(upt, context, UpdatableOrder.Otherwise)
 }
@@ -78,6 +82,7 @@ export function enqueueUpdatable(upt: Updatable, context: Context) {
 /** 
  * Calls `callback` after all the components and watchers updated and rendered in next animation frame.
  * Note that it was called before `renderComplete`.
+ * @param callback callback to be called after render completed.
  */
 export function onRenderComplete(callback: () => void) {
 	renderCompleteCallbacks.push(callback)
@@ -88,6 +93,7 @@ export function onRenderComplete(callback: () => void) {
 /** 
  * Returns a promise which will be resolved after all the components and watchers updated and rendered in next animation frame.
  * Note that it was called after `onRenderComplete`.
+ * @return A promise to be resolved after render completed.
  */
 export function renderComplete(): Promise<void> {
 	return new Promise(resolve => {

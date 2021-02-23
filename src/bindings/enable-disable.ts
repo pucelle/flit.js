@@ -2,7 +2,7 @@ import {Binding, defineBinding} from './define'
 
 
 /**
- * `:enable` binding will set `disabled` state for element.
+ * `:enable` binding will set `disabled` state for element if it's binded value is `false`.
  * 
  * `:enable=${booleanValue}`
  */
@@ -31,7 +31,7 @@ export class EnableBinding implements Binding<any> {
 
 
 /**
- * `:disable` binding will set `disabled` state for element.
+ * `:disable` binding will set `disabled` state for element if it's binded value is `true`.
  * 
  * `:disable=${booleanValue}`
  */
