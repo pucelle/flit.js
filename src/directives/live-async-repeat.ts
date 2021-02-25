@@ -67,6 +67,9 @@ export class LiveAsyncRepeatDirective<T> extends LiveRepeatDirective<T, LiveAsyn
 	/** Need to call `updateSliderPosition` after got `knownDataCount`. */
 	protected needToUpdateSliderPositionAfterDataCountKnown: boolean = false
 
+	/** Whether will update later. */
+	protected willUpdate: boolean = false
+
 	merge(dataOptions: any, templateFn: TemplateFn<T>, liveRepeatOptions?: LiveRepeatOptions, transitionOptions?: ContextualTransitionOptions) {
 		this.dataCount = dataOptions.dataCount
 		this.templateFn = templateFn
@@ -81,12 +84,9 @@ export class LiveAsyncRepeatDirective<T> extends LiveRepeatDirective<T, LiveAsyn
 		let firstTimeUpdate = !this.dataGetter
 		if (firstTimeUpdate) {
 			this.dataGetter = new PageDataGetter(dataOptions.asyncDataGetter, dataOptions.immediateDataGetter)
-
-			this.updateDataCount().then(() => {
-				this.update()
-			})
+			this.updateDataCountThenUpdate()
 		}
-		else {
+		else if (!this.willUpdate) {
 			this.update()
 		}
 	}
@@ -95,11 +95,13 @@ export class LiveAsyncRepeatDirective<T> extends LiveRepeatDirective<T, LiveAsyn
 		this.processor.updateAlways(this.updateFromIndices.bind(this))
 	}
 
-	protected async updateDataCount() {
+	protected async updateDataCountThenUpdate() {
 		let dataCountConfig = this.dataCount
 		if (!dataCountConfig) {
 			return
 		}
+
+		this.willUpdate = true
 
 		let dataCount: number | Promise<number>
 		let knownDataCount = 0
@@ -119,6 +121,9 @@ export class LiveAsyncRepeatDirective<T> extends LiveRepeatDirective<T, LiveAsyn
 		}
 
 		this.processor.updateDataCount(knownDataCount)
+		this.update()
+
+		this.willUpdate = false
 	}
 
 	protected updateFromIndices(startIndex: number, endIndex: number, scrollDirection: 'up' | 'down' | null) {
@@ -182,8 +187,7 @@ export class LiveAsyncRepeatDirective<T> extends LiveRepeatDirective<T, LiveAsyn
 	 * Reload data count and refresh to get all needed data.
 	 * Call this when data order column changed and you want to keep scroll position, e.g., after sorting. */ 
 	async reload() {
-		await this.updateDataCount()
-		this.update()
+		await this.updateDataCountThenUpdate()
 	}
 
 	/** Resolved until `liveDataUpdated` triggered. */

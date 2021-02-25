@@ -117,12 +117,10 @@ export class PartialRenderingProcessor {
 		this.startIndexToApply = index
 	}
 
-	/** Update total data count. */
+	/** Update total data count after reload data. */
 	updateDataCount(dataCount: number) {
-		if (dataCount !== this.totalDataCount) {
-			this.totalDataCount = dataCount
-			this.dataCountNeedsToApply = true
-		}
+		this.totalDataCount = dataCount
+		this.dataCountNeedsToApply = true
 	}
 
 	/** Update from applied start index or current scroll position. */
@@ -132,20 +130,17 @@ export class PartialRenderingProcessor {
 			this.updateWhenStartIndexWillApply(doDataUpdating)
 		}
 
-		// Keep scroll position but update to different items.
-		else {
+		// Data should changed, reset from current scroll position.
+		else if (this.dataCountNeedsToApply) {
 			this.updateFromCurrentScrollOffset(doDataUpdating)
 		}
 
+		// Just keep indices and update data.
+		else {
+			doDataUpdating(this.startIndex, this.endIndex, null)
+		}
+
 		this.updateRoughPlaceholderHeightIfNeeded()
-	}
-
-	/** Re-generate indices from current scroll offset. */
-	private updateFromCurrentScrollOffset(doDataUpdating: UpdatingFunction) {
-		this.resetIndices()
-		this.resetSliderPosition()
-
-		doDataUpdating(this.startIndex, this.endIndex, null)
 	}
 
 	/** 
@@ -198,12 +193,6 @@ export class PartialRenderingProcessor {
 
 		this.startIndex = startIndex
 		this.endIndex = endIndex
-	}
-
-	/** Reset indices from current scroll offset. */
-	private resetIndices() {
-		let newStartIndex = Math.floor(this.scroller.scrollTop / this.averageItemHeight)
-		this.updateIndices(newStartIndex)
 	}
 
 	/** Update height of placeholder. */
@@ -320,6 +309,20 @@ export class PartialRenderingProcessor {
 		scrollerRect.height -= this.scrollerBorderTopWidth + this.scrollerBorderBottomWidth
 
 		return scrollerRect
+	}
+
+	/** Re-generate indices from current scroll offset. */
+	private updateFromCurrentScrollOffset(doDataUpdating: UpdatingFunction) {
+		this.resetIndices()
+		this.resetSliderPosition()
+
+		doDataUpdating(this.startIndex, this.endIndex, null)
+	}
+
+	/** Reset indices from current scroll offset. */
+	private resetIndices() {
+		let newStartIndex = Math.floor(this.scroller.scrollTop / this.averageItemHeight)
+		this.updateIndices(newStartIndex)
 	}
 
 	/** Update slider position to keep it in a stable position after updating data items. */

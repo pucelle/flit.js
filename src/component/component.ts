@@ -297,7 +297,7 @@ export abstract class Component<E = any> extends InternalEventEmitter<E & Compon
 	 * Watchs returned value of `fn` and calls `callback` with this value as parameter after the value becomes true like.
 	 * Will set callback scope as current component.
 	 */
-	watchUntil<T>(fn: () => T, callback: () => void): () => void {
+	watchUntil<T>(fn: () => T, callback: (value: T) => void): () => void {
 		return this.__getWatcherGroup().watchUntil(fn, callback.bind(this))
 	}
 
