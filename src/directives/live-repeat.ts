@@ -364,7 +364,7 @@ export class LiveRepeatDirective<T, E = any> extends InternalEventEmitter<LiveRe
 	 * May cause page reflow.
 	 */
 	getFirstVisibleIndex() {
-		return Math.max(0, locateFirstVisibleIndex(this.scroller, this.sliderChildren.getChildren()))
+		return Math.max(0, locateFirstVisibleIndex(this.scroller, this.sliderChildren.getChildren())) + this.startIndex
 	}
 
 	/** 

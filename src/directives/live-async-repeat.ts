@@ -68,7 +68,7 @@ export class LiveAsyncRepeatDirective<T> extends LiveRepeatDirective<T, LiveAsyn
 	protected needToUpdateSliderPositionAfterDataCountKnown: boolean = false
 
 	/** Whether will update later. */
-	protected willUpdate: boolean = false
+	protected willUpdateLater: boolean = false
 
 	merge(dataOptions: any, templateFn: TemplateFn<T>, liveRepeatOptions?: LiveRepeatOptions, transitionOptions?: ContextualTransitionOptions) {
 		this.dataCount = dataOptions.dataCount
@@ -84,24 +84,32 @@ export class LiveAsyncRepeatDirective<T> extends LiveRepeatDirective<T, LiveAsyn
 		let firstTimeUpdate = !this.dataGetter
 		if (firstTimeUpdate) {
 			this.dataGetter = new PageDataGetter(dataOptions.asyncDataGetter, dataOptions.immediateDataGetter)
-			this.updateDataCountThenUpdate()
+			this.getDataCountThenUpdate()
 		}
-		else if (!this.willUpdate) {
+		else if (!this.willUpdateLater) {
 			this.update()
 		}
 	}
 
 	__updateImmediately() {
-		this.processor.updateAlways(this.updateFromIndices.bind(this))
+		if (!this.willUpdateLater) {
+			this.processor.updateAlways(this.updateFromIndices.bind(this))
+		}
 	}
 
-	protected async updateDataCountThenUpdate() {
+	protected onScroll() {
+		if (!this.willUpdateLater) {
+			super.onScroll()
+		}
+	}
+
+	protected async getDataCountThenUpdate() {
 		let dataCountConfig = this.dataCount
 		if (!dataCountConfig) {
 			return
 		}
 
-		this.willUpdate = true
+		this.willUpdateLater = true
 
 		let dataCount: number | Promise<number>
 		let knownDataCount = 0
@@ -123,7 +131,7 @@ export class LiveAsyncRepeatDirective<T> extends LiveRepeatDirective<T, LiveAsyn
 		this.processor.updateDataCount(knownDataCount)
 		this.update()
 
-		this.willUpdate = false
+		this.willUpdateLater = false
 	}
 
 	protected updateFromIndices(startIndex: number, endIndex: number, scrollDirection: 'up' | 'down' | null) {
@@ -186,8 +194,8 @@ export class LiveAsyncRepeatDirective<T> extends LiveRepeatDirective<T, LiveAsyn
 	/** 
 	 * Reload data count and refresh to get all needed data.
 	 * Call this when data order column changed and you want to keep scroll position, e.g., after sorting. */ 
-	async reload() {
-		await this.updateDataCountThenUpdate()
+	reload() {
+		this.getDataCountThenUpdate()
 	}
 
 	/** Resolved until `liveDataUpdated` triggered. */
