@@ -97,9 +97,9 @@ export class LiveAsyncRepeatDirective<T> extends LiveRepeatDirective<T, LiveAsyn
 		}
 	}
 
-	protected onScroll() {
+	protected checkCoverage() {
 		if (!this.willUpdateLater) {
-			super.onScroll()
+			super.checkCoverage()
 		}
 	}
 

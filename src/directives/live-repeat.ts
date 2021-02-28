@@ -67,6 +67,7 @@ export class LiveRepeatDirective<T, E = any> extends InternalEventEmitter<LiveRe
 	protected readonly scroller: HTMLElement
 	protected readonly slider: HTMLElement
 	protected readonly sliderChildren: OffsetChildren
+	protected readonly observer: any
 
 
 	/** Cached last data that comes from outside, before been processed. */
@@ -100,7 +101,7 @@ export class LiveRepeatDirective<T, E = any> extends InternalEventEmitter<LiveRe
 	/** Indicates current updating. */
 	protected updateVersion: number = 0
 
-	
+
 	constructor(anchor: NodeAnchor, context: Context) {
 		super()
 
@@ -126,7 +127,16 @@ export class LiveRepeatDirective<T, E = any> extends InternalEventEmitter<LiveRe
 		this.scroller = scroller
 		this.slider = slider
 
-		on(scroller, 'scroll.passive', this.onScroll, this)
+		on(scroller, 'scroll.passive', this.checkCoverage, this)
+		
+		let ResizeObserver = (window as any).ResizeObserver
+		if (ResizeObserver) {
+			this.observer = new ResizeObserver(this.checkCoverage.bind(this))
+			this.observer.observe(this.scroller)
+		}
+		else {
+			on(window, 'resize', this.checkCoverage, this)
+		}
 	}
 
 	canMergeWith(_data: Iterable<T> | null, templateFn: TemplateFn<T>): boolean {
@@ -209,7 +219,7 @@ export class LiveRepeatDirective<T, E = any> extends InternalEventEmitter<LiveRe
 		this.processor.updateAlways(this.updateFromIndices.bind(this))
 	}
 
-	protected onScroll() {
+	protected checkCoverage() {
 		this.processor.updateSmoothlyIfNeeded(this.updateFromIndices.bind(this))
 	}
 
@@ -494,7 +504,14 @@ export class LiveRepeatDirective<T, E = any> extends InternalEventEmitter<LiveRe
 	remove() {
 		this.tryDeleteLastWatcher()
 
-		off(this.scroller, 'scroll.passive', this.onScroll, this)
+		off(this.scroller, 'scroll.passive', this.checkCoverage, this)
+
+		if (this.observer) {
+			this.observer.disconnect()
+		}
+		else {
+			off(window, 'resize', this.checkCoverage, this)
+		}
 
 		// Pre-rendering items are not connected, no need to remove them.
 		for (let wtem of this.repTems) {
