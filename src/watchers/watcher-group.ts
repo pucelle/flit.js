@@ -14,32 +14,53 @@ export class WatcherGroup {
 	/** All watchers. */
 	protected watchers: Set<Watcher> = new Set()
 
+	/** Whether connected. */
+	protected connected: boolean = true
+
 	constructor(context: Context) {
 		this.context = context
 	}
 
-	/** Add a watcher to current group. */
+	/** Add a watcher to current group, and keeps it's connected state same with current group. */
 	add(watcher: Watcher) {
+		if (this.connected) {
+			watcher.connect()
+		}
+		else {
+			watcher.disconnect()
+		}
+
 		this.watchers.add(watcher)
 	}
 
-	/** Disconnect a watcher, and deleted it from current group. */
+	/** Deleted watcher from current group, will always disconnect the watcher. */
 	delete(watcher: Watcher) {
-		watcher.disconnect()
+		if (this.connected) {
+			watcher.disconnect()
+		}
+		
 		this.watchers!.delete(watcher)
 	}
 
 	/** Connect all the watchers in current group. */
 	connect() {
-		for (let watcher of this.watchers) {
-			watcher.connect()
+		if (!this.connected) {
+			for (let watcher of this.watchers) {
+				watcher.connect()
+			}
+
+			this.connected = true
 		}
 	}
 
 	/** Disonnect all the watchers in current group. */
 	disconnect() {
-		for (let watcher of this.watchers) {
-			watcher.disconnect()
+		if (this.connected) {
+			for (let watcher of this.watchers) {
+				watcher.disconnect()
+			}
+			
+			this.connected = false
 		}
 	}
 

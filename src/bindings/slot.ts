@@ -1,4 +1,4 @@
-import {Component, getClosestComponentEarly} from '../component'
+import {Component, Context, getClosestComponentEarly} from '../component'
 import {Binding, defineBinding} from './define'
 
 
@@ -12,15 +12,22 @@ import {Binding, defineBinding} from './define'
 export class SlotBinding implements Binding<string> {
 
 	private readonly el: Element
+	private readonly context: Context
 	
-	constructor(el: Element) {
+	constructor(el: Element, context: Context) {
 		this.el = el
+		this.context = context
 	}
 
 	update(slotName: string) {
 		// Prepared `slots` properties before trigger `created` event.
 		getClosestComponentEarly(this.el, com => {
-			this.updateComSlot(slotName, com!)
+			// When extend super component and provide `:slot`, use current context as slot context.
+			com = com || this.context
+
+			if (com) {
+				this.updateComSlot(slotName, com!)
+			}
 		})
 	}
 

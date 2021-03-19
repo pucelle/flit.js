@@ -9,8 +9,8 @@ import {emitComponentCreationCallbacks, onComponentConnected, onComponentDisconn
 import {InternalEventEmitter} from '../internals/internal-event-emitter'
 import type {ComponentStyle} from './style'
 import {getScopedClassNames} from '../internals/style-parser'
-import {NodeRange} from '../internals/node-range'
-import {UpdatableOrder} from '../queue/helpers/updatable-queue'
+import {ContainerRange} from '../internals/node-range'
+import {UpdatableUpdateOrder} from '../queue/helpers/updatable-queue'
 
 
 /** 
@@ -90,7 +90,7 @@ export abstract class Component<E = any> extends InternalEventEmitter<E & Compon
 	readonly slots: Record<string, Element[]> = {}
 
 	/** To mark the node range of current nodes when created, use for `<slot />`. */
-	readonly __restNodeRange: NodeRange
+	readonly __restNodeRange: ContainerRange
 
 	/* Whether current component connected with a document. */
 	protected __connected: boolean = false
@@ -107,7 +107,7 @@ export abstract class Component<E = any> extends InternalEventEmitter<E & Compon
 		super()
 
 		this.el = el
-		this.__restNodeRange = new NodeRange(el)
+		this.__restNodeRange = new ContainerRange(el)
 
 		return observeComTarget(this)
 	}
@@ -218,7 +218,7 @@ export abstract class Component<E = any> extends InternalEventEmitter<E & Compon
 	 * Never overwrite this method until you know what you are doing.
 	 */
 	update() {
-		enqueueUpdatableInOrder(this, this, UpdatableOrder.Component)
+		enqueueUpdatableInOrder(this, this, UpdatableUpdateOrder.Component)
 	}
 
 	/**

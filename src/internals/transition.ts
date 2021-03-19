@@ -256,15 +256,10 @@ export class Transition {
 				return
 			}
 
-			let el = this.el as HTMLElement | SVGElement
-
 			let onLeaved = (finish: boolean) => {
-				el.style.pointerEvents = ''
 				ElementTransitionCache.delete(this.el)
 				resolve(finish)
 			}
-
-			el.style.pointerEvents = 'none'
 
 			if (this.options.properties) {
 				this.cssLeave(onLeaved)
@@ -402,13 +397,11 @@ export class Transition {
 
 		let onTransitionEnd = () => {
 			clearTimeout(timeoutId)
-			el.style.pointerEvents = ''
 			onEnd(true)
 		}
 
 		let onTimeout = () => {
 			off(el, eventName, onTransitionEnd)
-			el.style.pointerEvents = ''
 			onEnd(true)
 		}
 
@@ -428,6 +421,15 @@ export class Transition {
 			this.cleaner = null
 		}
 	}
+}
+
+
+/** 
+ * Checks whether `el` is playing a transition.
+ * @param el The element at which to check whether playing transition.
+ */
+export function isPlayingTransition(el: Element): boolean {
+	return ElementTransitionCache.has(el)
 }
 
 

@@ -134,12 +134,14 @@ export class NodePart implements Part {
 	}
 	
 	private updateTemplateArray(results: TemplateResult[]) {
-		let templates = this.content as Template[]
+		let templates = this.content as Template[] | null
 		if (!templates) {
 			templates = this.content = []
 		}
 
-		// Updates sharing part.
+		results = results.filter(result => result instanceof TemplateResult)
+
+		// Updates shared part.
 		for (let i = 0; i < Math.min(templates.length, results.length); i++) {
 			let oldTemplate = templates[i]
 			let result = results[i]
@@ -164,7 +166,8 @@ export class NodePart implements Part {
 		// Creates more.
 		else {
 			for (let i = templates.length; i < results.length; i++) {
-				let template = new Template(results[i], this.context)
+				let result = results[i]
+				let template = new Template(result, this.context)
 				this.anchor.insert(template.extractToFragment())
 				templates.push(template)
 			}
@@ -180,8 +183,9 @@ export class NodePart implements Part {
 				textNode.textContent = text
 			}
 			else {
-				textNode = this.content = document.createTextNode(text)
+				textNode = document.createTextNode(text)
 				this.anchor.insert(textNode)
+				this.content = textNode
 			}
 		}
 		else {

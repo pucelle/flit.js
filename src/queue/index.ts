@@ -1,1 +1,2 @@
-export {enqueueUpdatableInOrder, enqueueUpdatable, onRenderComplete, renderComplete} from './queue'
+export {enqueueUpdatableInOrder, onRenderComplete, renderComplete} from './queue'
+export {UpdatableUpdateOrder} from './helpers/updatable-queue'

@@ -1,5 +1,5 @@
 import {Context} from '../component'
-import {UpdatableOrder, UpdatableQueue} from './helpers/updatable-queue'
+import {UpdatableUpdateOrder, UpdatableQueue} from './helpers/updatable-queue'
 import {UpdatableValidator} from './helpers/updatable-validator'
 import {Updatable} from './helpers/types'
 
@@ -55,7 +55,7 @@ let updatingStage: UpdatingStage = UpdatingStage.NotStarted
  * When a component, a watcher, or any other updatable things should enqueue to update.
  * Updatable wil be sort by `context, order`, and then called `__updateImmediately` one by one.
  */
-export function enqueueUpdatableInOrder(upt: Updatable, context: Context, order: UpdatableOrder) {
+export function enqueueUpdatableInOrder(upt: Updatable, context: Context, order: UpdatableUpdateOrder) {
 	if (queue.has(upt)) {
 		return
 	}
@@ -66,16 +66,6 @@ export function enqueueUpdatableInOrder(upt: Updatable, context: Context, order:
 
 	queue.add(upt, context, order)
 	enqueueUpdateIfNot()
-}
-
-
-/** 
- * Enqueue updatable things to queue, will be updated after watchers and components in same context updated.
- * @param upt An updatable object having `__updateImmediately` method.
- * @param context A component or null as context.
- */
-export function enqueueUpdatable(upt: Updatable, context: Context) {
-	enqueueUpdatableInOrder(upt, context, UpdatableOrder.Otherwise)
 }
 
 

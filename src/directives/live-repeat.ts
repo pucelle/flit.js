@@ -10,8 +10,9 @@ import {InternalEventEmitter} from '../internals/internal-event-emitter'
 import {GlobalWatcherGroup, LazyWatcher, Watcher} from '../watchers'
 import {EditType, getEditRecord} from '../helpers/edit'
 import {untilIdle, locateFirstVisibleIndex, locateLastVisibleIndex, getElementCountBefore} from '../helpers/utils'
-import {enqueueUpdatable, onRenderComplete} from '../queue'
+import {enqueueUpdatableInOrder, onRenderComplete} from '../queue'
 import {OffsetChildren} from './helpers/offset-children'
+import {UpdatableUpdateOrder} from '../queue/helpers/updatable-queue'
 
 
 export interface LiveRepeatOptions {
@@ -190,9 +191,9 @@ export class LiveRepeatDirective<T, E = any> extends InternalEventEmitter<LiveRe
 			this.update()
 		}
 
-		let watcher = new LazyWatcher(watchFn, onUpdate, this.context)
-		this.getWatcherGroup().add(watcher)
-		onUpdate(watcher.value)
+		this.lastWatcher = new LazyWatcher(watchFn, onUpdate, this.context)
+		this.getWatcherGroup().add(this.lastWatcher)
+		onUpdate(this.lastWatcher.value)
 	}
 
 	/** Get watcher group to add or delete watcher. */
@@ -210,8 +211,8 @@ export class LiveRepeatDirective<T, E = any> extends InternalEventEmitter<LiveRe
 
 	/** Serveral update entry: normal update; from `setStartIndex`, from `reload`. */
 	protected update() {
-		// Update after watchers and components updated.
-		enqueueUpdatable(this, this.context)
+		// Update after watchers and components.
+		enqueueUpdatableInOrder(this, this.context, UpdatableUpdateOrder.Directive)
 	}
 
 	__updateImmediately() {
@@ -311,6 +312,8 @@ export class LiveRepeatDirective<T, E = any> extends InternalEventEmitter<LiveRe
 		if (this.preRendered?.has(item)) {
 			let repTem = this.preRendered.get(item)!
 			repTem.connect()
+			repTem.updateIndex(index)
+			this.repTems.push(repTem)
 
 			return repTem
 		}
@@ -353,7 +356,7 @@ export class LiveRepeatDirective<T, E = any> extends InternalEventEmitter<LiveRe
 	}
 
 	protected removeRepTem(repTem: RepetitiveTemplate<T>) {
-		repTem.disconnect()
+		repTem.remove()
 	}
 
 	/** Get `startIndex` for the start index of current rendered items. */
@@ -435,14 +438,18 @@ export class LiveRepeatDirective<T, E = any> extends InternalEventEmitter<LiveRe
 		let version = this.updateVersion
 		let preRendered = this.preRendered!
 
+		// Determine the maximum range that need to pre-render, must include current range.
 		let renderCount = this.options.get('renderCount') * this.processor.getRenderGroupCount()
 		let startIndex = Math.max(0, this.startIndex - renderCount)
 		let endIndex = Math.min(this.fullData.length, this.endIndex + renderCount)
+
+		// The data and global indices that should be pre-rendered.
 		let data = this.fullData.slice(startIndex, endIndex)
 		let dataSet: Set<T> = new Set(data)
 		let indices: number[] = []
 		let restRepTems: RepetitiveTemplate<T>[] = []
 
+		// Rlease items out of maximun range.
 		for (let item of preRendered.keys()) {
 			if (!dataSet.has(item)) {
 				let repTem = preRendered.get(item)!
@@ -451,21 +458,14 @@ export class LiveRepeatDirective<T, E = any> extends InternalEventEmitter<LiveRe
 			}
 		}
 
+		// If scrolling down, only pre-render items below.
 		if (scrollDirection === 'down' || scrollDirection === null) {
 			for (let i = this.endIndex; i < endIndex; i++) {
 				indices.push(i)
 			}
-
-			for (let i = this.startIndex - 1; i >= startIndex; i--) {
-				indices.push(i)
-			}
 		}
 		else {
-			for (let i = this.startIndex - 1; i >= startIndex; i--) {
-				indices.push(i)
-			}
-
-			for (let i = this.endIndex; i < endIndex; i++) {
+			for (let i = startIndex; i < this.startIndex; i++) {
 				indices.push(i)
 			}
 		}
@@ -473,7 +473,7 @@ export class LiveRepeatDirective<T, E = any> extends InternalEventEmitter<LiveRe
 		let createCount = 0
 
 		for (let index of indices) {
-			let item = data[index]
+			let item = this.fullData[index]
 
 			if (preRendered.has(item)) {
 				continue
@@ -495,7 +495,7 @@ export class LiveRepeatDirective<T, E = any> extends InternalEventEmitter<LiveRe
 				await untilIdle()
 
 				if (this.updateVersion !== version) {
-					return
+					break
 				}
 			}
 		}
@@ -514,8 +514,8 @@ export class LiveRepeatDirective<T, E = any> extends InternalEventEmitter<LiveRe
 		}
 
 		// Pre-rendering items are not connected, no need to remove them.
-		for (let wtem of this.repTems) {
-			wtem.disconnect()
+		for (let repTem of this.repTems) {
+			repTem.remove()
 		}
 	}
 }

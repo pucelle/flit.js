@@ -28,7 +28,8 @@ export class RepetitiveTemplate<T> {
 		this.item = item
 		this.index = index
 		
-		/** Update after components and top level watchers update completed. */
+		// Update after components and top level watchers update completed,
+		// and also after directive updated, or it will cause useless updating.
 		this.watcher = new LazyWatcher(this.getTemplateResult.bind(this), this.onUpdateTemplateResult.bind(this), this.context)
 		this.template = new Template(this.watcher.value, this.context)
 		this.getWatcherGroup().add(this.watcher)
@@ -71,15 +72,19 @@ export class RepetitiveTemplate<T> {
 		}
 	}
 
-	/** Remove elements and disconnect. Can connect again. */
-	disconnect() {
+	/** Remove elements and disconnect. Can connect again later. */
+	remove() {
+		this.disconnect()
 		this.template.remove()
+	}
+
+	/** Just disconnect. */
+	private disconnect() {
 		this.getWatcherGroup().delete(this.watcher)
 	}
 
 	/** Connect after disconnected. */
 	connect() {
 		this.getWatcherGroup().add(this.watcher)
-		this.watcher.update()
 	}
 }

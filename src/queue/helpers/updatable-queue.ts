@@ -3,13 +3,16 @@ import {MiniHeap} from '../../helpers/mini-heap'
 import {Updatable} from './types'
 
 
-export enum UpdatableOrder {
+export enum UpdatableUpdateOrder {
 	
 	/** Update firstly. */
 	Watcher,
 
 	/** Update in second order. */
 	Component,
+
+	/** Update directive like `repeat` or `liveRepeat`. */
+	Directive,
 
 	/** Update at last. */
 	Otherwise,
@@ -20,7 +23,7 @@ export enum UpdatableOrder {
 export class UpdatableQueue {
 	
 	private set: Set<Updatable> = new Set()
-	private heap: MiniHeap<{updatable: Updatable, context: Context, order: UpdatableOrder}>
+	private heap: MiniHeap<{updatable: Updatable, context: Context, order: UpdatableUpdateOrder}>
 
 	constructor() {
 		this.heap = new MiniHeap((a, b) => {
@@ -47,7 +50,7 @@ export class UpdatableQueue {
 		return this.set.has(upt)
 	}
 
-	add(updatable: Updatable, context: Context, order: UpdatableOrder) {
+	add(updatable: Updatable, context: Context, order: UpdatableUpdateOrder) {
 		this.heap.add({
 			updatable,
 			context,

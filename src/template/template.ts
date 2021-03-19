@@ -165,8 +165,8 @@ export class Template {
 	 * Elements are not connected but will be pre rendered.
 	 */
 	preRender() {
-		let fragment = this.range.getCurrentContainer()
-		if (!fragment || fragment instanceof DocumentFragment) {
+		let fragment = this.range.getCurrentFragment()
+		if (!fragment || !(fragment instanceof DocumentFragment)) {
 			throw new Error(`Can only prerender contents in a fragment!`)
 		}
 

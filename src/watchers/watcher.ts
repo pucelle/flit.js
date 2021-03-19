@@ -1,7 +1,7 @@
 import type {Context} from '../component'
 import {startUpdating, endUpdating, clearDependenciesOf} from '../observer'
-import {enqueueUpdatable, enqueueUpdatableInOrder} from '../queue'
-import {UpdatableOrder} from '../queue/helpers/updatable-queue'
+import {enqueueUpdatableInOrder} from '../queue'
+import {UpdatableUpdateOrder} from '../queue/helpers/updatable-queue'
 
 
 /** 
@@ -49,7 +49,7 @@ export class Watcher<T = any> {
 			return
 		}
 		
-		enqueueUpdatableInOrder(this, this.context, UpdatableOrder.Watcher)
+		enqueueUpdatableInOrder(this, this.context, UpdatableUpdateOrder.Watcher)
 	}
 
 	/** Update current value immediately, also keeps consitant with the same method in `Component`. */
@@ -75,14 +75,18 @@ export class Watcher<T = any> {
 
 	/** Connect and update to collect new dependencies. */
 	connect() {
-		this.connected = true
-		this.update()
+		if (!this.connected) {
+			this.connected = true
+			this.update()
+		}
 	}
 
 	/** Disconnect current watcher with it's denpendencies. */
 	disconnect() {
-		this.connected = false
-		clearDependenciesOf(this)
+		if (this.connected) {
+			this.connected = false
+			clearDependenciesOf(this)
+		}
 	}
 }
 
@@ -98,6 +102,6 @@ export class LazyWatcher<T = any> extends Watcher<T> {
 			return
 		}
 		
-		enqueueUpdatable(this, this.context)
+		enqueueUpdatableInOrder(this, this.context, UpdatableUpdateOrder.Otherwise)
 	}
 }

@@ -112,4 +112,6 @@ export function getClosestComponentEarly(el: Element, callback: (com: Component 
 		
 		parent = parent.parentElement
 	}
+
+	callback(null)
 }

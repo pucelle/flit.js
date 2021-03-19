@@ -77,9 +77,9 @@ export class RepeatDirective<T> implements Directive {
 		// Uses lazy watcher to watch each item of data changes,
 		// So each item can be updated indepent,
 		// and can also avoid unnecessary updating after total directive data updated.
-		let watcher = new LazyWatcher(watchFn, this.updateData.bind(this), this.context)
-		this.getWatcherGroup().add(watcher)
-		this.updateData(watcher.value)
+		this.lastWatcher = new LazyWatcher(watchFn, this.updateData.bind(this), this.context)
+		this.getWatcherGroup().add(this.lastWatcher)
+		this.updateData(this.lastWatcher.value)
 	}
 
 	/** Get watcher group to add watcher. */
@@ -190,14 +190,14 @@ export class RepeatDirective<T> implements Directive {
 	}
 
 	protected removeRepTem(repTem: RepetitiveTemplate<T>) {
-		repTem.disconnect()
+		repTem.remove()
 	}
 
 	remove() {
 		this.tryDeleteLastWatcher()
 
 		for (let repTem of this.repTems) {
-			repTem.disconnect()
+			repTem.remove()
 		}
 	}
 }
