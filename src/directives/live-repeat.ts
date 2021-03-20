@@ -453,6 +453,7 @@ export class LiveRepeatDirective<T, E = any> extends InternalEventEmitter<LiveRe
 		for (let item of preRendered.keys()) {
 			if (!dataSet.has(item)) {
 				let repTem = preRendered.get(item)!
+				repTem.disconnect()
 				restRepTems.push(repTem)
 				preRendered.delete(item)
 			}
@@ -485,7 +486,9 @@ export class LiveRepeatDirective<T, E = any> extends InternalEventEmitter<LiveRe
 				preRendered.set(item, repTem)
 			}
 			else {
+				// Keep it disconnect, so it will not affect rendering performance and still have a rough render results.
 				let repTem = new RepetitiveTemplate(this.context, this.templateFn, item, index)
+				repTem.disconnect()
 				repTem.template.preRender()
 				preRendered.set(item, repTem)
 				createCount++

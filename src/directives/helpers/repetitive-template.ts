@@ -79,7 +79,7 @@ export class RepetitiveTemplate<T> {
 	}
 
 	/** Just disconnect. */
-	private disconnect() {
+	disconnect() {
 		this.getWatcherGroup().delete(this.watcher)
 	}
 
