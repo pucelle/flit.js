@@ -69,6 +69,9 @@ export class PartialRenderingProcessor {
 	 */
 	private averageItemHeight: number = 0
 
+	/** If locked, means updating is not completed yet. */
+	private lockedUpdating: boolean = false
+
 	constructor(scroller: HTMLElement, slider: HTMLElement, sliderChildren: OffsetChildren) {
 		this.scroller = scroller
 		this.slider = slider
@@ -141,6 +144,16 @@ export class PartialRenderingProcessor {
 		}
 
 		this.updatePlaceholderHeightIfNeeded()
+		this.lockUpdatingForOneTick()
+	}
+
+	/** When updating not complete, should lock to avoid scroll event. */
+	private lockUpdatingForOneTick() {
+		this.lockedUpdating = true
+
+		onRenderComplete(() => {
+			this.lockedUpdating = false
+		})
 	}
 
 	/** 
@@ -148,6 +161,10 @@ export class PartialRenderingProcessor {
 	 * Returns whether updated.
 	 */
 	updateSmoothlyIfNeeded(doDataUpdating: UpdatingFunction) {
+		if (this.lockedUpdating) {
+			return
+		}
+
 		if (this.startIndex === 0 && this.endIndex === this.totalDataCount) {
 			return
 		}

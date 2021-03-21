@@ -75,7 +75,8 @@ export function getClosestComponentOfType<C extends ComponentConstructor>(el: El
 
 
 /**
- * Get component instance from root element as soon as component created, and before trigging `created` event.
+ * Get component instance from root element as soon as component created,
+ * Before properties applied and before trigging `created` event.
  * Or immediately when component already been created.
  * Only for inner use.
  * @param el The element to get component instance at.

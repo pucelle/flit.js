@@ -3,7 +3,8 @@ import {Binding, defineBinding} from './define'
 
 
 /**
- * To reference current element as a `refs` property or captures and passes to a handler.
+ * To reference current element as a `refs` property or captures component and passes to a handler as a parameter.
+ * Note when references the component may not applied properties and triggers `created`. 
  * 
  * `:refComponent="name"`- Reference as a property in current component at `.refs.refName`, note it will be updated everytime after element changed.
  * `:refComponent=${this.onRef}` - Call reference function with the component as parameter, note it will be called everytime after element changed.

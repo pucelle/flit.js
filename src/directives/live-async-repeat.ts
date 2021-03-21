@@ -70,6 +70,12 @@ export class LiveAsyncRepeatDirective<T> extends LiveRepeatDirective<T, LiveAsyn
 	/** Whether will update later. */
 	protected willUpdateLater: boolean = false
 
+	/** Whether will update data count later. */
+	protected willUpdateDataCountLater: boolean = false
+
+	/** Update version. */
+	protected version: number = 0
+
 	merge(dataOptions: any, templateFn: TemplateFn<T>, liveRepeatOptions?: LiveRepeatOptions, transitionOptions?: ContextualTransitionOptions) {
 		this.dataCount = dataOptions.dataCount
 		this.templateFn = templateFn
@@ -109,7 +115,19 @@ export class LiveAsyncRepeatDirective<T> extends LiveRepeatDirective<T, LiveAsyn
 			return
 		}
 
+		if (this.willUpdateDataCountLater) {
+			return
+		}
+
+		this.willUpdateDataCountLater = true
 		this.willUpdateLater = true
+
+		// Wait a little while to see if more requests come.
+		await Promise.resolve()
+
+		// If more requests comes when updating it, accept new.
+		this.willUpdateDataCountLater = false
+		let version = ++ this.version
 
 		let dataCount: number | Promise<number>
 		let knownDataCount = 0
@@ -128,10 +146,11 @@ export class LiveAsyncRepeatDirective<T> extends LiveRepeatDirective<T, LiveAsyn
 			knownDataCount = dataCount
 		}
 
-		this.processor.updateDataCount(knownDataCount)
-		this.update()
-
-		this.willUpdateLater = false
+		if (version === this.version) {
+			this.processor.updateDataCount(knownDataCount)
+			this.update()
+			this.willUpdateLater = false
+		}
 	}
 
 	protected updateFromIndices(startIndex: number, endIndex: number, scrollDirection: 'up' | 'down' | null) {
