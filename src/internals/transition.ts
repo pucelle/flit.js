@@ -249,15 +249,21 @@ export class Transition {
 		return new Promise(resolve => {
 			this.clean()
 
+			let el = this.el as HTMLElement | SVGElement
 			let direction = this.options.direction
+
 			let willPlay = direction === 'leave' || direction === 'both' || direction === undefined
 			if (!willPlay) {
 				resolve(true)
 				return
 			}
 
+			// If mouse hover trigger element, it's related popup becomes visible.
+			el.style.pointerEvents = 'none'
+
 			let onLeaved = (finish: boolean) => {
 				ElementTransitionCache.delete(this.el)
+				el.style.pointerEvents = ''
 				resolve(finish)
 			}
 
