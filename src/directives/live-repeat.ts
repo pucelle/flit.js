@@ -1,7 +1,7 @@
 import {defineDirective, Directive, DirectiveResult} from './define'
 import type {Context} from '../component'
 import {ContextualTransition, ContextualTransitionOptions} from '../internals/contextual-transition'
-import {RepetitiveTemplate, TemplateFn} from './helpers/repetitive-template'
+import {RepetitiveTemplate, RepetitiveTemplateSource, TemplateFn} from './helpers/repetitive-template'
 import type {NodeAnchor} from "../internals/node-anchor"
 import {off, on} from '../internals/dom-event'
 import {UpdatableOptions} from '../internals/updatable-options'
@@ -58,7 +58,7 @@ const DefaultLiveRepeatOptions: LiveRepeatOptions = {
 }
 
 
-export class LiveRepeatDirective<T, E = any> extends InternalEventEmitter<LiveRepeatEvents<T> & E> implements Directive {
+export class LiveRepeatDirective<T, E = any> extends InternalEventEmitter<LiveRepeatEvents<T> & E> implements Directive, RepetitiveTemplateSource<T> {
 
 	protected readonly anchor: NodeAnchor
 	protected readonly context: Context
@@ -163,6 +163,9 @@ export class LiveRepeatDirective<T, E = any> extends InternalEventEmitter<LiveRe
 			this.watchAndUpdateData(data)
 			this.rawData = data
 		}
+		else if (this.lastWatcher) {
+			this.update()
+		}
 	}
 
 	protected updatePreRendered() {
@@ -217,7 +220,14 @@ export class LiveRepeatDirective<T, E = any> extends InternalEventEmitter<LiveRe
 
 	__updateImmediately() {
 		this.processor.updateDataCount(this.fullData.length)
-		this.processor.updateAlways(this.updateFromIndices.bind(this))
+		this.processor.updateSynchronously(this.updateFromIndices.bind(this))
+	}
+
+	/** Returns a promise which will be resolved after data updated and renderer. */
+	protected untilDataUpdatedAndRendered() {
+		return new Promise(resolve => {
+			this.once('liveDataRendered', resolve)
+		})
 	}
 
 	protected checkCoverage() {
@@ -246,20 +256,21 @@ export class LiveRepeatDirective<T, E = any> extends InternalEventEmitter<LiveRe
 		for (let record of editRecord) {
 			let {type, fromIndex, toIndex, moveFromIndex} = record
 			let oldRepTem = fromIndex < oldRepTems.length && fromIndex !== -1 ? oldRepTems[fromIndex] : null
+			let newItem = newData[toIndex]
 
 			if (type === EditType.Leave) {
-				this.useMatchedRepTem(oldRepTem!, toIndex)
+				this.useMatchedRepTem(oldRepTem!, newItem, toIndex)
 			}
 			else if (type === EditType.Move) {
 				this.moveRepTemBefore(oldRepTems[moveFromIndex], oldRepTem)
-				this.useMatchedRepTem(oldRepTems[moveFromIndex], toIndex)
+				this.useMatchedRepTem(oldRepTems[moveFromIndex], newItem, toIndex)
 			}
 			else if (type === EditType.MoveModify) {
 				this.moveRepTemBefore(oldRepTems[moveFromIndex], oldRepTem)
-				this.reuseRepTem(oldRepTems[moveFromIndex], newData[toIndex], toIndex)
+				this.reuseRepTem(oldRepTems[moveFromIndex], newItem, toIndex)
 			}
 			else if (type === EditType.Insert) {
-				let newRepTem = this.createRepTem(newData[toIndex], toIndex)
+				let newRepTem = this.createRepTem(newItem, toIndex)
 				this.moveRepTemBefore(newRepTem, oldRepTem)
 				
 				if (shouldPaly) {
@@ -295,8 +306,8 @@ export class LiveRepeatDirective<T, E = any> extends InternalEventEmitter<LiveRe
 		}
 	}
 
-	protected useMatchedRepTem(repTem: RepetitiveTemplate<T>, index: number) {
-		repTem.updateIndex(this.startIndex + index)
+	protected useMatchedRepTem(repTem: RepetitiveTemplate<T>, item: T, index: number) {
+		repTem.update(item, this.startIndex + index)
 		this.repTems.push(repTem)
 	}
 
@@ -312,13 +323,13 @@ export class LiveRepeatDirective<T, E = any> extends InternalEventEmitter<LiveRe
 		if (this.preRendered?.has(item)) {
 			let repTem = this.preRendered.get(item)!
 			repTem.connect()
-			repTem.updateIndex(index)
+			repTem.update(item, index)
 			this.repTems.push(repTem)
 
 			return repTem
 		}
 		else {
-			let repTem = new RepetitiveTemplate(this.context, this.templateFn, item, this.startIndex + index)
+			let repTem = new RepetitiveTemplate(this, item, this.startIndex + index)
 			this.repTems.push(repTem)
 			this.preRendered?.set(item, repTem)
 
@@ -364,6 +375,12 @@ export class LiveRepeatDirective<T, E = any> extends InternalEventEmitter<LiveRe
 		return this.startIndex
 	}
 
+	/** Set `startIndex`, and the item in this index will be at the top start position of the viewport. */
+	setStartIndex(index: number) {
+		this.processor.setStartIndex(index)
+		this.update()
+	}
+
 	/** 
 	 * Get `endIndex` for the end index of current rendered items.
 	 * The returned value equals index of last index of rendered item +1.
@@ -373,11 +390,17 @@ export class LiveRepeatDirective<T, E = any> extends InternalEventEmitter<LiveRe
 	}
 
 	/** 
-	 * Get the index of the first visible element, which can be used to restore scrolling position by `setStartIndex`.
+	 * Get the index of the first visible element, which can be used to restore scrolling position by `setFirstVisibleIndex`.
 	 * May cause page reflow.
 	 */
 	getFirstVisibleIndex() {
 		return Math.max(0, locateFirstVisibleIndex(this.scroller, this.sliderChildren.getChildren())) + this.startIndex
+	}
+
+	/** Set the index of the first visible element, used to restore scrolling position. */
+	setFirstVisibleIndex(index: number) {
+		this.processor.setStartIndex(index)
+		this.update()
 	}
 
 	/** 
@@ -388,16 +411,10 @@ export class LiveRepeatDirective<T, E = any> extends InternalEventEmitter<LiveRe
 		return Math.max(0, locateLastVisibleIndex(this.scroller, this.sliderChildren.getChildren()))
 	}
 
-
-	/** Set `startIndex`, and the item in this index will be at the top start position of the viewport. */
-	setStartIndex(index: number) {
-		this.processor.setStartIndex(index)
-		this.update()
-	}
-
 	/** 
-	 * Make item in the specified index becomes visible.
-	 * If element is not rendered, adjust `startIndex` and re-render firstly. */
+	 * Make item in the specified index becomes visible by scrolling minimum pixels.
+	 * If element is not rendered, adjust `startIndex` and re-render firstly.
+	 */
 	scrollToViewIndex(index: number) {
 		if (this.isIndexRendered(index)) {
 			this.scrollToViewRenderedIndex(index)
@@ -405,9 +422,9 @@ export class LiveRepeatDirective<T, E = any> extends InternalEventEmitter<LiveRe
 		else {
 			this.setStartIndex(index)
 			
-			if (this.isIndexRendered(index)) {
+			this.untilDataUpdatedAndRendered().then(() => {
 				this.scrollToViewRenderedIndex(index)
-			}
+			})
 		}
 	}
 
@@ -420,20 +437,46 @@ export class LiveRepeatDirective<T, E = any> extends InternalEventEmitter<LiveRe
 	protected scrollToViewRenderedIndex(index: number) {
 		let scrollerRect = this.scroller.getBoundingClientRect()
 		let el = this.sliderChildren.childAt(index - this.startIndex)
-		let rect = el.getBoundingClientRect()
+		let elRect = el.getBoundingClientRect()
 
 		// Below it, need to scroll up.
-		if (rect.bottom > scrollerRect.bottom) {
-			this.scroller.scrollTop = this.scroller.scrollTop + (scrollerRect.bottom - rect.bottom)
+		if (elRect.bottom > scrollerRect.bottom) {
+			this.scroller.scrollTop = this.scroller.scrollTop + (elRect.bottom - scrollerRect.bottom)
 		}
 
 		// Above it, need to scroll down.
-		else if (rect.top < scrollerRect.top) {
-			this.scroller.scrollTop = this.scroller.scrollTop + (scrollerRect.top - rect.top)
+		else if (elRect.top < scrollerRect.top) {
+			this.scroller.scrollTop = this.scroller.scrollTop + (scrollerRect.top - elRect.top)
 		}
 	}
 
-	// Handle pre rendering
+	/** 
+	 * Make item in the specified index becomes visible at the top scroll position.
+	 * If element is not rendered, adjust `startIndex` and re-render firstly.
+	 */
+	scrollToMakeIndexAtTop(index: number) {
+		if (this.isIndexRendered(index)) {
+			this.scrollToMakeRenderedIndexAtTop(index)
+		}
+		else {
+			this.setStartIndex(index)
+			
+			this.untilDataUpdatedAndRendered().then(() => {
+				this.scrollToMakeRenderedIndexAtTop(index)
+			})
+		}
+	}
+
+	/** After item in index rendered, make it becomes visible at the top scroll position. */
+	protected scrollToMakeRenderedIndexAtTop(index: number) {
+		let scrollerRect = this.scroller.getBoundingClientRect()
+		let el = this.sliderChildren.childAt(index - this.startIndex)
+		let elRect = el.getBoundingClientRect()
+
+		this.scroller.scrollTop = this.scroller.scrollTop + (elRect.top - scrollerRect.top)
+	}
+
+	/** Handle pre-rendering */
 	protected async doPreRendering(scrollDirection: 'up' | 'down' | null) {
 		let version = this.updateVersion
 		let preRendered = this.preRendered!
@@ -487,7 +530,7 @@ export class LiveRepeatDirective<T, E = any> extends InternalEventEmitter<LiveRe
 			}
 			else {
 				// Keep it disconnect, so it will not affect rendering performance and still have a rough render results.
-				let repTem = new RepetitiveTemplate(this.context, this.templateFn, item, index)
+				let repTem = new RepetitiveTemplate(this, item, index)
 				repTem.disconnect()
 				repTem.template.preRender()
 				preRendered.set(item, repTem)
@@ -520,6 +563,14 @@ export class LiveRepeatDirective<T, E = any> extends InternalEventEmitter<LiveRe
 		for (let repTem of this.repTems) {
 			repTem.remove()
 		}
+	}
+
+	getContext() {
+		return this.context
+	}
+
+	getTemplateFn() {
+		return this.templateFn
 	}
 }
 

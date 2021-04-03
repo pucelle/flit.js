@@ -3,6 +3,11 @@ import {Template, TemplateResult} from '../../template'
 import {GlobalWatcherGroup, LazyWatcher} from '../../watchers'
 
 
+export interface RepetitiveTemplateSource<T> {
+	getContext: () => Context
+	getTemplateFn: () => TemplateFn<T>
+}
+
 export type TemplateFn<T> = (item: T, index: number) => TemplateResult
 
 
@@ -13,36 +18,37 @@ export type TemplateFn<T> = (item: T, index: number) => TemplateResult
  */
 export class RepetitiveTemplate<T> {
 
-	private readonly context: Context
-	private readonly templateFn: TemplateFn<T>
+	private readonly source: RepetitiveTemplateSource<T>
 	private readonly watcher: LazyWatcher<TemplateResult>
 
 	item: T
 	index: number
 	template: Template
 
-	constructor(context: Context, templateFn: TemplateFn<T>, item: T, index: number) {
-		this.context = context
-		this.templateFn = templateFn
-
+	constructor(source: RepetitiveTemplateSource<T>, item: T, index: number) {
+		this.source = source
 		this.item = item
 		this.index = index
+
+		let context = source.getContext()
 		
 		// Update after components and top level watchers update completed,
 		// and also after directive updated, or it will cause useless updating.
-		this.watcher = new LazyWatcher(this.getTemplateResult.bind(this), this.onUpdateTemplateResult.bind(this), this.context)
-		this.template = new Template(this.watcher.value, this.context)
+		this.watcher = new LazyWatcher(this.getTemplateResult.bind(this), this.onUpdateTemplateResult.bind(this), context)
+		this.template = new Template(this.watcher.value, context)
 		this.getWatcherGroup().add(this.watcher)
 	}
 
 	/** Get watcher group to add or delete watcher. */
 	protected getWatcherGroup() {
-		return this.context?.__getWatcherGroup() || GlobalWatcherGroup
+		let context = this.source.getContext()
+		return context?.__getWatcherGroup() || GlobalWatcherGroup
 	}
 
 	/** To get current template result for watching. */
 	private getTemplateResult() {
-		return this.templateFn(this.item, this.index)
+		let templateFn = this.source.getTemplateFn()
+		return templateFn(this.item, this.index)
 	}
 
 	/** After template result changed. */
@@ -51,25 +57,18 @@ export class RepetitiveTemplate<T> {
 			this.template.merge(result)
 		}
 		else {
-			let newTemplate = new Template(result, this.context)
+			let context = this.source.getContext()
+			let newTemplate = new Template(result, context)
 			this.template.replaceWith(newTemplate)
 			this.template = newTemplate
 		}
 	}
 
+	/** Update item and indices. */
 	update(item: T, index: number) {
-		if (item !== this.item || index !== this.index) {
-			this.item = item
-			this.index = index
-			this.watcher.update()
-		}
-	}
-
-	updateIndex(index: number) {
-		if (index !== this.index) {
-			this.index = index
-			this.watcher.update()
-		}
+		this.item = item
+		this.index = index
+		this.watcher.update()
 	}
 
 	/** Remove elements and disconnect. Can connect again later. */

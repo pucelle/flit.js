@@ -82,7 +82,7 @@ export function onRenderComplete(callback: () => void) {
 
 /** 
  * Returns a promise which will be resolved after all the components and watchers updated and rendered in next animation frame.
- * Note that it was called after `onRenderComplete`.
+ * It was called after `onRenderComplete` but normally there is no difference.
  * @return A promise to be resolved after render completed.
  */
 export function renderComplete(): Promise<void> {

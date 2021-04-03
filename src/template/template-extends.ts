@@ -1,3 +1,4 @@
+import {joinHTMLAttributes} from '../internals/html-attributes-parser'
 import {parseToHTMLTokens, HTMLTokenType, HTMLToken, joinHTMLTokens} from '../internals/html-token-parser'
 import {TemplateResult} from './template-result'
 import {joinWithOrderMarkers, splitByOrderMarkers, StringsAndValueIndices} from './utils'
@@ -49,7 +50,8 @@ function parseTemplateResultForExtending(string: string, superString: string): S
 	let {attributes, slots, restTokens} = parseToRootAttributesAndSlots(tokens)
 
 	let superTokens = wrapWithTemplateTokens(superString)
-	assignRootAttributesAndSlotsTo(superTokens, attributes, slots, restTokens)
+	assignRootAttributes(superTokens, attributes)
+	assignRootSlots(superTokens, slots, restTokens)
 
 	let stringsAndValueIndices = splitByOrderMarkers(joinHTMLTokens(superTokens))
 
@@ -134,10 +136,14 @@ function wrapWithTemplateTokens(string: string): HTMLToken[] {
 }
 
 
-/** Assign attributes of root element and all slots to a html token list. */
-function assignRootAttributesAndSlotsTo(tokens: HTMLToken[], attributes: string, slots: Record<string, HTMLToken[]>, restTokens: HTMLToken[]) {
-	tokens[0].attributes += attributes
+/** Assign attributes of root element to super tokens */
+function assignRootAttributes(superTokens: HTMLToken[], assignAttributes: string) {
+	superTokens[0].attributes = joinHTMLAttributes(superTokens[0].attributes!, assignAttributes)
+}
 
+
+/** Assign attributes of root element and all slots to a html token list. */
+function assignRootSlots(tokens: HTMLToken[], slots: Record<string, HTMLToken[]>, restTokens: HTMLToken[]) {
 	if (Object.keys(slots).length > 0 || restTokens.length > 0) {
 		for (let i = 0; i < tokens.length; i++) {
 			let token = tokens[i]

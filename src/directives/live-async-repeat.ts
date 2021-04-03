@@ -99,7 +99,7 @@ export class LiveAsyncRepeatDirective<T> extends LiveRepeatDirective<T, LiveAsyn
 
 	__updateImmediately() {
 		if (!this.willUpdateLater) {
-			this.processor.updateAlways(this.updateFromIndices.bind(this))
+			this.processor.updateSynchronously(this.updateFromIndices.bind(this))
 		}
 	}
 
@@ -122,7 +122,7 @@ export class LiveAsyncRepeatDirective<T> extends LiveRepeatDirective<T, LiveAsyn
 		this.willUpdateDataCountLater = true
 		this.willUpdateLater = true
 
-		// Wait a little while to see if more requests come.
+		// Wait a little while to see if more update data count requests come.
 		await Promise.resolve()
 
 		// If more requests comes when updating it, accept new.

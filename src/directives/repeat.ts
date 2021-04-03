@@ -1,10 +1,11 @@
 import {defineDirective, Directive, DirectiveResult} from './define'
 import type {Context} from '../component'
 import {ContextualTransition, ContextualTransitionOptions} from '../internals/contextual-transition'
-import {RepetitiveTemplate, TemplateFn} from './helpers/repetitive-template'
+import {RepetitiveTemplate, RepetitiveTemplateSource, TemplateFn} from './helpers/repetitive-template'
 import {NodeAnchor} from "../internals/node-anchor"
 import {GlobalWatcherGroup, LazyWatcher, Watcher} from '../watchers'
 import {getEditRecord, EditType} from '../helpers/edit'
+import {getClosestScrollWrapper} from '../helpers/utils'
 
 
 /** 
@@ -12,7 +13,7 @@ import {getEditRecord, EditType} from '../helpers/edit'
  * instead, it watches dependencies when updating each item,
  * and update each item indenpent after it's dependencies changed.
  */
-export class RepeatDirective<T> implements Directive {
+export class RepeatDirective<T> implements Directive, RepetitiveTemplateSource<T> {
 
 	protected readonly anchor: NodeAnchor
 	protected readonly context: Context
@@ -57,6 +58,9 @@ export class RepeatDirective<T> implements Directive {
 		if (data !== this.rawData) {
 			this.watchAndUpdateData(data)
 			this.rawData = data
+		}
+		else if (this.lastWatcher) {
+			this.updateData(this.data)
 		}
 	}
 
@@ -108,20 +112,21 @@ export class RepeatDirective<T> implements Directive {
 		for (let record of editRecord) {
 			let {type, fromIndex, toIndex, moveFromIndex} = record
 			let oldRepTem = fromIndex < oldRepTems.length && fromIndex !== -1 ? oldRepTems[fromIndex] : null
+			let newItem = newData[toIndex]
 
 			if (type === EditType.Leave) {
-				this.useMatchedRepTem(oldRepTem!, toIndex)
+				this.useMatchedRepTem(oldRepTem!, newItem, toIndex)
 			}
 			else if (type === EditType.Move) {
 				this.moveRepTemBefore(oldRepTems[moveFromIndex], oldRepTem)
-				this.useMatchedRepTem(oldRepTems[moveFromIndex], toIndex)
+				this.useMatchedRepTem(oldRepTems[moveFromIndex], newItem, toIndex)
 			}
 			else if (type === EditType.MoveModify) {
 				this.moveRepTemBefore(oldRepTems[moveFromIndex], oldRepTem)
-				this.reuseRepTem(oldRepTems[moveFromIndex], newData[toIndex], toIndex)
+				this.reuseRepTem(oldRepTems[moveFromIndex], newItem, toIndex)
 			}
 			else if (type === EditType.Insert) {
-				let newRepTem = this.createRepTem(newData[toIndex], toIndex)
+				let newRepTem = this.createRepTem(newItem, toIndex)
 				this.moveRepTemBefore(newRepTem, oldRepTem)
 				
 				if (shouldPaly) {
@@ -143,8 +148,10 @@ export class RepeatDirective<T> implements Directive {
 		}
 	}
 
-	protected useMatchedRepTem(repTem: RepetitiveTemplate<T>, index: number) {
-		repTem.updateIndex(index)
+	protected useMatchedRepTem(repTem: RepetitiveTemplate<T>, item: T, index: number) {
+		// Must update even reuse matched item,
+		// Because scoped variables may changed.
+		repTem.update(item, index)
 		this.repTems.push(repTem)
 	}
 
@@ -154,7 +161,7 @@ export class RepeatDirective<T> implements Directive {
 	}
 
 	protected createRepTem(item: T, index: number) {
-		let repTem = new RepetitiveTemplate(this.context, this.templateFn, item, index)
+		let repTem = new RepetitiveTemplate(this, item, index)
 		this.repTems.push(repTem)
 
 		return repTem
@@ -199,6 +206,62 @@ export class RepeatDirective<T> implements Directive {
 		for (let repTem of this.repTems) {
 			repTem.remove()
 		}
+	}
+
+	/** Make item in the specified index becomes visible by scrolling minimum pixels in Y direction. */
+	scrollToViewIndex(index: number): boolean {
+		let el = this.repTems[index]?.template.getFirstElement() as HTMLElement | null
+		if (!el) {
+			return false
+		}
+
+		let scroller = getClosestScrollWrapper(el)
+		if (!scroller) {
+			return false
+		}
+
+		let scrollerRect = scroller.getBoundingClientRect()
+		let elRect = el.getBoundingClientRect()
+
+		// Below it, need to scroll up.
+		if (elRect.bottom > scrollerRect.bottom) {
+			scroller.scrollTop = scroller.scrollTop + (elRect.bottom - scrollerRect.bottom)
+		}
+
+		// Above it, need to scroll down.
+		else if (elRect.top < scrollerRect.top) {
+			scroller.scrollTop = scroller.scrollTop + (scrollerRect.top - elRect.top)
+		}
+
+		return true
+	}
+
+	/**  Make item in the specified index becomes visible at the top scroll position. */
+	scrollToMakeIndexAtTop(index: number): boolean {
+		let el = this.repTems[index]?.template.getFirstElement() as HTMLElement | null
+		if (!el) {
+			return false
+		}
+
+		let scroller = getClosestScrollWrapper(el)
+		if (!scroller) {
+			return false
+		}
+
+		let scrollerRect = scroller.getBoundingClientRect()
+		let elRect = el.getBoundingClientRect()
+
+		scroller.scrollTop = scroller.scrollTop + (elRect.top - scrollerRect.top)
+
+		return true
+	}
+
+	getContext() {
+		return this.context
+	}
+
+	getTemplateFn() {
+		return this.templateFn
 	}
 }
 
