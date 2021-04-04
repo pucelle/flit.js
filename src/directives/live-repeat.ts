@@ -375,10 +375,18 @@ export class LiveRepeatDirective<T, E = any> extends InternalEventEmitter<LiveRe
 		return this.startIndex
 	}
 
-	/** Set `startIndex`, and the item in this index will be at the top start position of the viewport. */
+	/** 
+	 * Set `startIndex`, and the item in this index will be at the top start position of the viewport.
+	 * If needs to update, will update firstly and then set index.
+	 */
 	setStartIndex(index: number) {
 		this.processor.setStartIndex(index)
 		this.update()
+	}
+
+	/** Whether specifies a start index. */
+	isStartIndexSpecified() {
+		return this.processor.isStartIndexSpecified()
 	}
 
 	/** 
@@ -397,12 +405,6 @@ export class LiveRepeatDirective<T, E = any> extends InternalEventEmitter<LiveRe
 		return Math.max(0, locateFirstVisibleIndex(this.scroller, this.sliderChildren.getChildren())) + this.startIndex
 	}
 
-	/** Set the index of the first visible element, used to restore scrolling position. */
-	setFirstVisibleIndex(index: number) {
-		this.processor.setStartIndex(index)
-		this.update()
-	}
-
 	/** 
 	 * Get the index of the last visible element.
 	 * May cause page reflow.
@@ -413,18 +415,17 @@ export class LiveRepeatDirective<T, E = any> extends InternalEventEmitter<LiveRe
 
 	/** 
 	 * Make item in the specified index becomes visible by scrolling minimum pixels.
-	 * If element is not rendered, adjust `startIndex` and re-render firstly.
+	 * Try to adjust immediately, so you will need to ensure elements rendered.
+	 * Will re-render if the element in specified index is not rendered.
 	 */
-	scrollToViewIndex(index: number) {
+	async makeIndexVisible(index: number): Promise<boolean> {
 		if (this.isIndexRendered(index)) {
-			this.scrollToViewRenderedIndex(index)
+			return this.scrollToViewRenderedIndex(index)
 		}
 		else {
 			this.setStartIndex(index)
-			
-			this.untilDataUpdatedAndRendered().then(() => {
-				this.scrollToViewRenderedIndex(index)
-			})
+			await this.untilDataUpdatedAndRendered()
+			return this.scrollToViewRenderedIndex(index)
 		}
 	}
 
@@ -434,9 +435,13 @@ export class LiveRepeatDirective<T, E = any> extends InternalEventEmitter<LiveRe
 	}
 
 	/** After item in index rendered, make it visible. */
-	protected scrollToViewRenderedIndex(index: number) {
-		let scrollerRect = this.scroller.getBoundingClientRect()
+	protected scrollToViewRenderedIndex(index: number): boolean {
 		let el = this.sliderChildren.childAt(index - this.startIndex)
+		if (!el) {
+			return false
+		}
+
+		let scrollerRect = this.scroller.getBoundingClientRect()
 		let elRect = el.getBoundingClientRect()
 
 		// Below it, need to scroll up.
@@ -448,32 +453,49 @@ export class LiveRepeatDirective<T, E = any> extends InternalEventEmitter<LiveRe
 		else if (elRect.top < scrollerRect.top) {
 			this.scroller.scrollTop = this.scroller.scrollTop + (scrollerRect.top - elRect.top)
 		}
+
+		return true
+	}
+
+	/** 
+	 * Make item in the specified index visible at the top edge of scroller.
+	 * Try to adjust immediately, so you will need to ensure elements rendered.
+	 * Will re-render if the element in specified index is not rendered.
+	 */
+	async makeIndexVisibleAtTop(index: number): Promise<boolean> {
+		if (this.isIndexRendered(index)) {
+			return this.scrollToMakeRenderedIndexAtTop(index)
+		}
+		else {
+			this.setStartIndex(index)
+			await this.untilDataUpdatedAndRendered()
+			return this.scrollToMakeRenderedIndexAtTop(index)
+		}
 	}
 
 	/** 
 	 * Make item in the specified index becomes visible at the top scroll position.
-	 * If element is not rendered, adjust `startIndex` and re-render firstly.
+	 * If needs to update, will update firstly and then set index.
 	 */
-	scrollToMakeIndexAtTop(index: number) {
-		if (this.isIndexRendered(index)) {
-			this.scrollToMakeRenderedIndexAtTop(index)
-		}
-		else {
-			this.setStartIndex(index)
-			
-			this.untilDataUpdatedAndRendered().then(() => {
-				this.scrollToMakeRenderedIndexAtTop(index)
-			})
-		}
+	async setFirstVisibleIndex(index: number): Promise<boolean> {
+		this.setStartIndex(index)
+		await this.untilDataUpdatedAndRendered()
+		return this.scrollToMakeRenderedIndexAtTop(index)
 	}
 
 	/** After item in index rendered, make it becomes visible at the top scroll position. */
-	protected scrollToMakeRenderedIndexAtTop(index: number) {
-		let scrollerRect = this.scroller.getBoundingClientRect()
+	protected scrollToMakeRenderedIndexAtTop(index: number): boolean {
 		let el = this.sliderChildren.childAt(index - this.startIndex)
+		if (!el) {
+			return false
+		}
+
+		let scrollerRect = this.scroller.getBoundingClientRect()
 		let elRect = el.getBoundingClientRect()
 
 		this.scroller.scrollTop = this.scroller.scrollTop + (elRect.top - scrollerRect.top)
+
+		return true
 	}
 
 	/** Handle pre-rendering */

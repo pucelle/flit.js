@@ -71,7 +71,8 @@ export function enqueueUpdatableInOrder(upt: Updatable, context: Context, order:
 
 /** 
  * Calls `callback` after all the components and watchers updated and rendered in next animation frame.
- * Note that it was called before `renderComplete`.
+ * Called before `untilRenderComplete` but normally there is no difference.
+ * Compare to `untilRenderComplete`, `onRenderComplete` is normally used in internal implementations.
  * @param callback callback to be called after render completed.
  */
 export function onRenderComplete(callback: () => void) {
@@ -82,10 +83,11 @@ export function onRenderComplete(callback: () => void) {
 
 /** 
  * Returns a promise which will be resolved after all the components and watchers updated and rendered in next animation frame.
- * It was called after `onRenderComplete` but normally there is no difference.
+ * Called after `onRenderComplete` but normally there is no difference.
+ * Compare to `onRenderComplete`, `untilRenderComplete` is normally used in app implementations.
  * @return A promise to be resolved after render completed.
  */
-export function renderComplete(): Promise<void> {
+export function untilRenderComplete(): Promise<void> {
 	return new Promise(resolve => {
 		onRenderComplete(resolve)
 	})

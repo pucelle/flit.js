@@ -6,6 +6,7 @@ import {NodeAnchor} from "../internals/node-anchor"
 import {GlobalWatcherGroup, LazyWatcher, Watcher} from '../watchers'
 import {getEditRecord, EditType} from '../helpers/edit'
 import {getClosestScrollWrapper} from '../helpers/utils'
+import {untilRenderComplete} from '../queue'
 
 
 /** 
@@ -208,8 +209,11 @@ export class RepeatDirective<T> implements Directive, RepetitiveTemplateSource<T
 		}
 	}
 
-	/** Make item in the specified index becomes visible by scrolling minimum pixels in Y direction. */
-	scrollToViewIndex(index: number): boolean {
+	/** 
+	 * Make item in the specified index becomes visible by scrolling minimum pixels in Y direction.
+	 * Try to adjust immediately, so you will need to ensure elements rendered.
+	 */
+	makeIndexVisible(index: number): boolean {
 		let el = this.repTems[index]?.template.getFirstElement() as HTMLElement | null
 		if (!el) {
 			return false
@@ -236,8 +240,36 @@ export class RepeatDirective<T> implements Directive, RepetitiveTemplateSource<T
 		return true
 	}
 
-	/**  Make item in the specified index becomes visible at the top scroll position. */
-	scrollToMakeIndexAtTop(index: number): boolean {
+	/** 
+	 * Make item in the specified index visible at the top edge of scroller.
+	 * Try to adjust immediately, so you will need to ensure elements rendered.
+	 */
+	 makeIndexVisibleAtTop(index: number): boolean {
+		let el = this.repTems[index]?.template.getFirstElement() as HTMLElement | null
+		if (!el) {
+			return false
+		}
+
+		let scroller = getClosestScrollWrapper(el)
+		if (!scroller) {
+			return false
+		}
+
+		let scrollerRect = scroller.getBoundingClientRect()
+		let elRect = el.getBoundingClientRect()
+
+		scroller.scrollTop = scroller.scrollTop + (elRect.top - scrollerRect.top)
+
+		return true
+	}
+
+	/** 
+	 * Make item in the specified index becomes visible at the top scroll position.
+	 * If needs to update, will update firstly and then set index.
+	 */
+	async setFirstVisibleIndex(index: number): Promise<boolean> {
+		await untilRenderComplete()
+
 		let el = this.repTems[index]?.template.getFirstElement() as HTMLElement | null
 		if (!el) {
 			return false

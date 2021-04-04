@@ -1,5 +1,5 @@
 import {locateLastVisibleIndex, locateFirstVisibleIndex, getRect, Rect} from '../../helpers/utils'
-import {onRenderComplete, renderComplete} from '../../queue'
+import {onRenderComplete, untilRenderComplete} from '../../queue'
 import {OffsetChildren} from './offset-children'
 
 
@@ -120,6 +120,11 @@ export class PartialRenderingProcessor {
 		this.startIndexToApply = index
 	}
 
+	/** Whether specifies a start index. */
+	isStartIndexSpecified() {
+		return this.startIndexToApply !== null
+	}
+
 	/** Update total data count after reload data. */
 	updateDataCount(dataCount: number) {
 		this.totalDataCount = dataCount
@@ -148,7 +153,7 @@ export class PartialRenderingProcessor {
 
 		this.updatePlaceholderHeightIfNeeded()
 
-		this.untilUpdatingCompletePromise = renderComplete().then(() => {
+		this.untilUpdatingCompletePromise = untilRenderComplete().then(() => {
 			this.untilUpdatingCompletePromise = null
 		})
 	}
@@ -289,7 +294,7 @@ export class PartialRenderingProcessor {
 		let hasNoIntersection = sliderRect.bottom < scrollerRect.top || sliderRect.top > scrollerRect.bottom
 		if (hasNoIntersection) {
 			this.updateFromCurrentScrollOffset(doDataUpdating)
-			await renderComplete()
+			await untilRenderComplete()
 		}
 
 		// Scroll down and can't cover at bottom direction.
@@ -397,7 +402,7 @@ export class PartialRenderingProcessor {
 		// Render to locate first item.
 		updateData()
 		
-		await renderComplete()
+		await untilRenderComplete()
 
 		// Should keep the visible element stable.
 		let newVisibleElement = this.sliderChildren.childAt(visibleIndex)
@@ -417,7 +422,7 @@ export class PartialRenderingProcessor {
 		// Render to locate last item.
 		updateData()
 
-		await renderComplete()
+		await untilRenderComplete()
 
 		// Get element translated.
 		let newVisibleElement = this.sliderChildren.childAt(visibleIndex)
@@ -452,7 +457,7 @@ export class PartialRenderingProcessor {
 		updateData()
 
 		this.scroller.scrollTop = extendedScrollSpace
-		await renderComplete()
+		await untilRenderComplete()
 	}
 
 	/** When reach scroll end but not reach end index, provide more scroll space. */
@@ -466,7 +471,7 @@ export class PartialRenderingProcessor {
 		this.updateSliderPosition('top', position)
 		updateData()
 
-		await renderComplete()
+		await untilRenderComplete()
 
 		// Extend more spaces at end.
 		let newScrollerRect = this.getScrollerClientRect()
@@ -486,7 +491,7 @@ export class PartialRenderingProcessor {
 		this.updatePlaceholderHeightProgressive(position, this.startIndex)
 
 		updateData()
-		await renderComplete()
+		await untilRenderComplete()
 	}
 
 	/** Render more items when scrolling up, not reset scroll position. */
@@ -496,6 +501,6 @@ export class PartialRenderingProcessor {
 
 		this.updateSliderPosition('bottom', position)
 		updateData()
-		await renderComplete()
+		await untilRenderComplete()
 	}
 }

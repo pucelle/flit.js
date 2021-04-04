@@ -40,14 +40,15 @@ export interface ComponentEvents {
 	disconnected: () => void
 
 	/** 
-	 * After all the data, child nodes are prepared, but child components are not prepared.
-	 * If need check computed styles on child nodes, uses `onRenderComplete` or `renderComplete`.
+	 * After all the data, child nodes, directives are prepared,
+	 * but child components, are not prepared yet and will be linked in next micro task.
+	 * If need check computed styles on child nodes, uses `onRenderComplete` or `untilRenderComplete`.
 	 */
 	ready: () => void
 
 	/** 
 	 * After every time all the data and child nodes updated.
-	 * If need check computed styles on child nodes, uses `onRenderComplete`, `renderComplete` or `rendered` event.
+	 * If need check computed styles on child nodes, uses `onRenderComplete`, `untilRenderComplete` or `rendered` event.
 	 */
 	updated: () => void
 
@@ -232,7 +233,7 @@ export abstract class Component<E = any> extends InternalEventEmitter<E & Compon
 	/**
 	 * Called after all the data, child nodes are prepared, but child components are not prepared.
 	 * Later it will keep updating other components, so don't check computed styles on child nodes.
-	 * If need so, uses `onRenderComplete` or `renderComplete`.
+	 * If need so, uses `onRenderComplete` or `untilRenderComplete`.
 	 * You may visit or adjust child nodes or register more events when `onReady`.
 	 */
 	protected onReady() {}
@@ -241,7 +242,7 @@ export abstract class Component<E = any> extends InternalEventEmitter<E & Compon
 	 * Called after every time all the data and child nodes updated.
 	 * Seam with `onReady`, child components may not been updated yet,
 	 * so don't check computed styles on child nodes.
-	 * If need so, uses `onRenderComplete` or `renderComplete`.
+	 * If need so, uses `onRenderComplete` or `untilRenderComplete`.
 	 * You may reset some properties or capture some nodes dynamically here,
 	 * but normally you don't need to.
 	 */
@@ -266,6 +267,18 @@ export abstract class Component<E = any> extends InternalEventEmitter<E & Compon
 	 * If you register global listeners like `resize`, don't forget to unregister them here.
 	 */
 	protected onDisconnected() {}
+
+	/** Returns promise which will be resolved after component is ready. */
+	protected async untilReady() {
+		if (this.__updated) {
+			return
+		}
+		else {
+			return new Promise(resolve => {
+				this.once('ready', resolve)
+			})
+		}
+	}
 
 	/** 
 	 * Watchs returned value of `fn` and calls `callback` with this value as parameter after the value changed.
