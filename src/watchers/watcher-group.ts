@@ -74,7 +74,7 @@ export class WatcherGroup {
 	}
 
 	/** Create a new watcher and add to current group. */
-	watch<T>(fn: () => T, callback: (value: T) => void): () => void {
+	watch<T>(fn: () => T, callback: (newValue: T, oldValue: T | undefined) => void): () => void {
 		let watcher = new Watcher(fn, callback, this.context)
 		this.add(watcher)
 
@@ -84,9 +84,9 @@ export class WatcherGroup {
 	}
 
 	/** Create a new watcher and add to current group, calls `callback` immediately. */
-	watchImmediately<T>(fn: () => T, callback: (value: T) => void): () => void {
+	watchImmediately<T>(fn: () => T, callback: (newValue: T, oldValue: T | undefined) => void): () => void {
 		let watcher = new Watcher(fn, callback, this.context)
-		callback.call(this, watcher.value)
+		callback.call(this, watcher.value, undefined)
 		this.add(watcher)
 
 		return () => {
@@ -95,9 +95,9 @@ export class WatcherGroup {
 	}
 
 	/** Create a new watcher and add to current group, only calls `callback` for once. */
-	watchOnce<T>(fn: () => T, callback: (value: T) => void): () => void {
-		let wrappedCallback = (value: T) => {
-			callback(value)
+	watchOnce<T>(fn: () => T, callback: (newValue: T, oldValue: T | undefined) => void): () => void {
+		let wrappedCallback = (newValue: T, oldValue: T | undefined) => {
+			callback(newValue, oldValue)
 			unwatch()
 		}
 
@@ -112,10 +112,10 @@ export class WatcherGroup {
 	}
 
 	/** Create a new watcher and add to current group, calls `callback` only when returned value of `fn` be true like. */
-	watchUntil<T>(fn: () => T, callback: (value: T) => void): () => void {
-		let wrappedCallback = (value: T) => {
-			if (value) {
-				callback(value)
+	watchUntil<T>(fn: () => T, callback: (trueValue: T) => void): () => void {
+		let wrappedCallback = (newValue: T) => {
+			if (newValue) {
+				callback(newValue)
 				unwatch()
 			}
 		}

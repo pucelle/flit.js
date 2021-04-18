@@ -16,7 +16,7 @@ export class Watcher<T = any> {
 	protected readonly fn: () => T
 
 	/** Callback to call after data may be changed. */
-	protected readonly callback: (value: T) => void
+	protected readonly callback: (newValue: T, oldValue: T | undefined) => void
 
 	/** Context to determine update order. */
 	protected readonly context: Context
@@ -27,7 +27,7 @@ export class Watcher<T = any> {
 	/** Last value returned from `fn`. */
 	value: T
 
-	constructor(fn: () => T, callback: (value: T) => void, context: Context) {
+	constructor(fn: () => T, callback: (newValue: T, oldValue: T | undefined) => void, context: Context) {
 		this.fn = fn
 		this.callback = callback
 		this.context = context
@@ -64,7 +64,8 @@ export class Watcher<T = any> {
 
 		// Data may change, doesn't validate object.
 		if (newValue !== this.value || typeof newValue === 'object') {
-			this.callback.call(null, this.value = newValue)
+			let oldValue = this.value
+			this.callback.call(null, this.value = newValue, oldValue)
 		}
 	}
 

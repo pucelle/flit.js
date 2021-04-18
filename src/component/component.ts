@@ -191,8 +191,9 @@ export abstract class Component<E = any> extends InternalEventEmitter<E & Compon
 		}
 
 		if (!this.__updated) {
-			this.onReady()
 			this.__updated = true
+			this.onReady()
+			this.emit('ready')
 		}
 		
 		this.onUpdated()
@@ -284,7 +285,7 @@ export abstract class Component<E = any> extends InternalEventEmitter<E & Compon
 	 * Watchs returned value of `fn` and calls `callback` with this value as parameter after the value changed.
 	 * Will set callback scope as current component.
 	 */
-	watch<T>(fn: () => T, callback: (value: T) => void): () => void {
+	watch<T>(fn: () => T, callback: (newValue: T, oldValue: T | undefined) => void): () => void {
 		return this.__getWatcherGroup().watch(fn, callback.bind(this))
 	}
 
@@ -293,7 +294,7 @@ export abstract class Component<E = any> extends InternalEventEmitter<E & Compon
 	 * Will call `callback` immediately.
 	 * Will set callback scope as current component.
 	 */
-	watchImmediately<T>(fn: () => T, callback: (value: T) => void): () => void {
+	watchImmediately<T>(fn: () => T, callback: (newValue: T, oldValue: T | undefined) => void): () => void {
 		return this.__getWatcherGroup().watchImmediately(fn, callback.bind(this))
 	}
 
@@ -302,7 +303,7 @@ export abstract class Component<E = any> extends InternalEventEmitter<E & Compon
 	 * Calls `callback` for only once.
 	 * Will set callback scope as current component.
 	 */
-	watchOnce<T>(fn: () => T, callback: (value: T) => void): () => void {
+	watchOnce<T>(fn: () => T, callback: (newValue: T, oldValue: T | undefined) => void): () => void {
 		return this.__getWatcherGroup().watchOnce(fn, callback.bind(this))
 	}
 
@@ -310,7 +311,7 @@ export abstract class Component<E = any> extends InternalEventEmitter<E & Compon
 	 * Watchs returned value of `fn` and calls `callback` with this value as parameter after the value becomes true like.
 	 * Will set callback scope as current component.
 	 */
-	watchUntil<T>(fn: () => T, callback: (value: T) => void): () => void {
+	watchUntil<T>(fn: () => T, callback: (trueValue: T) => void): () => void {
 		return this.__getWatcherGroup().watchUntil(fn, callback.bind(this))
 	}
 
