@@ -300,7 +300,7 @@ export class PartialRenderingProcessor {
 		// Scroll down and can't cover at bottom direction.
 		// Otherwise will still load more when touch bottom scrolling edge and still more data exist.
 		else if (sliderRect.bottom < scrollerRect.bottom || unexpectedScrollEnd) {
-			let roughFirstVisibleIndex = locateFirstVisibleIndex(this.scroller, this.sliderChildren.getChildren())
+			let roughFirstVisibleIndex = locateFirstVisibleIndex(this.scroller, this.sliderChildren.getChildren(), 0)
 			let oldStartIndex = this.startIndex
 			let newStartIndex = this.startIndex + roughFirstVisibleIndex
 	
@@ -312,7 +312,7 @@ export class PartialRenderingProcessor {
 		// Keeps last visible index as endIndex.
 		// Otherwise will still load more when touch top scrolling edge and still more data exist.
 		else if (sliderRect.top > scrollerRect.top || unexpectedScrollStart) {
-			let roughLastVisibleIndex = locateLastVisibleIndex(this.scroller, this.sliderChildren.getChildren())
+			let roughLastVisibleIndex = locateLastVisibleIndex(this.scroller, this.sliderChildren.getChildren(), 0)
 			let oldStartIndex = this.startIndex
 			let newEndIndex = this.startIndex + roughLastVisibleIndex + 1
 			let newStartIndex = newEndIndex - renderCount
@@ -359,6 +359,10 @@ export class PartialRenderingProcessor {
 		let visibleIndex = scrollDirection === 'down' ? this.startIndex - oldStartIndex : this.endIndex - 1 - oldStartIndex
 		let visibleElement = this.sliderChildren.childAt(visibleIndex)
 		let updateData = () => {doDataUpdating(this.startIndex, this.endIndex, scrollDirection)}
+
+		if (!visibleElement) {
+			throw new Error(`Wrongly rendered: can\'t found expected element in specified index!`)
+		}
 
 		// When reach start index but may not reach scroll start.
 		if (this.startIndex === 0) {
