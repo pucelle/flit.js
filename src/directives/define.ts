@@ -1,4 +1,5 @@
 import {Context} from '../component'
+import {ResultReferences} from '../helpers/references'
 import {NodeAnchor} from "../internals/node-anchor"
 
 
@@ -17,7 +18,11 @@ export interface Directive<A extends any[] = any[]> {
 	/** Merges directive parameters to current directive. */
 	merge(...args: A): void
 
-	/** Removes current directive. */
+	/** 
+	 * Removes current directive.
+	 * Note it only calls when removing the binding directly,
+	 * Not calls when itself as a child binding inside a removed template.
+	 */
 	remove(): void
 }
 
@@ -61,19 +66,21 @@ export class DirectiveResult {
 }
 
 
-/** Create directive instance from directive result. */
-export function createDirectiveFromResult(anchor: NodeAnchor, context: Context, result: DirectiveResult): Directive {
-	let Dir = result.directiveConstructor
-	let directive = new Dir(anchor, context)
+/** Class to help handle reference from directive result to it's directive class. */
+class DirectiveReferencesClass extends ResultReferences<DirectiveResult, Directive> {
 
-	if (result.ref) {
-		result.ref(directive)
+	/** Calls reference callback when binging instance created. */
+	createFromResult(anchor: NodeAnchor, context: Context, result: DirectiveResult): Directive {
+		let Dir = result.directiveConstructor
+		let directive = new Dir(anchor, context)
+		this.createReference(result, directive)
+		directive.merge(...result.args)
+
+		return directive
 	}
-
-	directive.merge(...result.args)
-
-	return directive
 }
+
+export const DirectiveReferences = new DirectiveReferencesClass()
 
 
 /** 
@@ -85,9 +92,15 @@ export function createDirectiveFromResult(anchor: NodeAnchor, context: Context, 
  * 
  * @param result The directive result like `repeat(...)`.
  * @param ref Callback with the directive object as parameter.
+ * @param unref Callback after directive instance was removed directly, not calls when was contained in a removed template.
  * @return The `result` parameter.
  */
-export function refDirective(result: DirectiveResult, ref: (directive: Directive) => void) {
-	result.ref = ref
+export function refDirective(result: DirectiveResult, ref: (directive: Directive) => void, unref?: (directive: Directive) => void) {
+	DirectiveReferences.addReference(result, ref)
+
+	if (unref) {
+		DirectiveReferences.addUnReference(result, unref)
+	}
+
 	return result
 }

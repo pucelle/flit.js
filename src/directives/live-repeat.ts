@@ -569,6 +569,14 @@ export class LiveRepeatDirective<T, E = any> extends InternalEventEmitter<LiveRe
 		}
 	}
 
+	getContext() {
+		return this.context
+	}
+
+	getTemplateFn() {
+		return this.templateFn
+	}
+
 	remove() {
 		this.tryDeleteLastWatcher()
 
@@ -585,14 +593,6 @@ export class LiveRepeatDirective<T, E = any> extends InternalEventEmitter<LiveRe
 		for (let repTem of this.repTems) {
 			repTem.remove()
 		}
-	}
-
-	getContext() {
-		return this.context
-	}
-
-	getTemplateFn() {
-		return this.templateFn
 	}
 }
 

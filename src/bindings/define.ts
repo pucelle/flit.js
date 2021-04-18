@@ -1,4 +1,5 @@
 import type {Context} from '../component'
+import {ResultReferences} from '../helpers/references'
 
 
 /** Constructor of all Binding class. */
@@ -12,7 +13,11 @@ export interface Binding<V = any> {
 	/** Update binding value to element. */
 	update(value: V, ...args: any[]): void
 
-	/** Remove current binding and clear properties from element. */
+	/** 
+	 * Remove current binding and clear properties from element.
+	 * Note it only calls when removing the binding directly,
+	 * Not calls when itself as a child binding inside a removed template.
+	 */
 	remove(): void
 }
 
@@ -71,28 +76,26 @@ export class BindingResult<A extends any[] = any[]> {
 }
 
 
-/** Create binding and add ref on element. */
-export function createBindingFromResult(el: Element, context: Context, result: BindingResult, modifiers?: string[]): Binding {
-	let BindingConstructor = DefinedBindingMap.get(result.name)
-	if (!BindingConstructor) {
-		throw new Error(`":${result.name}" on "<${el.localName}>" is not a registered binding class!`)
+/** Class to help handle reference from binding result to it's binding class. */
+class BindingReferencesClass extends ResultReferences<BindingResult, Binding> {
+
+	/** Calls reference callback when binging instance created. */
+	createFromResult(el: Element, context: Context, result: BindingResult, modifiers?: string[]): Binding {
+		let BindingConstructor = DefinedBindingMap.get(result.name)
+		if (!BindingConstructor) {
+			throw new Error(`":${result.name}" on "<${el.localName}>" is not a registered binding class!`)
+		}
+
+		let binding = new BindingConstructor(el, context, modifiers)
+		this.createReference(result, binding)
+		binding.update(...result.args as [any])
+
+		return binding
 	}
-
-	let binding = new BindingConstructor(el, context, modifiers)
-
-	if (BindingReferences.has(result)) {
-		BindingReferences.get(result)!(binding)
-		BindingReferences.delete(result)
-	}
-
-	binding.update(...result.args as [any])
-
-	return binding
 }
 
+export const BindingReferences = new BindingReferencesClass()
 
-/** Caches referenced binding callback. */
-const BindingReferences: WeakMap<BindingResult, (binding: Binding) => void> = new WeakMap()
 
 /** 
  * Reference binding instance after it created and before updating.
@@ -102,10 +105,16 @@ const BindingReferences: WeakMap<BindingResult, (binding: Binding) => void> = ne
  * ```
  * 
  * @param result The binding result like `show(...)`.
- * @param ref Callback with the binding object as parameter.
+ * @param ref Callback after binding instance was just created and not update yet.
+ * @param unref Callback after binding instance was removed directly, not calls when was contained in a removed template.
  * @return The `result` parameter.
  */
-export function refBinding(result: BindingResult, ref: (binding: Binding) => void) {
-	BindingReferences.set(result, ref)
+export function refBinding(result: BindingResult, ref: (binding: Binding) => void, unref?: (binding: Binding) => void) {
+	BindingReferences.addReference(result, ref)
+
+	if (unref) {
+		BindingReferences.addUnReference(result, unref)
+	}
+
 	return result
 }

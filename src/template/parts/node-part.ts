@@ -1,7 +1,7 @@
 import {TemplateResult} from '../template-result'
 import {NodeAnchor} from "../../internals/node-anchor"
 import {Template} from '../template'
-import {DirectiveResult, Directive, createDirectiveFromResult} from '../../directives'
+import {DirectiveResult, Directive, DirectiveReferences} from '../../directives'
 import type {Context} from '../../component'
 import {trim} from '../../helpers/utils'
 import {Part} from './types'
@@ -83,6 +83,7 @@ export class NodePart implements Part {
 		}
 		else if (contentType === ContentType.Directive) {
 			(this.content as Directive).remove()
+			DirectiveReferences.removeReference((this.content as Directive))
 		}
 		else if (contentType === ContentType.TemplateArray) {
 			for (let template of this.content as Template[]) {
@@ -129,7 +130,7 @@ export class NodePart implements Part {
 				oldDirective.remove()
 			}
 
-			this.content = createDirectiveFromResult(this.anchor, this.context, result)
+			this.content = DirectiveReferences.createFromResult(this.anchor, this.context, result)
 		}
 	}
 	
@@ -193,9 +194,5 @@ export class NodePart implements Part {
 				textNode.textContent = ''
 			}
 		}
-	}
-
-	remove() {
-		this.clearOldContent()
 	}
 }

@@ -1,4 +1,4 @@
-export {defineDirective, refDirective, DirectiveResult, Directive, createDirectiveFromResult} from './define'
+export {defineDirective, refDirective, DirectiveResult, Directive, DirectiveReferences} from './define'
 export {cache, CacheDirective} from './cache'
 export {toggle, ToggleDirective} from './toggle'
 export {repeat, RepeatDirective} from './repeat'

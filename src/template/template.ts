@@ -240,7 +240,10 @@ export class Template {
 		this.range.replaceWith(template.range)
 	}
 
-	/** Removes all the nodes in the template. */
+	/** 
+	 * Removes all the nodes in the template.
+	 * Note the child template will not call `remove`.
+	 */
 	remove() {
 		this.range.remove()
 	}

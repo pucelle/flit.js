@@ -1,4 +1,4 @@
-import {Binding, BindingResult, createBindingFromResult} from '../../bindings'
+import {Binding, BindingResult, BindingReferences} from '../../bindings'
 import type {Context} from '../../component'
 import {Part} from './types'
 
@@ -31,12 +31,14 @@ export class FixedBindingPart implements Part {
 	update(value: unknown) {
 		if (!this.binding) {
 			let result = new BindingResult(this.bindingName, value)
-			this.binding = createBindingFromResult(this.el, this.context, result, this.bindingModifiers)
+			this.binding = BindingReferences.createFromResult(this.el, this.context, result, this.bindingModifiers)
 		}
 		else {
 			this.binding.update(value)
 		}
 	}
+
+	remove() {}
 }
 
 
@@ -63,9 +65,12 @@ export class DynamicBindingPart implements Part {
 				this.binding!.update(...value.args as [any])
 			}
 			else {
-				this.removeCurrentBinding()
+				if (this.binding) {
+					this.removeCurrentBinding()
+				}
+
 				this.name = value.name
-				this.binding = createBindingFromResult(this.el, this.context, value)
+				this.binding = BindingReferences.createFromResult(this.el, this.context, value)
 			}
 		}
 		else {
@@ -76,7 +81,8 @@ export class DynamicBindingPart implements Part {
 	private removeCurrentBinding() {
 		if (this.binding) {
 			this.name = null
-			this.binding.remove()
+			this.binding!.remove()
+			BindingReferences.removeReference(this.binding)
 			this.binding = null
 		}
 	}

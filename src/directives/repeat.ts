@@ -201,14 +201,6 @@ export class RepeatDirective<T> implements Directive, RepetitiveTemplateSource<T
 		repTem.remove()
 	}
 
-	remove() {
-		this.tryDeleteLastWatcher()
-
-		for (let repTem of this.repTems) {
-			repTem.remove()
-		}
-	}
-
 	/** 
 	 * Make item in the specified index becomes visible by scrolling minimum pixels in Y direction.
 	 * Try to adjust immediately, so you will need to ensure elements rendered.
@@ -294,6 +286,14 @@ export class RepeatDirective<T> implements Directive, RepetitiveTemplateSource<T
 
 	getTemplateFn() {
 		return this.templateFn
+	}
+
+	remove() {
+		this.tryDeleteLastWatcher()
+
+		for (let repTem of this.repTems) {
+			repTem.remove()
+		}
 	}
 }
 

@@ -96,6 +96,4 @@ export class PropertyPart implements Part {
 			(this.el as any)[this.name] = value
 		}
 	}
-
-	remove() {}
 }
