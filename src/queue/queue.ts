@@ -133,13 +133,13 @@ async function update() {
 				catch (err) {
 					console.error(err)
 				}
+
+				// Wait for more components connect.
+				// Otherwise it wait for removed elements got disconnected.
+				await Promise.resolve()
 			}
 			while (!queue.isEmpty())
-
-			// Wait for more components connect.
-			await Promise.resolve()
 		}
-
 
 		let callbackList = renderCompleteCallbacks
 		renderCompleteCallbacks = []
