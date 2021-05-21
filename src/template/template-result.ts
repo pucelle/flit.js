@@ -83,6 +83,22 @@ export class TemplateResult {
 		return text
 	}
 
+	/** Clone current template result and returns a new one. */
+	clone(): TemplateResult {
+		return new TemplateResult(this.type, [...this.strings], [...this.values])
+	}
+
+	/** Concat with another template result, and returns a new one. */
+	concat(result: TemplateResult): TemplateResult {
+		let strings = [...this.strings]
+		strings[strings.length - 1] += result.strings[0]
+		strings.push(...result.strings.slice(1))
+
+		let values = [...this.values]
+
+		return new TemplateResult(this.type, strings, values)
+	}
+
 	/** 
 	 * A template result can extend another:
 	 * "css`...`.extends(...)" will join them.
