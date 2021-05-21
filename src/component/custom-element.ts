@@ -129,7 +129,7 @@ function updateConnectRequests() {
 function updateDisconnectRequests() {
 	// More connect requests will be added, must delay them.
 	let toDisconnectImmediately = toDisconnectSoonCache
-		toDisconnectSoonCache = new Set()
+	toDisconnectSoonCache = new Set()
 
 	// Element order of disconnect is not important.
 	for (let el of toDisconnectImmediately.keys()) {

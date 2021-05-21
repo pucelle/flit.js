@@ -162,11 +162,13 @@ export class PartialRenderingProcessor {
 	 * Update only when slider can't cover scroller, and also keep continuous scroll position.
 	 * Returns whether updated.
 	 */
-	async updateSmoothlyIfNeeded(doDataUpdating: UpdatingFunction) {
+	async updateSmoothly(doDataUpdating: UpdatingFunction) {
+		// Last updating is not completed.
 		if (this.untilUpdatingCompletePromise) {
 			return
 		}
 
+		// Reach start or end edge.
 		if (this.startIndex === 0 && this.endIndex === this.totalDataCount) {
 			return
 		}
@@ -193,13 +195,16 @@ export class PartialRenderingProcessor {
 
 		// Check rendering heights.
 		if (!this.averageItemHeight && this.totalDataCount > 0) {
-			this.measureRenderingSizes()
+			onRenderComplete(() => {
+				this.measureRenderingSizes()
+				this.updatePlaceholderHeightIfNeeded()
 
-			// Re-calcuate position and scroll offset.
-			if (this.startIndex > 0) {
-				this.resetSliderPosition()
-				this.updateScrollOffset()
-			}
+				// Re-calcuate position and scroll offset.
+				if (this.startIndex > 0) {
+					this.resetSliderPosition()
+					this.updateScrollOffset()
+				}
+			})
 		}
 		else {
 			this.updateScrollOffset()
@@ -237,9 +242,9 @@ export class PartialRenderingProcessor {
 		}
 	}
 
-	/** Update height of placeholder. */
+	/** Update height of placeholder only if needed. */
 	private updatePlaceholderHeightIfNeeded() {
-		if (this.needToUpdatePlaceholderHeights) {
+		if (this.needToUpdatePlaceholderHeights && this.averageItemHeight) {
 			this.palceholder.style.height = this.averageItemHeight * this.totalDataCount + 'px'
 			this.needToUpdatePlaceholderHeights = false
 		}
@@ -399,7 +404,6 @@ export class PartialRenderingProcessor {
 	protected async updateWhenReachStartIndex(lastVisibleElement: Element, updateData: () => void) {
 		let visibleIndex = this.endIndex - 1 - this.startIndex
 		let oldTop = lastVisibleElement.getBoundingClientRect().top
-		let scrollTop = this.scroller.scrollTop
 
 		this.updateSliderPosition('top', 0)
 
@@ -414,14 +418,13 @@ export class PartialRenderingProcessor {
 		let translate = newTop - oldTop
 
 		// Set scroll top to restore it's translate, `scrollTop` property is opposite with translation, so here it's `+`.
-		this.scroller.scrollTop = scrollTop + translate
+		this.scroller.scrollTop = this.scroller.scrollTop + translate
 	}
 
 	/** When reach end index but may not reach scroll end, reset scroll top. */
 	protected async updateWhenReachEndIndex(firstVisibleElement: Element, updateData: () => void) {
 		let visibleIndex = 0
 		let oldBottom = firstVisibleElement.getBoundingClientRect().bottom
-		let scrollTop = this.scroller.scrollTop
 
 		// Render to locate last item.
 		updateData()
@@ -439,12 +442,11 @@ export class PartialRenderingProcessor {
 
 		// should minus translate normally, but bottom property is opposite with translation, so here it's `+`.
 		let position = scrollerRect.bottom - sliderRect.bottom + translate
-		position -= scrollTop
+		position -= this.scroller.scrollTop
+		this.updateSliderPosition('bottom', position)
 
 		// Scroll height is scroll top + bottom slider height relative to scroller top.
-		let scrollHeight = scrollTop + sliderRect.bottom - scrollerRect.top - translate
-		
-		this.updateSliderPosition('bottom', position)
+		let scrollHeight = this.scroller.scrollTop + sliderRect.bottom - scrollerRect.top - translate
 		this.updatePlaceholderHeightProgressive(scrollHeight, this.endIndex)
 	}
 
@@ -456,7 +458,6 @@ export class PartialRenderingProcessor {
 		// Translate position from the spaces.
 		let position = scrollerRect.bottom - lastVisibleElement.getBoundingClientRect().bottom
 		position -= extendedScrollSpace
-
 		this.updateSliderPosition('bottom', position)
 		updateData()
 
@@ -466,12 +467,9 @@ export class PartialRenderingProcessor {
 
 	/** When reach scroll end but not reach end index, provide more scroll space. */
 	protected async updateWhenReachScrollEnd(firstVisibleElement: Element, scrollerRect: Rect, updateData: () => void) {
-		let scrollTop = this.scroller.scrollTop
-
 		// Update normally.
 		let position = firstVisibleElement.getBoundingClientRect().top - scrollerRect.top
 		position += this.scroller.scrollTop
-
 		this.updateSliderPosition('top', position)
 		updateData()
 
@@ -480,7 +478,8 @@ export class PartialRenderingProcessor {
 		// Extend more spaces at end.
 		let newScrollerRect = this.getScrollerClientRect()
 		let sliderRect = this.slider.getBoundingClientRect()
-		let scrollHeight = scrollTop + sliderRect.bottom - newScrollerRect.top
+		let scrollHeight = this.scroller.scrollTop + sliderRect.bottom - newScrollerRect.top
+
 		this.updatePlaceholderHeightProgressive(scrollHeight, this.endIndex)
 	}
 
@@ -488,10 +487,9 @@ export class PartialRenderingProcessor {
 	protected async updateNormallyWhenScrollingDown(firstVisibleElement: Element, scrollerRect: Rect, updateData: () => void) {
 		let position = firstVisibleElement.getBoundingClientRect().top - scrollerRect.top
 		position += this.scroller.scrollTop
-
 		this.updateSliderPosition('top', position)
 
-		// This updates will cause scroll bar update bounces.
+		// This update will cause scroll bar position bounces at top bottom.
 		this.updatePlaceholderHeightProgressive(position, this.startIndex)
 
 		updateData()
@@ -502,8 +500,8 @@ export class PartialRenderingProcessor {
 	protected async updateNormallyWhenScrollingUp(lastVisibleElement: Element, scrollerRect: Rect, updateData: () => void) {
 		let position = scrollerRect.bottom - lastVisibleElement.getBoundingClientRect().bottom
 		position -= this.scroller.scrollTop
-
 		this.updateSliderPosition('bottom', position)
+
 		updateData()
 		await untilRenderComplete()
 	}

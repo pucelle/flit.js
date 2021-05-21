@@ -231,7 +231,7 @@ export class LiveRepeatDirective<T, E = any> extends InternalEventEmitter<LiveRe
 	}
 
 	protected checkCoverage() {
-		this.processor.updateSmoothlyIfNeeded(this.updateFromIndices.bind(this))
+		this.processor.updateSmoothly(this.updateFromIndices.bind(this))
 	}
 
 	protected updateFromIndices(startIndex: number, endIndex: number, scrollDirection: 'up' | 'down' | null) {
