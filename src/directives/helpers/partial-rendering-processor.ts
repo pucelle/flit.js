@@ -69,6 +69,9 @@ export class PartialRenderingProcessor {
 	 */
 	private averageItemHeight: number = 0
 
+	/** The item count, will not update placeholder height when scrolling up. */
+	private itemCountWhenUpdatePlaceholderHeight: number = 0
+
 	/** If is not `null`, means updating is not completed yet. */
 	private untilUpdatingCompletePromise: Promise<void> | null = null
 
@@ -252,9 +255,12 @@ export class PartialRenderingProcessor {
 
 	/** Update height of placeholder progressive, form current item count and their height. */
 	private updatePlaceholderHeightProgressive(height: number, itemCount: number) {
-		this.averageItemHeight = height / itemCount
-		this.palceholder.style.height = this.averageItemHeight * this.totalDataCount + 'px'
-		this.needToUpdatePlaceholderHeights = false
+		if (itemCount >= this.itemCountWhenUpdatePlaceholderHeight || itemCount === this.totalDataCount || this.needToUpdatePlaceholderHeights) {
+			this.averageItemHeight = height / itemCount
+			this.palceholder.style.height = this.averageItemHeight * this.totalDataCount + 'px'
+			this.needToUpdatePlaceholderHeights = false
+			this.itemCountWhenUpdatePlaceholderHeight = itemCount
+		}
 	}
 
 	/** Update position of `slider` after set new indices. */
