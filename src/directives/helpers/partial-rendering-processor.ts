@@ -60,8 +60,8 @@ export class PartialRenderingProcessor {
 	/** Current total data count. */
 	private totalDataCount: number = 0
 
-	/** `totalDataCount` changed and needs to be applied. */
-	private needToUpdatePlaceholderHeights: boolean = false
+	/** Data changed or data count changed and need to be applied. */
+	private needToApplyDataCountChange: boolean = false
 
 	/** 
 	 * Average item height in pixels, it is used to calculate the position of the `slider`.
@@ -130,23 +130,29 @@ export class PartialRenderingProcessor {
 
 	/** Update total data count after reload data. */
 	updateDataCount(dataCount: number) {
-		this.totalDataCount = dataCount
-		this.needToUpdatePlaceholderHeights = true
+		if (dataCount !== this.totalDataCount) {
+			this.totalDataCount = dataCount
+			this.needToApplyDataCountChange = true
+			this.itemCountWhenUpdatePlaceholderHeight = 0
+		}
 	}
 
 	/** 
 	 * Update from applied start index or current scroll position.
-	 * Note it must calls `doDataUpdating` synchronously since it's already in a updating queue.
+	 * Note it must call `doDataUpdating` synchronously since it's already in a updating queue.
 	 */
-	updateSynchronously(doDataUpdating: UpdatingFunction) {
+	updateRendering(doDataUpdating: UpdatingFunction) {
+		let willApplyStartIndex = this.startIndexToApply !== null
+
 		// Scroll to specified index.
-		if (this.startIndexToApply !== null) {
+		if (willApplyStartIndex) {
 			this.updateWhenStartIndexWillApply(doDataUpdating)
 		}
 
-		// Data should changed, reset from current scroll position.
-		else if (this.needToUpdatePlaceholderHeights) {
+		// Data should changed or partly changed, reset from current scroll position.
+		else if (this.needToApplyDataCountChange) {
 			this.updateFromCurrentScrollOffset(doDataUpdating)
+			this.needToApplyDataCountChange = false
 		}
 
 		// Just keep indices and update data.
@@ -154,38 +160,52 @@ export class PartialRenderingProcessor {
 			doDataUpdating(this.startIndex, this.endIndex, null)
 		}
 
-		this.updatePlaceholderHeightIfNeeded()
+		this.lockUpdatingByPromise(untilRenderComplete().then(() => {
+			this.updatePlaceholderHeightProgressive()
 
-		this.untilUpdatingCompletePromise = untilRenderComplete().then(() => {
-			this.untilUpdatingCompletePromise = null
-		})
+			// Re-calcuate position and scroll offset.
+			if (willApplyStartIndex) {
+				this.resetSliderPosition()
+				this.updateScrollOffset()
+			}
+		}))
 	}
 
 	/** 
-	 * Update only when slider can't cover scroller, and also keep continuous scroll position.
+	 * Update only when current rendering can't cover scroller, and will keep continuous scroll position.
+	 * Note it must call `doDataUpdating` synchronously since it may be in a updating queue.
 	 * Returns whether updated.
 	 */
-	async updateSmoothly(doDataUpdating: UpdatingFunction) {
+	updateRenderingSmoothlyIfNeeded(doDataUpdating: UpdatingFunction) {
 		// Last updating is not completed.
 		if (this.untilUpdatingCompletePromise) {
-			return
+			return false
 		}
 
 		// Reach start or end edge.
 		if (this.startIndex === 0 && this.endIndex === this.totalDataCount) {
-			return
+			return false
 		}
 
-		let updatingPromise = this.updateFromCoverage(doDataUpdating)
-		
-		this.untilUpdatingCompletePromise = updatingPromise.then(() => {
-			this.untilUpdatingCompletePromise = null
-		})
+		let updatePromise = this.updateFromCoverage(doDataUpdating)
+		if (updatePromise) {
+			this.lockUpdatingByPromise(updatePromise.then(() => {
+				this.updatePlaceholderHeightProgressive()
+			}))
 
-		let updated = await updatingPromise
-		if (updated) {
-			this.updatePlaceholderHeightIfNeeded()
+			return true
 		}
+
+		else {
+			return false
+		}
+	}
+
+	/** Prevent updating before promise been completed. */
+	private async lockUpdatingByPromise(promise: Promise<any>) {
+		this.untilUpdatingCompletePromise = promise
+		await promise
+		this.untilUpdatingCompletePromise = null
 	}
 
 	/** Update when start index specified. */
@@ -195,25 +215,6 @@ export class PartialRenderingProcessor {
 		this.resetSliderPosition()
 
 		doDataUpdating(this.startIndex, this.endIndex, null)
-
-		// Check rendering heights.
-		if (!this.averageItemHeight && this.totalDataCount > 0) {
-			onRenderComplete(() => {
-				this.measureRenderingSizes()
-				this.updatePlaceholderHeightIfNeeded()
-
-				// Re-calcuate position and scroll offset.
-				if (this.startIndex > 0) {
-					this.resetSliderPosition()
-					this.updateScrollOffset()
-				}
-			})
-		}
-		else {
-			this.updateScrollOffset()
-		}
-
-		// `updateScrollOffset` will trigger scroll event, so no need to validate coverage.
 	}
 
 	/** Update start and end index before rendering. */
@@ -230,37 +231,31 @@ export class PartialRenderingProcessor {
 		this.endIndex = endIndex
 	}
 
-	/** Measure to get a not 100% precise average item height. */
-	private measureRenderingSizes() {
-		let scrollerHeight = this.scroller.clientHeight
-		let sliderHeight = this.slider.offsetHeight
-		if (!sliderHeight) {
-			return
-		}
+	/** 
+	 * Update height of placeholder progressive, form current item count and their height.
+	 * Must wait for render completed.
+	 */
+	private updatePlaceholderHeightProgressive() {
+		if (this.endIndex > 0 && this.endIndex >= this.itemCountWhenUpdatePlaceholderHeight || this.endIndex === this.totalDataCount) {
+			let scrollerRect = this.getScrollerClientRect()
+			let sliderRect = this.slider.getBoundingClientRect()
+			let scrollHeight = this.scroller.scrollTop + sliderRect.bottom - scrollerRect.top
 
-		this.averageItemHeight = Math.round(sliderHeight / (this.endIndex - this.startIndex))
-
-		if (this.averageItemHeight) {
-			this.renderGroupCount = Math.ceil(scrollerHeight / this.averageItemHeight / this.renderCount)
+			this.averageItemHeight = scrollHeight / this.endIndex
+			this.palceholder.style.height = this.averageItemHeight * this.totalDataCount + 'px'
+			this.itemCountWhenUpdatePlaceholderHeight = this.endIndex
 		}
 	}
 
-	/** Update height of placeholder only if needed. */
-	private updatePlaceholderHeightIfNeeded() {
-		if (this.needToUpdatePlaceholderHeights && this.averageItemHeight) {
-			this.palceholder.style.height = this.averageItemHeight * this.totalDataCount + 'px'
-			this.needToUpdatePlaceholderHeights = false
-		}
-	}
+	/** Get a fixed client rect of scroller. */
+	protected getScrollerClientRect(): Rect {
+		let scrollerRect = getRect(this.scroller)
 
-	/** Update height of placeholder progressive, form current item count and their height. */
-	private updatePlaceholderHeightProgressive(height: number, itemCount: number) {
-		if (itemCount >= this.itemCountWhenUpdatePlaceholderHeight || itemCount === this.totalDataCount || this.needToUpdatePlaceholderHeights) {
-			this.averageItemHeight = height / itemCount
-			this.palceholder.style.height = this.averageItemHeight * this.totalDataCount + 'px'
-			this.needToUpdatePlaceholderHeights = false
-			this.itemCountWhenUpdatePlaceholderHeight = itemCount
-		}
+		scrollerRect.top += this.scrollerBorderTopWidth
+		scrollerRect.bottom -= this.scrollerBorderBottomWidth
+		scrollerRect.height -= this.scrollerBorderTopWidth + this.scrollerBorderBottomWidth
+
+		return scrollerRect
 	}
 
 	/** Update position of `slider` after set new indices. */
@@ -294,18 +289,19 @@ export class PartialRenderingProcessor {
 	 * Validate if slider fully covers scroller and update indices if not.
 	 * Returns whether updated indices.
 	 */
-	 private async updateFromCoverage(doDataUpdating: UpdatingFunction): Promise<boolean> {
+	 private updateFromCoverage(doDataUpdating: UpdatingFunction) {
 		let scrollerRect = this.getScrollerClientRect()
 		let sliderRect = this.slider.getBoundingClientRect()
 		let renderCount = this.renderCount * this.renderGroupCount
 		let unexpectedScrollEnd = this.scroller.scrollTop + this.scroller.clientHeight === this.scroller.scrollHeight && this.endIndex < this.totalDataCount
 		let unexpectedScrollStart = this.scroller.scrollTop === 0 && this.startIndex > 0
+		let promise: Promise<void> | null = null
 
 		// No intersection, reset slider position from current slider scroll offset.
 		let hasNoIntersection = sliderRect.bottom < scrollerRect.top || sliderRect.top > scrollerRect.bottom
 		if (hasNoIntersection) {
 			this.updateFromCurrentScrollOffset(doDataUpdating)
-			await untilRenderComplete()
+			promise = untilRenderComplete()
 		}
 
 		// Scroll down and can't cover at bottom direction.
@@ -316,7 +312,7 @@ export class PartialRenderingProcessor {
 			let newStartIndex = this.startIndex + roughFirstVisibleIndex
 	
 			this.updateIndices(newStartIndex)
-			await this.updateWithSliderPositionStable('down', oldStartIndex, scrollerRect, doDataUpdating)
+			promise = this.updateWithSliderPositionStable('down', oldStartIndex, scrollerRect, doDataUpdating)
 		}
 
 		// Scroll up and can't cover at top direction.
@@ -329,26 +325,12 @@ export class PartialRenderingProcessor {
 			let newStartIndex = newEndIndex - renderCount
 
 			this.updateIndices(newStartIndex)
-			await this.updateWithSliderPositionStable('up', oldStartIndex, scrollerRect, doDataUpdating)
+			promise = this.updateWithSliderPositionStable('up', oldStartIndex, scrollerRect, doDataUpdating)
 		}
 
-		// No need to update.
-		else {
-			return false
-		}
+		// Not updated otherwise.
 
-		return true
-	}
-
-	/** Get a fixed client rect of scroller. */
-	protected getScrollerClientRect(): Rect {
-		let scrollerRect = getRect(this.scroller)
-
-		scrollerRect.top += this.scrollerBorderTopWidth
-		scrollerRect.bottom -= this.scrollerBorderBottomWidth
-		scrollerRect.height -= this.scrollerBorderTopWidth + this.scrollerBorderBottomWidth
-
-		return scrollerRect
+		return promise
 	}
 
 	/** Re-generate indices from current scroll offset. */
@@ -450,10 +432,6 @@ export class PartialRenderingProcessor {
 		let position = scrollerRect.bottom - sliderRect.bottom + translate
 		position -= this.scroller.scrollTop
 		this.updateSliderPosition('bottom', position)
-
-		// Scroll height is scroll top + bottom slider height relative to scroller top.
-		let scrollHeight = this.scroller.scrollTop + sliderRect.bottom - scrollerRect.top - translate
-		this.updatePlaceholderHeightProgressive(scrollHeight, this.endIndex)
 	}
 
 	/** When reach scroll start but not reach start index, provide more scroll space. */
@@ -477,16 +455,9 @@ export class PartialRenderingProcessor {
 		let position = firstVisibleElement.getBoundingClientRect().top - scrollerRect.top
 		position += this.scroller.scrollTop
 		this.updateSliderPosition('top', position)
+
 		updateData()
-
 		await untilRenderComplete()
-
-		// Extend more spaces at end.
-		let newScrollerRect = this.getScrollerClientRect()
-		let sliderRect = this.slider.getBoundingClientRect()
-		let scrollHeight = this.scroller.scrollTop + sliderRect.bottom - newScrollerRect.top
-
-		this.updatePlaceholderHeightProgressive(scrollHeight, this.endIndex)
 	}
 
 	/** Render more items when scrolling down, not reset scroll position. */
@@ -494,9 +465,6 @@ export class PartialRenderingProcessor {
 		let position = firstVisibleElement.getBoundingClientRect().top - scrollerRect.top
 		position += this.scroller.scrollTop
 		this.updateSliderPosition('top', position)
-
-		// This update will cause scroll bar position bounces at top bottom.
-		this.updatePlaceholderHeightProgressive(position, this.startIndex)
 
 		updateData()
 		await untilRenderComplete()

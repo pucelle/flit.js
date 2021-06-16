@@ -10,7 +10,7 @@ import {InternalEventEmitter} from '../internals/internal-event-emitter'
 import {GlobalWatcherGroup, LazyWatcher, Watcher} from '../watchers'
 import {EditType, getEditRecord} from '../helpers/edit'
 import {untilIdle, locateFirstVisibleIndex, locateLastVisibleIndex, getElementCountBefore} from '../helpers/utils'
-import {enqueueUpdatableInOrder, onRenderComplete} from '../queue'
+import {enqueueUpdatableInOrder, untilRenderComplete} from '../queue'
 import {OffsetChildren} from './helpers/offset-children'
 import {UpdatableUpdateOrder} from '../queue/helpers/updatable-queue'
 
@@ -220,7 +220,7 @@ export class LiveRepeatDirective<T, E = any> extends InternalEventEmitter<LiveRe
 
 	__updateImmediately() {
 		this.processor.updateDataCount(this.fullData.length)
-		this.processor.updateSynchronously(this.updateFromIndices.bind(this))
+		this.processor.updateRendering(this.updateFromIndices.bind(this))
 	}
 
 	/** Returns a promise which will be resolved after data updated and renderer. */
@@ -231,14 +231,14 @@ export class LiveRepeatDirective<T, E = any> extends InternalEventEmitter<LiveRe
 	}
 
 	protected checkCoverage() {
-		this.processor.updateSmoothly(this.updateFromIndices.bind(this))
+		this.processor.updateRenderingSmoothlyIfNeeded(this.updateFromIndices.bind(this))
 	}
 
 	protected updateFromIndices(startIndex: number, endIndex: number, scrollDirection: 'up' | 'down' | null) {
 		this.startIndex = startIndex
 		this.endIndex = endIndex
 		this.updateLiveData(this.fullData.slice(startIndex, endIndex), scrollDirection)
-		this.triggerLiveDataEvents(scrollDirection)		
+		this.triggerLiveDataEvents(scrollDirection)
 	}
 
 	protected updateLiveData(newData: T[], scrollDirection: 'up' | 'down' | null) {
@@ -256,29 +256,32 @@ export class LiveRepeatDirective<T, E = any> extends InternalEventEmitter<LiveRe
 		for (let record of editRecord) {
 			let {type, fromIndex, toIndex, moveFromIndex} = record
 			let oldRepTem = fromIndex < oldRepTems.length && fromIndex !== -1 ? oldRepTems[fromIndex] : null
-			let newItem = newData[toIndex]
 
-			if (type === EditType.Leave) {
-				this.useMatchedRepTem(oldRepTem!, newItem, toIndex)
-			}
-			else if (type === EditType.Move) {
-				this.moveRepTemBefore(oldRepTems[moveFromIndex], oldRepTem)
-				this.useMatchedRepTem(oldRepTems[moveFromIndex], newItem, toIndex)
-			}
-			else if (type === EditType.MoveModify) {
-				this.moveRepTemBefore(oldRepTems[moveFromIndex], oldRepTem)
-				this.reuseRepTem(oldRepTems[moveFromIndex], newItem, toIndex)
-			}
-			else if (type === EditType.Insert) {
-				let newRepTem = this.createRepTem(newItem, toIndex)
-				this.moveRepTemBefore(newRepTem, oldRepTem)
-				
-				if (shouldPaly) {
-					this.mayPlayEnter(newRepTem)
-				}
-			}
-			else if (type === EditType.Delete) {
+			if (type === EditType.Delete) {
 				this.removeRepTemAndMayPlayLeave(oldRepTem!, shouldPaly)
+			}
+			else {
+				let newItem = newData[toIndex]
+
+				if (type === EditType.Leave) {
+					this.useMatchedRepTem(oldRepTem!, newItem, toIndex)
+				}
+				else if (type === EditType.Move) {
+					this.moveRepTemBefore(oldRepTems[moveFromIndex], oldRepTem)
+					this.useMatchedRepTem(oldRepTems[moveFromIndex], newItem, toIndex)
+				}
+				else if (type === EditType.MoveModify) {
+					this.moveRepTemBefore(oldRepTems[moveFromIndex], oldRepTem)
+					this.reuseRepTem(oldRepTems[moveFromIndex], newItem, toIndex)
+				}
+				else if (type === EditType.Insert) {
+					let newRepTem = this.createRepTem(newItem, toIndex)
+					this.moveRepTemBefore(newRepTem, oldRepTem)
+					
+					if (shouldPaly) {
+						this.mayPlayEnter(newRepTem)
+					}
+				}
 			}
 		}
 
@@ -292,7 +295,9 @@ export class LiveRepeatDirective<T, E = any> extends InternalEventEmitter<LiveRe
 	protected triggerLiveDataEvents(scrollDirection: 'up' | 'down' | null) {
 		this.emit('liveDataUpdated', this.liveData, this.startIndex, scrollDirection)
 
-		onRenderComplete(() => {
+		untilRenderComplete().then(async () => {
+			// Wait for another micro task, so can be called after even scrollTop updated.
+			await Promise.resolve()
 			this.emit('liveDataRendered', this.liveData, this.startIndex, scrollDirection)
 		})
 	}

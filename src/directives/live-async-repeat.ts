@@ -99,7 +99,7 @@ export class LiveAsyncRepeatDirective<T> extends LiveRepeatDirective<T, LiveAsyn
 
 	__updateImmediately() {
 		if (!this.willUpdateLater) {
-			this.processor.updateSynchronously(this.updateFromIndices.bind(this))
+			this.processor.updateRendering(this.updateFromIndices.bind(this))
 		}
 	}
 
