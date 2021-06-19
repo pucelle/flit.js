@@ -4,7 +4,7 @@ import type {ComponentConstructor} from './define'
 
 
 /** Type of value returned from `Component.style()`. */
-export type ComponentStyle = TemplateResult | string | (() => TemplateResult | string)
+export type ComponentStyle = TemplateResult | (() => TemplateResult)
 
 
 /** Caches `Component -> style element`. */
