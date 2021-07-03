@@ -564,7 +564,7 @@ export class LiveRepeatDirective<T, E = any> extends InternalEventEmitter<LiveRe
 				createCount++
 			}
 
-			if (createCount % 15 === 0) {
+			if (createCount % 10 === 0) {
 				await untilIdle()
 
 				if (this.updateVersion !== version) {
