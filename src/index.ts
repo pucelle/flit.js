@@ -1,5 +1,5 @@
 export {html, css, svg, TemplateResult, Template} from './template'
-export {Component, Context, define, addGlobalStyle, getComponent, getComponentAsync, getClosestComponentOfType} from './component'
+export {Component, ComponentConstructor, Context, define, addGlobalStyle, getComponent, getComponentAsync, getClosestComponentOfType} from './component'
 export {defineBinding, refBinding, Binding, BindingResult, show, hide} from './bindings'
 export {defineDirective, refDirective, Directive, RepeatDirective, ToggleDirective, CacheDirective, DirectiveResult, cache, toggle, repeat, liveRepeat, LiveRepeatDirective, liveAsyncRepeat, LiveAsyncRepeatDirective, LiveRepeatOptions, LiveAsyncRepeatDataOptions} from './directives'
 export {on, once, off} from './internals/dom-event'

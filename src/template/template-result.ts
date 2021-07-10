@@ -48,6 +48,44 @@ export function css(strings: TemplateStringsArray, ...values: any[]): TemplateRe
  */
 export class TemplateResult {
 
+	/** Joins several templates with a spliter to one template result. */
+	static join(results: TemplateResult[], spliter: string | TemplateResult) {
+		let strings: string[] = []
+		let values: any[] = []
+
+		for (let i = 0; i < results.length; i++) {
+			let result = results[i]
+
+			// Not first.
+			if (i > 0) {
+				strings[strings.length - 1] += result.strings[0]
+				strings.push(...result.strings.slice(1))
+			}
+			else {
+				strings.push(...result.strings)
+			}
+			
+			values.push(...result.values)
+
+			if (spliter instanceof TemplateResult) {
+				// Not last.
+				if (i < results.length - 1 && spliter) {
+					strings[strings.length - 1] += spliter.strings[0]
+					strings.push(...spliter.strings.slice(1))
+					values.push(...spliter.values)
+				}
+			}
+			else {
+				// Not last.
+				if (i < results.length - 1 && spliter) {
+					strings[strings.length - 1] += spliter
+				}
+			}
+		}
+
+		return new TemplateResult(results[0].type, strings, values)
+	}
+
 	readonly type: TemplateType
 	readonly strings: TemplateStringsArray | string[]
 	readonly values: any[]
