@@ -147,6 +147,7 @@ export class PartialRenderingProcessor {
 		// Scroll to specified index.
 		if (willApplyStartIndex) {
 			this.updateWhenStartIndexWillApply(doDataUpdating)
+			this.needToApplyDataCountChange = false
 		}
 
 		// Data should changed or partly changed, reset from current scroll position.
