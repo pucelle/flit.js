@@ -296,7 +296,7 @@ export class PartialRenderingProcessor {
 		let renderCount = this.renderCount * this.renderGroupCount
 		let unexpectedScrollEnd = this.scroller.scrollTop + this.scroller.clientHeight === this.scroller.scrollHeight && this.endIndex < this.totalDataCount
 		let unexpectedScrollStart = this.scroller.scrollTop === 0 && this.startIndex > 0
-		let promise: Promise<void> | null = null
+		let promise: Promise<void>
 
 		// No intersection, reset slider position from current slider scroll offset.
 		let hasNoIntersection = sliderRect.bottom < scrollerRect.top || sliderRect.top > scrollerRect.bottom
@@ -329,9 +329,13 @@ export class PartialRenderingProcessor {
 			promise = this.updateWithSliderPositionStable('up', oldStartIndex, scrollerRect, doDataUpdating)
 		}
 
-		// Not updated otherwise.
+		// Very small rate updating failed, especially when CPU is very busy.
+		promise!.catch(() => {
+			this.updateFromCurrentScrollOffset(doDataUpdating)
+			promise = untilRenderComplete()
+		})
 
-		return promise
+		return promise!
 	}
 
 	/** Re-generate indices from current scroll offset. */
