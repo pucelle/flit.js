@@ -24,14 +24,18 @@ export function ensureComponentStyle(Com: ComponentConstructor, name: string) {
 
 
 /** 
- * Create <style> tag and insert it into body.
+ * Create <style> tag and insert it into document head.
  * `name` should be `global` for global style.
+ * Always insert into before any script tag.
+ * So you may put overwritten styles after script tag.
  */
 function createStyleElement(style: ComponentStyle, scopeName: string): HTMLStyleElement {
 	let styleTag = document.createElement('style')
 	styleTag.setAttribute('name', scopeName)
 	styleTag.textContent = getStyleContent(style, scopeName)
-	document.head.append(styleTag)
+
+	let scriptTag = document.head.querySelector('script')
+	document.head.insertBefore(styleTag, scriptTag)
 
 	return styleTag
 }
