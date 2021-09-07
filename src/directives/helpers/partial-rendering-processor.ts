@@ -328,9 +328,12 @@ export class PartialRenderingProcessor {
 			this.updateIndices(newStartIndex)
 			promise = this.updateWithSliderPositionStable('up', oldStartIndex, scrollerRect, doDataUpdating)
 		}
+		else {
+			promise = Promise.resolve()
+		}
 
 		// Very small rate updating failed, especially when CPU is very busy.
-		promise!.catch(() => {
+		promise.catch(() => {
 			this.updateFromCurrentScrollOffset(doDataUpdating)
 			promise = untilRenderComplete()
 		})
