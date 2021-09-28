@@ -1,5 +1,12 @@
 /** Rect box size and location, all properties are writable. */
-export type Rect = {-readonly [key in keyof ClientRect]: number }
+export type Rect = {
+    width: number
+	height: number
+    bottom: number
+    left: number
+    right: number
+    top: number
+}
 
 
 /** Trim text by removing `\r\n\t`. */

@@ -4,7 +4,7 @@ import {addTargetAndProxy, getObservedOf} from './target-proxy'
 import {UpdatableTarget} from './types'
 
 
-export function observeComTarget<T extends UpdatableTarget>(com: T): T {
+export function observeComponentTarget<T extends UpdatableTarget>(com: T): T {
 	let proxy = new Proxy(com, proxyHandler)
 	addTargetAndProxy(com, proxy)
 

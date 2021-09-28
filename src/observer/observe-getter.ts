@@ -1,9 +1,9 @@
 /**
  * After consider much about getter, we decided to drop supports for observing getters automatically.
- * The main reason is after we observed getter calls in a proxy,
- * We can't determine this is a getter calls,
+ * The main reason is after we observed the `get propertyName` calls in a proxy,
+ * We can't know whether this is a getter calls,
  * and we must follow prototype chains to find the descriptor,
- * then we can know it's a getter or normal property.
+ * then we can assert it's a getter or normal property.
  * This will slow the whole observing system.
  *
  * You can still observe a getter manually according to this method:

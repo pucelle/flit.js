@@ -1,6 +1,6 @@
 import {NodePart, TemplateResult} from '../template'
 import {enqueueUpdatableInOrder, onRenderComplete} from '../queue'
-import {startUpdating, endUpdating, observeComTarget, clearDependenciesOf} from '../observer'
+import {startUpdating, endUpdating, observeComponentTarget, clearDependenciesOf} from '../observer'
 import {WatcherGroup} from '../watchers'
 import {NodeAnchorType, NodeAnchor} from "../internals/node-anchor"
 import type {DirectiveResult} from '../directives'
@@ -79,10 +79,16 @@ export abstract class Component<E = any> extends InternalEventEmitter<E & Compon
 	readonly el: HTMLElement
 
 	/**
-	 * Caches referenced elements from `:ref="refName"`.
+	 * Caches referenced elements from `:refElement="refName"`.
 	 * You should redefine the type as `{name: HTMLElement, ...}`.
 	 */
-	readonly refs: Record<string, Element> = {}
+	readonly refElements: Record<string, Element> = {}
+
+	/**
+	 * Caches referenced elements from `:refComponent="refName"`.
+	 * You should redefine the type as `{name: Component, ...}`.
+	 */
+	 readonly refComponents: Record<string, Component> = {}
 
 	/**
 	 * Caches slot elements from `:slot="slotName"`.
@@ -110,7 +116,7 @@ export abstract class Component<E = any> extends InternalEventEmitter<E & Compon
 		this.el = el
 		this.__restNodeRange = new ContainerRange(el)
 
-		return observeComTarget(this)
+		return observeComponentTarget(this)
 	}
 
 	/** Called after component created and properties assigned. */

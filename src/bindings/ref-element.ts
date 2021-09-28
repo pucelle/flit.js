@@ -3,13 +3,13 @@ import {Binding, defineBinding} from './define'
 
 
 /**
- * To reference current element as a `refs` property or captures and passes to a handler.
+ * To reference current element as a `refElements` property or captures and passes to a handler.
  * 
- * `:ref="name"` - Reference as a value in current component at `.refs.refName`, note it will be updated everytime after element changed.
- * `:ref=${this.onRef}` - Call reference function with current element as parameter, note it will be called everytime after element changed.
+ * `:refElement="name"` - Reference as a value in current component at `.refElements.refName`, note it will be updated everytime after element changed.
+ * `:refElement=${this.onRef}` - Call reference function with current element as parameter, note it will be called everytime after element changed.
  */
-@defineBinding('ref')
-export class RefBinding implements Binding<string | ((el: Element) => void)> {
+@defineBinding('refElement')
+export class RefElementBinding implements Binding<string | ((el: Element) => void)> {
 
 	private readonly el: Element
 	private readonly context: Component
@@ -25,7 +25,7 @@ export class RefBinding implements Binding<string | ((el: Element) => void)> {
 
 	update(value: string | ((el: Element) => void)) {
 		if (typeof value === 'string') {
-			this.context.refs[value] = this.el as HTMLElement
+			this.context.refElements[value] = this.el as HTMLElement
 		}
 		else if (typeof value === 'function') {
 			value.call(this.context, this.el)
