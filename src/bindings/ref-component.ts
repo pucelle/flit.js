@@ -28,7 +28,7 @@ export class RefComponentBinding implements Binding<string | ((el: Component) =>
 		getComponentEarly(this.el as HTMLElement, (com: Component | null) => {
 			if (com) {
 				if (typeof value === 'string') {
-					(this.context as any)[value] = com
+					this.context.refComponents[value] = com
 				}
 				else if (typeof value === 'function') {
 					value.call(this.context, com)
