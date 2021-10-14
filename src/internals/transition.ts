@@ -1,5 +1,5 @@
 import {once, off} from './dom-event'
-import {onRenderComplete} from '../queue'
+import {onRenderComplete} from '@pucelle/flit-basis'
 
 
 /** Transition easing identifier. */

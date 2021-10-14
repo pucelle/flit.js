@@ -1,5 +1,5 @@
 import {locateLastVisibleIndex, locateFirstVisibleIndex, getRect, Rect} from '../../helpers/utils'
-import {onRenderComplete, untilRenderComplete} from '../../queue'
+import {onRenderComplete, untilRenderComplete} from '@pucelle/flit-basis'
 import {OffsetChildren} from './offset-children'
 
 

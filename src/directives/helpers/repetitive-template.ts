@@ -1,6 +1,6 @@
 import {Context} from '../../component'
 import {Template, TemplateResult} from '../../template'
-import {GlobalWatcherGroup, LazyWatcher} from '../../watchers'
+import {GlobalWatcherGroup, LazyWatcher} from '@pucelle/flit-basis'
 
 
 export interface RepetitiveTemplateSource<T> {
@@ -53,8 +53,8 @@ export class RepetitiveTemplate<T> {
 
 	/** After template result changed. */
 	private onUpdateTemplateResult(result: TemplateResult) {
-		if (this.template.canMergeWith(result)) {
-			this.template.merge(result)
+		if (this.template.canPathBy(result)) {
+			this.template.patch(result)
 		}
 		else {
 			let context = this.source.getContext()

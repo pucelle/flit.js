@@ -20,18 +20,18 @@ export class CacheDirective implements Directive {
 		this.transition = new ContextualTransition(context)
 	}
 
-	canMergeWith(): boolean {
+	canPatchBy(): boolean {
 		return true
 	}
 
-	merge(result: TemplateResult | '' | null, options?: ContextualTransitionOptions) {
+	patch(result: TemplateResult | '' | null, options?: ContextualTransitionOptions) {
 		this.transition.updateOptions(options)
 
 		if (result) {
 
 			// Matches, merge them. will not play transition.
-			if (this.currentTemplate && this.currentTemplate.canMergeWith(result)) {
-				this.currentTemplate.merge(result)
+			if (this.currentTemplate && this.currentTemplate.canPathBy(result)) {
+				this.currentTemplate.patch(result)
 			}
 			else {
 
@@ -41,9 +41,9 @@ export class CacheDirective implements Directive {
 				}
 
 				// Find one that can be reused.
-				let template = this.templates.find(t => t.canMergeWith(result as TemplateResult))
+				let template = this.templates.find(t => t.canPathBy(result as TemplateResult))
 				if (template) {
-					template.merge(result)
+					template.patch(result)
 					this.anchor.insert(template.extractToFragment())
 					this.tryPlayEnterTransition(template)
 					this.currentTemplate = template

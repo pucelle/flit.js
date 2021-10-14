@@ -14,8 +14,8 @@ import {SlotPart} from "./parts/slot-part"
 import {Part} from './parts/types'
 
 
-/** Each updatable part. */
-interface UpdatablePart {
+/** Interface for each patchable part. */
+interface PatchablePart {
 
 	/** Part handle class. */
 	part: Part
@@ -40,7 +40,7 @@ export class Template {
 
 	private readonly context: Context
 	private readonly range: NodeRange
-	private readonly parts: UpdatablePart[] = []
+	private readonly parts: PatchablePart[] = []
 
 	private currentResult: TemplateResult
 
@@ -126,8 +126,8 @@ export class Template {
 		}
 	}
 
-	/** Compare if current template result can merge with `result`. */
-	canMergeWith(result: TemplateResult): boolean {
+	/** Compare if current template result can be patched by `result`. */
+	canPathBy(result: TemplateResult): boolean {
 		if (this.currentResult.type !== result.type) {
 			return false
 		}
@@ -145,8 +145,8 @@ export class Template {
 		return true
 	}
 
-	/** Merge current result with `result`. */
-	merge(result: TemplateResult) {
+	/** Patch current template by `result`. */
+	patch(result: TemplateResult) {
 		for (let {part, strings, valueIndices} of this.parts) {
 			let changed = valueIndices.some(index => this.currentResult.values[index] !== result.values[index])
 			

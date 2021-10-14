@@ -105,8 +105,8 @@ export class NodePart implements Part {
 		// We can partly fix this by implementing a binding API `:src`.
 
 		let oldTemplate = this.content as Template | null
-		if (oldTemplate && oldTemplate.canMergeWith(result)) {
-			oldTemplate.merge(result)
+		if (oldTemplate && oldTemplate.canPathBy(result)) {
+			oldTemplate.patch(result)
 		}
 		else {
 			if (oldTemplate) {
@@ -122,8 +122,8 @@ export class NodePart implements Part {
 	private updateDirective(result: DirectiveResult) {
 		let oldDirective = this.content as Directive | null
 
-		if (oldDirective && oldDirective.canMergeWith(...result.args)) {
-			oldDirective.merge(...result.args)
+		if (oldDirective && oldDirective.canPatchBy(...result.args)) {
+			oldDirective.patch(...result.args)
 		}
 		else {
 			if (oldDirective) {
@@ -147,8 +147,8 @@ export class NodePart implements Part {
 			let oldTemplate = templates[i]
 			let result = results[i]
 
-			if (oldTemplate.canMergeWith(result)) {
-				oldTemplate.merge(result)
+			if (oldTemplate.canPathBy(result)) {
+				oldTemplate.patch(result)
 			}
 			else {
 				let newTemplate = new Template(result, this.context)

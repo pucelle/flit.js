@@ -44,7 +44,7 @@ export function css(strings: TemplateStringsArray, ...values: any[]): TemplateRe
 /**
  * Created from each html`...` or svg`...`.
  * Every time call `component.update` will generate a new template result,
- * then we will use this result to merge or replaced old one.
+ * then we will use this result to patch or replaced old one.
  */
 export class TemplateResult {
 

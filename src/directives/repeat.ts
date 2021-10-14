@@ -1,12 +1,11 @@
 import {defineDirective, Directive, DirectiveResult} from './define'
-import type {Context} from '../component'
+import {Context} from '../component'
 import {ContextualTransition, ContextualTransitionOptions} from '../internals/contextual-transition'
 import {RepetitiveTemplate, RepetitiveTemplateSource, TemplateFn} from './helpers/repetitive-template'
 import {NodeAnchor} from "../internals/node-anchor"
-import {GlobalWatcherGroup, LazyWatcher, Watcher} from '../watchers'
+import {GlobalWatcherGroup, LazyWatcher, Watcher, untilRenderComplete} from '@pucelle/flit-basis'
 import {getEditRecord, EditType} from '../helpers/edit'
 import {getClosestScrollWrapper} from '../helpers/utils'
-import {untilRenderComplete} from '../queue'
 
 
 /** 
@@ -41,7 +40,7 @@ export class RepeatDirective<T> implements Directive, RepetitiveTemplateSource<T
 		this.transition = new ContextualTransition(context)
 	}
 
-	canMergeWith(_data: Iterable<T> | null, templateFn: TemplateFn<T>): boolean {
+	canPatchBy(_data: Iterable<T> | null, templateFn: TemplateFn<T>): boolean {
 		
 		// Compare string of two functions should be fast:
 		// string  of function represent as a fixed sring,
@@ -49,7 +48,7 @@ export class RepeatDirective<T> implements Directive, RepetitiveTemplateSource<T
 		return templateFn === this.templateFn || templateFn.toString() === this.templateFn.toString()
 	}
 
-	merge(data: Iterable<T> | null, templateFn: TemplateFn<T>, options?: ContextualTransitionOptions) {
+	patch(data: Iterable<T> | null, templateFn: TemplateFn<T>, options?: ContextualTransitionOptions) {
 		this.templateFn = templateFn
 		this.transition.updateOptions(options)
 

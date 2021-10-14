@@ -1,7 +1,4 @@
 import {NodePart, TemplateResult} from '../template'
-import {enqueueUpdatableInOrder, onRenderComplete} from '../queue'
-import {startUpdating, endUpdating, observeComponentTarget, clearDependenciesOf} from '../observer'
-import {WatcherGroup} from '../watchers'
 import {NodeAnchorType, NodeAnchor} from "../internals/node-anchor"
 import type {DirectiveResult} from '../directives'
 import {setElementComponentMap} from './from-element'
@@ -10,7 +7,7 @@ import {InternalEventEmitter} from '../internals/internal-event-emitter'
 import type {ComponentStyle} from './style'
 import {getScopedClassNames} from '../internals/style-parser'
 import {ContainerRange} from '../internals/node-range'
-import {UpdatableUpdateOrder} from '../queue/helpers/updatable-queue'
+import {WatcherGroup, enqueueUpdatableInOrder, onRenderComplete, startUpdating, endUpdating, observeComponentTarget, clearDependenciesOf, UpdatableContext, QueueUpdateOrder} from '@pucelle/flit-basis'
 
 
 /** 
@@ -64,7 +61,17 @@ export interface ComponentEvents {
  * Super class of all the components, create automacially when element appearance in the document.
  * @typeparam E Event interface in `{eventName: (...args) => void}` format.
  */
-export abstract class Component<E = any> extends InternalEventEmitter<E & ComponentEvents> {
+export abstract class Component<E = any> extends InternalEventEmitter<E & ComponentEvents> implements UpdatableContext {
+	
+
+	__getAttactedDomElement() {
+		return this.el
+	}
+
+	__comparePositionWith(com: Component) {
+		return this.el.compareDocumentPosition(com.el) & com.el.DOCUMENT_POSITION_FOLLOWING ? -1 : 1
+	}
+
 
 	/**
 	 * This static property contains style text used as styles for current component.
@@ -88,7 +95,7 @@ export abstract class Component<E = any> extends InternalEventEmitter<E & Compon
 	 * Caches referenced elements from `:refComponent="refName"`.
 	 * You should redefine the type as `{name: Component, ...}`.
 	 */
-	 readonly refComponents: Record<string, Component> = {}
+	readonly refComponents: Record<string, Component> = {}
 
 	/**
 	 * Caches slot elements from `:slot="slotName"`.
@@ -226,7 +233,7 @@ export abstract class Component<E = any> extends InternalEventEmitter<E & Compon
 	 * Never overwrite this method until you know what you are doing.
 	 */
 	update() {
-		enqueueUpdatableInOrder(this, this, UpdatableUpdateOrder.Component)
+		enqueueUpdatableInOrder(this, this, QueueUpdateOrder.Component)
 	}
 
 	/**

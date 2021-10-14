@@ -2,9 +2,8 @@ import {defineDirective, DirectiveResult} from './define'
 import {ContextualTransitionOptions} from '../internals/contextual-transition'
 import {TemplateResult} from '../template'
 import {LiveRepeatDirective, LiveRepeatOptions} from './live-repeat'
-import {observe} from '../observer'
 import {TemplateFn} from './helpers/repetitive-template'
-import {onRenderComplete} from '../queue'
+import {observe, onRenderComplete} from '@pucelle/flit-basis'
 import {ImmediatePageDataGetter, PageDataGetter, AsyncPageDataGetter} from './helpers/page-data-getter'
 
 
@@ -76,7 +75,7 @@ export class LiveAsyncRepeatDirective<T> extends LiveRepeatDirective<T, LiveAsyn
 	/** Update version. */
 	protected version: number = 0
 
-	merge(dataOptions: any, templateFn: TemplateFn<T>, liveRepeatOptions?: LiveRepeatOptions, transitionOptions?: ContextualTransitionOptions) {
+	patch(dataOptions: any, templateFn: TemplateFn<T>, liveRepeatOptions?: LiveRepeatOptions, transitionOptions?: ContextualTransitionOptions) {
 		this.dataCount = dataOptions.dataCount
 		this.templateFn = templateFn
 		this.options.update(liveRepeatOptions)

@@ -1,7 +1,7 @@
 import {TemplateResult, Template, html} from '../template'
 import {Component, Context, createComponent} from '../component'
 import {DirectiveResult} from '../directives'
-import {GlobalWatcherGroup} from '../watchers'
+import {GlobalWatcherGroup} from '@pucelle/flit-basis'
 
 
 /**
@@ -47,7 +47,7 @@ export function renderUpdatable(renderFn: () => TemplateResult | DirectiveResult
 		}
 
 		if (template) {
-			template.merge(result)
+			template.patch(result)
 
 			if (onUpdate) {
 				onUpdate()

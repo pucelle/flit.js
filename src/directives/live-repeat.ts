@@ -7,12 +7,10 @@ import {off, on} from '../internals/dom-event'
 import {UpdatableOptions} from '../internals/updatable-options'
 import {PartialRenderingProcessor} from './helpers/partial-rendering-processor'
 import {InternalEventEmitter} from '../internals/internal-event-emitter'
-import {GlobalWatcherGroup, LazyWatcher, Watcher} from '../watchers'
 import {EditType, getEditRecord} from '../helpers/edit'
 import {untilIdle, locateFirstVisibleIndex, locateLastVisibleIndex, getElementCountBefore} from '../helpers/utils'
-import {enqueueUpdatableInOrder, untilRenderComplete} from '../queue'
 import {OffsetChildren} from './helpers/offset-children'
-import {UpdatableUpdateOrder} from '../queue/helpers/updatable-queue'
+import {GlobalWatcherGroup, LazyWatcher, Watcher, enqueueUpdatableInOrder, untilRenderComplete, QueueUpdateOrder} from '@pucelle/flit-basis'
 
 
 export interface LiveRepeatOptions {
@@ -140,11 +138,11 @@ export class LiveRepeatDirective<T, E = any> extends InternalEventEmitter<LiveRe
 		}
 	}
 
-	canMergeWith(_data: Iterable<T> | null, templateFn: TemplateFn<T>): boolean {
+	canPatchBy(_data: Iterable<T> | null, templateFn: TemplateFn<T>): boolean {
 		return templateFn === this.templateFn || templateFn.toString() === this.templateFn.toString()
 	}
 
-	merge(
+	patch(
 		data: Iterable<T> | null,
 		templateFn: TemplateFn<T>,
 		liveRepeatOptions?: LiveRepeatOptions,
@@ -215,7 +213,7 @@ export class LiveRepeatDirective<T, E = any> extends InternalEventEmitter<LiveRe
 	/** Serveral update entry: normal update; from `setStartIndex`, from `reload`. */
 	protected update() {
 		// Update after watchers and components.
-		enqueueUpdatableInOrder(this, this.context, UpdatableUpdateOrder.Directive)
+		enqueueUpdatableInOrder(this, this.context, QueueUpdateOrder.Directive)
 	}
 
 	__updateImmediately() {

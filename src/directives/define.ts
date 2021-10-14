@@ -12,11 +12,11 @@ export interface DirectiveConstructor {
 /** An interface that must implement when defining directives. */
 export interface Directive<A extends any[] = any[]> {
 
-	/** Whenter the directive parameters can merge with current directive. */
-	canMergeWith(...args: A): boolean
+	/** Whenter the directive parameters can be patched by current directive. */
+	canPatchBy(...args: A): boolean
 
-	/** Merges directive parameters to current directive. */
-	merge(...args: A): void
+	/** Patch directive parameters to current directive. */
+	patch(...args: A): void
 
 	/** 
 	 * Removes current directive.
@@ -74,7 +74,7 @@ class DirectiveReferencesClass extends ResultReferences<DirectiveResult, Directi
 		let Dir = result.directiveConstructor
 		let directive = new Dir(anchor, context)
 		this.createReference(result, directive)
-		directive.merge(...result.args)
+		directive.patch(...result.args)
 
 		return directive
 	}
