@@ -105,7 +105,7 @@ export class NodePart implements Part {
 		// We can partly fix this by implementing a binding API `:src`.
 
 		let oldTemplate = this.content as Template | null
-		if (oldTemplate && oldTemplate.canPathBy(result)) {
+		if (oldTemplate && oldTemplate.canPatchBy(result)) {
 			oldTemplate.patch(result)
 		}
 		else {
@@ -147,7 +147,7 @@ export class NodePart implements Part {
 			let oldTemplate = templates[i]
 			let result = results[i]
 
-			if (oldTemplate.canPathBy(result)) {
+			if (oldTemplate.canPatchBy(result)) {
 				oldTemplate.patch(result)
 			}
 			else {

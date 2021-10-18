@@ -33,7 +33,7 @@ export class ToggleDirective implements Directive {
 		if (result) {
 
 			// Matches, merge them. will not play transition.
-			if (this.currentTemplate && this.currentTemplate.canPathBy(result)) {
+			if (this.currentTemplate && this.currentTemplate.canPatchBy(result)) {
 				this.currentTemplate.patch(result)
 			}
 			else {

@@ -127,7 +127,7 @@ export class Template {
 	}
 
 	/** Compare if current template result can be patched by `result`. */
-	canPathBy(result: TemplateResult): boolean {
+	canPatchBy(result: TemplateResult): boolean {
 		if (this.currentResult.type !== result.type) {
 			return false
 		}

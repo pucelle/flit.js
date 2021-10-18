@@ -53,7 +53,7 @@ export class RepetitiveTemplate<T> {
 
 	/** After template result changed. */
 	private onUpdateTemplateResult(result: TemplateResult) {
-		if (this.template.canPathBy(result)) {
+		if (this.template.canPatchBy(result)) {
 			this.template.patch(result)
 		}
 		else {

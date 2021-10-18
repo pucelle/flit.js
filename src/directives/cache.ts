@@ -30,7 +30,7 @@ export class CacheDirective implements Directive {
 		if (result) {
 
 			// Matches, merge them. will not play transition.
-			if (this.currentTemplate && this.currentTemplate.canPathBy(result)) {
+			if (this.currentTemplate && this.currentTemplate.canPatchBy(result)) {
 				this.currentTemplate.patch(result)
 			}
 			else {
@@ -41,7 +41,7 @@ export class CacheDirective implements Directive {
 				}
 
 				// Find one that can be reused.
-				let template = this.templates.find(t => t.canPathBy(result as TemplateResult))
+				let template = this.templates.find(t => t.canPatchBy(result as TemplateResult))
 				if (template) {
 					template.patch(result)
 					this.anchor.insert(template.extractToFragment())
