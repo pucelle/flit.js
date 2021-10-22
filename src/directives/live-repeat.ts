@@ -6,7 +6,7 @@ import type {NodeAnchor} from "../internals/node-anchor"
 import {off, on} from '../internals/dom-event'
 import {UpdatableOptions} from '../internals/updatable-options'
 import {PartialRenderingProcessor} from './helpers/partial-rendering-processor'
-import {InternalEventEmitter} from '../internals/internal-event-emitter'
+import {EventEmitter} from '@pucelle/event-emitter'
 import {EditType, getEditRecord} from '../helpers/edit'
 import {untilIdle, locateFirstVisibleIndex, locateLastVisibleIndex, getElementCountBefore} from '../helpers/utils'
 import {OffsetChildren} from './helpers/offset-children'
@@ -56,7 +56,7 @@ const DefaultLiveRepeatOptions: LiveRepeatOptions = {
 }
 
 
-export class LiveRepeatDirective<T, E = any> extends InternalEventEmitter<LiveRepeatEvents<T> & E> implements Directive, RepetitiveTemplateSource<T> {
+export class LiveRepeatDirective<T, E = any> extends EventEmitter<LiveRepeatEvents<T> & E> implements Directive, RepetitiveTemplateSource<T> {
 
 	protected readonly anchor: NodeAnchor
 	protected readonly context: Context

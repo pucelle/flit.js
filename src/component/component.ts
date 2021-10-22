@@ -3,7 +3,7 @@ import {NodeAnchorType, NodeAnchor} from "../internals/node-anchor"
 import type {DirectiveResult} from '../directives'
 import {setElementComponentMap} from './from-element'
 import {emitComponentCreationCallbacks, onComponentConnected, onComponentDisconnected} from './life-cycle'
-import {InternalEventEmitter} from '../internals/internal-event-emitter'
+import {EventEmitter} from '@pucelle/event-emitter'
 import type {ComponentStyle} from './style'
 import {getScopedClassNames} from '../internals/style-parser'
 import {ContainerRange} from '../internals/node-range'
@@ -61,7 +61,7 @@ export interface ComponentEvents {
  * Super class of all the components, create automacially when element appearance in the document.
  * @typeparam E Event interface in `{eventName: (...args) => void}` format.
  */
-export abstract class Component<E = any> extends InternalEventEmitter<E & ComponentEvents> implements UpdatableContext {
+export abstract class Component<E = any> extends EventEmitter<E & ComponentEvents> implements UpdatableContext {
 	
 
 	__getAttactedDomElement() {
@@ -254,7 +254,7 @@ export abstract class Component<E = any> extends InternalEventEmitter<E & Compon
 
 	/** 
 	 * Called after every time all the data and child nodes updated.
-	 * Seam with `onReady`, child components may not been updated yet,
+	 * Nearly same with `onReady`, child components may not been updated yet,
 	 * so don't check computed styles on child nodes.
 	 * If need so, uses `onRenderComplete` or `untilRenderComplete`.
 	 * You may reset some properties or capture some nodes dynamically here,
