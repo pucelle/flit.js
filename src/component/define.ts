@@ -1,5 +1,7 @@
 import type {Component} from './component'
 import {defineCustomElement} from './custom-element'
+import {setElementComponentMap} from './from-element'
+import {emitComponentCreatedCallbacks} from './life-cycle'
 import {ComponentStyle, ensureComponentStyle} from './style'
 
 
@@ -11,7 +13,7 @@ export interface ComponentConstructor {
 
 
 /**
- * Returns a decorator to defined followed class as a component.
+ * Returns a decorator to define followed class as a component.
  * @param name The component name.
  */
 export function define(name: string): (Com: ComponentConstructor) => void
@@ -79,6 +81,10 @@ export function createComponent(el: HTMLElement): Component {
 	ensureComponentStyle(Com, el.localName)
 	
 	let com = new Com(el)
+	
+	setElementComponentMap(com.el, com)
+	emitComponentCreatedCallbacks(com.el, com)
+
 	com.__emitCreated()
 
 	return com

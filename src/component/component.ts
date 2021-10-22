@@ -1,8 +1,7 @@
 import {NodePart, TemplateResult} from '../template'
 import {NodeAnchorType, NodeAnchor} from "../internals/node-anchor"
 import type {DirectiveResult} from '../directives'
-import {setElementComponentMap} from './from-element'
-import {emitComponentCreationCallbacks, onComponentConnected, onComponentDisconnected} from './life-cycle'
+import {onComponentConnected, onComponentDisconnected} from './life-cycle'
 import {EventEmitter} from '@pucelle/event-emitter'
 import type {ComponentStyle} from './style'
 import {getScopedClassNames} from '../internals/style-parser'
@@ -103,9 +102,10 @@ export abstract class Component<E = any> extends EventEmitter<E & ComponentEvent
 	/* Whether current component connected with a document. */
 	protected __connected: boolean = false
 
-	/** Whether have updated for at least once. */
-	protected __updated: boolean = false
+	/** Whether have been in ready state. */
+	protected __ready: boolean = false
 
+	/** To patch render result. */
 	protected __rootPart: NodePart | null = null
 
 	/** `WatcherGroup` instance to cache watchers binded with current component. */
@@ -123,9 +123,6 @@ export abstract class Component<E = any> extends EventEmitter<E & ComponentEvent
 	/** Called after component created and properties assigned. */
 	__emitCreated() {
 		// Not called from constructor function because properties of child classes are not prepared yet.
-
-		setElementComponentMap(this.el, this)
-		emitComponentCreationCallbacks(this.el, this)
 
 		this.onCreated()
 		this.emit('created')
@@ -197,8 +194,8 @@ export abstract class Component<E = any> extends EventEmitter<E & ComponentEvent
 			console.warn(err)
 		}
 
-		if (!this.__updated) {
-			this.__updated = true
+		if (!this.__ready) {
+			this.__ready = true
 			this.onReady()
 			this.emit('ready')
 		}
@@ -267,7 +264,7 @@ export abstract class Component<E = any> extends EventEmitter<E & ComponentEvent
 
 	/** Returns promise which will be resolved after component is ready. */
 	protected async untilReady() {
-		if (this.__updated) {
+		if (this.__ready) {
 			return
 		}
 		else {

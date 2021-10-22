@@ -1,5 +1,5 @@
-import {NodeRange} from "../internals/node-range"
-import {NodeAnchor, NodeAnchorType} from "../internals/node-anchor"
+import {NodeRange} from '../internals/node-range'
+import {NodeAnchor, NodeAnchorType} from '../internals/node-anchor'
 import {TemplateResult} from './template-result'
 import {parseTemplate, Slot, SlotType} from './template-parser'
 import {NodePart} from './parts/node-part'
@@ -9,8 +9,8 @@ import {AttrPart} from './parts/attr-part'
 import {DynamicBindingPart, FixedBindingPart} from './parts/binding-part'
 import {PropertyPart} from './parts/property-part'
 import {Context, createComponent} from '../component'
-import {joinStringsAndValues} from "./utils"
-import {SlotPart} from "./parts/slot-part"
+import {joinStringsAndValues} from './utils'
+import {SlotPart} from './parts/slot-part'
 import {Part} from './parts/types'
 
 
@@ -24,7 +24,7 @@ interface PatchablePart {
 	strings: string[] | null
 
 	/** 
-	 * Value indices in the whole template.
+	 * Value indices in the `${...}` array.
 	 * Having more than one values for `???="a${...}b${...}c"`.
 	 */
 	valueIndices: number[]

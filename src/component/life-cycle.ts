@@ -22,7 +22,7 @@ export function onComponentCreatedAt(el: HTMLElement, callback: (com: Component)
  * Call after component created.
  * Used to assign properties from `.props`, or bind component events by `@com-event`.
  */
-export function emitComponentCreationCallbacks(el: HTMLElement, com: Component) {
+export function emitComponentCreatedCallbacks(el: HTMLElement, com: Component) {
 	let callbacks = ComponentCreationCallbackCache.get(el)
 	if (callbacks) {
 		for (let callback of callbacks) {
@@ -46,7 +46,7 @@ export function onComponentDisconnected(com: Component) {
 
 
 /** 
- * Updates all the components that elements are connected nto document, and their watchers.
+ * Updates all the components that elements are connected into document, and their watchers.
  * e.g., you may call this after language changes and not automatically detected.
  */
 export function updateAllComponents() {
