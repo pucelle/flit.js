@@ -7,7 +7,7 @@ import {EventEmitter} from '@pucelle/event-emitter'
 import type {ComponentStyle} from './style'
 import {getScopedClassNames} from '../internals/style-parser'
 import {ContainerRange} from '../internals/node-range'
-import {WatcherGroup, enqueueUpdatableInOrder, onRenderComplete, startUpdating, endUpdating, observeComponentTarget, clearDependenciesOf, UpdatableContext, QueueUpdateOrder} from '@pucelle/flit-basis'
+import {WatcherGroup, enqueueUpdatableInOrder, startUpdating, endUpdating, observeComponentTarget, clearDependenciesOf, UpdatableContext, QueueUpdateOrder} from '@pucelle/flit-basis'
 
 
 /** 
@@ -48,12 +48,6 @@ export interface ComponentEvents {
 	 * If need check computed styles on child nodes, uses `onRenderComplete`, `untilRenderComplete` or `rendered` event.
 	 */
 	updated: () => void
-
-	/**
-	 * After every time all the data and child nodes updated, and also rendered.
-	 * You can safely visit computed style on child nodes.
-	 */ 
-	rendered: () => void
 }
 
 
@@ -211,11 +205,6 @@ export abstract class Component<E = any> extends EventEmitter<E & ComponentEvent
 		
 		this.onUpdated()
 		this.emit('updated')
-
-		onRenderComplete(() => {
-			this.onRendered()
-			this.emit('rendered')
-		})
 	}
 
 	/** 
@@ -261,12 +250,6 @@ export abstract class Component<E = any> extends EventEmitter<E & ComponentEvent
 	 * but normally you don't need to.
 	 */
 	protected onUpdated() {}
-
-	/** 
-	 * Called after all the data and child nodes, components updated.
-	 * You can visit computed styles of elemenets event component elemenet now.
-	 */
-	protected onRendered() {}
 
 	/** 
 	 * Called when root element was inserted into document.
