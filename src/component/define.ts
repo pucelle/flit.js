@@ -12,6 +12,10 @@ export interface ComponentConstructor {
 }
 
 
+/** To cache `name -> component constructor` */
+const ComponentConstructorMap: Map<string, ComponentConstructor> = new Map()
+
+
 /**
  * Returns a decorator to define followed class as a component.
  * @param name The component name.
@@ -46,10 +50,6 @@ export function define(name: string, Com?: ComponentConstructor) {
 		return undefined
 	}
 }
-
-
-/** To cache `name -> component constructor` */
-const ComponentConstructorMap: Map<string, ComponentConstructor> = new Map()
 
 
 /**

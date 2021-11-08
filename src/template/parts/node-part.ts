@@ -4,7 +4,7 @@ import {Template} from '../template'
 import {DirectiveResult, Directive, DirectiveReferences} from '../../directives'
 import type {Context} from '../../component'
 import {trim} from '../../helpers/utils'
-import {Part} from './types'
+import type {Part} from './types'
 
 
 /** Contents that can be included in a `<tag>${...}<.tag>`. */
@@ -34,7 +34,7 @@ export class NodePart implements Part {
 	}
 
 	update(value: unknown) {
-		let newContentType = this.getNewContentType(value)
+		let newContentType = this.recognizeContentType(value)
 
 		if (newContentType !== this.contentType && this.contentType !== null) {
 			this.clearOldContent()
@@ -60,7 +60,7 @@ export class NodePart implements Part {
 		}
 	}
 
-	private getNewContentType(value: unknown): ContentType {
+	private recognizeContentType(value: unknown): ContentType {
 		if (value instanceof TemplateResult) {
 			return ContentType.Template
 		}
@@ -143,34 +143,31 @@ export class NodePart implements Part {
 		results = results.filter(result => result instanceof TemplateResult)
 
 		// Updates shared part.
-		for (let i = 0; i < Math.min(templates.length, results.length); i++) {
-			let oldTemplate = templates[i]
+		for (let i = 0; i < results.length; i++) {
+			let oldTemplate = i < templates.length ? templates[i] : null
 			let result = results[i]
 
-			if (oldTemplate.canPatchBy(result)) {
+			if (oldTemplate?.canPatchBy(result)) {
 				oldTemplate.patch(result)
 			}
 			else {
 				let newTemplate = new Template(result, this.context)
-				oldTemplate.replaceWith(newTemplate)
+
+				if (oldTemplate) {
+					oldTemplate.replaceWith(newTemplate)
+				}
+				else {
+					this.anchor.insert(newTemplate.extractToFragment())
+				}
+
 				templates[i] = newTemplate
 			}
 		}
 
-		// Removes rest.
+		// Removes rest templates.
 		if (results.length < templates.length) {
 			for (let i = templates.length - 1; i >= results.length; i--) {
 				templates.pop()!.remove()
-			}
-		}
-
-		// Creates more.
-		else {
-			for (let i = templates.length; i < results.length; i++) {
-				let result = results[i]
-				let template = new Template(result, this.context)
-				this.anchor.insert(template.extractToFragment())
-				templates.push(template)
 			}
 		}
 	}

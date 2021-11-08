@@ -1,3 +1,4 @@
+/** Help to handle reference and un-reference to a result.  */
 export class ResultReferences<R extends object, B extends object> {
 
 	/** Caches reference binding callback. */

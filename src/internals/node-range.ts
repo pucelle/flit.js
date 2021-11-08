@@ -1,6 +1,6 @@
 /**
- * A node range represents a range of nodes from it's start and end position,
- * Such that we can extract nodes in the whole range and make a fragment any time,
+ * A NodeRange represents a range of nodes from it's start and end nodes,
+ * Such that we can extract nodes in the range any time,
  * no matter nodes inside was moved or removed, or insert more.
  */
 export class NodeRange {
@@ -17,7 +17,7 @@ export class NodeRange {
 	constructor(fragment: DocumentFragment) {
 		this.fragment = fragment
 
-		// Fragment hould include at least one node, so it's position can be tracked.
+		// Fragment should include at least one node, so it's position can be tracked.
 		// Because startNode should always before any other nodes inside the template or as rest slot lement,
 		// So if starts with a hole - comment node, which will insert nodes before it,
 		// we need to prepend a comment node as `startNode`.
@@ -33,15 +33,18 @@ export class NodeRange {
 		this.endNode = fragment.lastChild!
 	}
 
-	/** Get current container, may return `null`. */
+	/** 
+	 * Get current container, may return `null`.
+	 * `null` implies all nodes were inserted into document.
+	 */
 	getCurrentFragment(): DocumentFragment | null {
 		return this.fragment
 	}
 
 	/** 
-	 * Extract all nodes into a fragment.
-	 * You must insert the extracted fragment into a container soon.
-	 * Used to get just parsed fragment, or reuse template nodes.
+	 * Extract all nodes into a fragment and returns it.
+	 * You must insert the fragment into a container soon.
+	 * Can be used to get a newly parsed fragment, or reuse template nodes.
 	 */
 	extractToFragment(): DocumentFragment {
 		let fragment: DocumentFragment
@@ -61,20 +64,19 @@ export class NodeRange {
 	}
 
 	/** 
-	 * Moves all nodes out from parent container,
-	 * and cache into a new fragment in order to use them later.
+	 * Moves all nodes out from document,
+	 * and cache them into a new fragment in order to use them later.
 	 */
 	movesOut() {
 		this.fragment = this.extractToFragment()
 	}
 	
 	/** Get all the nodes in the range. */
-	getNodes(): ChildNode[] {
-		let nodes: ChildNode[] = []
+	*getNodes(): Iterable<ChildNode> {
 		let node = this.startNode
 
 		while (node) {
-			nodes.push(node)
+			yield node
 
 			if (node === this.endNode) {
 				break
@@ -82,8 +84,6 @@ export class NodeRange {
 
 			node = node.nextSibling as ChildNode
 		}
-
-		return nodes
 	}
 
 	/** Get first element in range. */
@@ -121,7 +121,9 @@ export class NodeRange {
 	 * Call this means you will never reuse nodes in the range.
 	 */
 	remove() {
-		this.getNodes().forEach(node => (node as ChildNode).remove())
+		[...this.getNodes()].forEach(node => {
+			(node as ChildNode).remove()
+		})
 	}
 }
 
@@ -153,7 +155,7 @@ export class NodeRange {
 	}
 	
 	/** Get all the nodes in the range. */
-	getNodes(): ChildNode[] {
+	getNodes(): Iterable<ChildNode> {
 		let nodes: ChildNode[] = []
 		let node = this.container.firstChild
 
@@ -175,6 +177,8 @@ export class NodeRange {
 	 * Call this means you will never reuse nodes in the range.
 	 */
 	remove() {
-		this.getNodes().forEach(node => (node as ChildNode).remove())
+		[...this.getNodes()].forEach(node => {
+			(node as ChildNode).remove()
+		})
 	}
 }

@@ -1,7 +1,7 @@
 import {joinHTMLAttributes} from '../internals/html-attributes-parser'
 import {parseToHTMLTokens, HTMLTokenType, HTMLToken, joinHTMLTokens} from '../internals/html-token-parser'
 import {TemplateResult} from './template-result'
-import {joinWithOrderMarkers, splitByOrderMarkers, StringsAndValueIndices} from './utils'
+import {joinWithOrderMarkers, splitByOrderMarkers, StringsAndValueIndices} from './helpers/template'
 
 
 /** 

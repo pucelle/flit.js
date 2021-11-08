@@ -1,5 +1,5 @@
 export {Component, Context} from './component'
-export {getComponent, getComponentAsync, getClosestComponentOfType, getComponentEarly, getClosestComponentEarly} from './from-element'
+export {getComponent, getComponentAsync, getClosestComponentOfType, getComponentInCallback as getComponentEarly, getClosestComponentInCallback as getClosestComponentEarly} from './from-element'
 export {updateAllComponents} from './life-cycle'
 export {addGlobalStyle, updateAllStyles} from './style'
 export {define, createComponent, ComponentConstructor} from './define'

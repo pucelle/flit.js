@@ -196,6 +196,7 @@ export function defineTransion(name: string, TransitionConstructor: JSTransition
 	DefinedJSTransitions.set(name, TransitionConstructor)
 }
 
+
 /**
  * Class used to play specified transition on an element.
  * Transition types includes class name, css properties, and registered js transition.

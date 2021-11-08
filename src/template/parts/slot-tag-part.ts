@@ -1,5 +1,5 @@
 import type {Component, Context} from '../../component'
-import {Part} from './types'
+import type {Part} from './types'
 
 
 /** 
@@ -7,7 +7,7 @@ import {Part} from './types'
  * `<slot>`
  * `<slot name="...">`
  */
-export class SlotPart implements Part {
+export class SlotTagPart implements Part {
 
 	private readonly el: Element
 	private readonly name: string | null

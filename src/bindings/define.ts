@@ -1,5 +1,5 @@
 import type {Context} from '../component'
-import {ResultReferences} from '../helpers/references'
+import {ResultReferences} from '../internals/references'
 
 
 /** Constructor of all Binding class. */

@@ -1,6 +1,6 @@
 import {Binding, BindingResult, BindingReferences} from '../../bindings'
 import type {Context} from '../../component'
-import {Part} from './types'
+import type {Part} from './types'
 
 
 /**
@@ -81,7 +81,7 @@ export class DynamicBindingPart implements Part {
 	private removeCurrentBinding() {
 		if (this.binding) {
 			this.name = null
-			this.binding!.remove()
+			this.binding.remove()
 			BindingReferences.removeReference(this.binding)
 			this.binding = null
 		}

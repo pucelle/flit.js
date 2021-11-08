@@ -1,5 +1,5 @@
 import {Context} from '../component'
-import {ResultReferences} from '../helpers/references'
+import {ResultReferences} from '../internals/references'
 import {NodeAnchor} from "../internals/node-anchor"
 
 

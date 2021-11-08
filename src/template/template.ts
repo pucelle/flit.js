@@ -9,8 +9,8 @@ import {AttrPart} from './parts/attr-part'
 import {DynamicBindingPart, FixedBindingPart} from './parts/binding-part'
 import {PropertyPart} from './parts/property-part'
 import {Context, createComponent} from '../component'
-import {joinStringsAndValues} from './utils'
-import {SlotPart} from './parts/slot-part'
+import {joinStringsAndValues} from './helpers/template'
+import {SlotTagPart} from './parts/slot-tag-part'
 import {Part} from './parts/types'
 
 
@@ -45,7 +45,7 @@ export class Template {
 	private currentResult: TemplateResult
 
 	/**
-	 * Create an template from html`...` like template result and context
+	 * Create an template from html`...` like template result and a context.
 	 * @param result The template result like html`...`.
 	 * @param context The context passed to event handlers.
 	 */
@@ -71,7 +71,7 @@ export class Template {
 
 				switch (slot.type) {
 					case SlotType.SlotTag:
-						part = new SlotPart(node as Element, slot.name, this.context)
+						part = new SlotTagPart(node as Element, slot.name, this.context)
 						break
 
 					case SlotType.Node:
@@ -104,7 +104,7 @@ export class Template {
 				}
 
 				if (slot.type === SlotType.SlotTag) {
-					(part as SlotPart).update()
+					(part as SlotTagPart).update()
 				}
 				else {
 					let {strings, valueIndices} = slot
@@ -185,7 +185,7 @@ export class Template {
 	}
 
 	/**
-	 * Append all nodes into target element or selector.
+	 * Append all nodes in current template into target element or the element queried from a selector.
 	 * @param fragment The fragment to append.
 	 * @param target The target element where will append to.
 	 */
@@ -220,28 +220,28 @@ export class Template {
 		this.range.movesOut()
 	}
 	
-	/** Get all the nodes in the template. */
-	getNodes(): ChildNode[] {
+	/** Get all the nodes in current template. */
+	getNodes(): Iterable<ChildNode> {
 		return this.range.getNodes()
 	}
 
-	/** Get first element in template. */
+	/** Get first element in current template. */
 	getFirstElement(): Element | null {
 		return this.range.getFirstElement()
 	}
 
-	/** Insert all the nodes in specified template before start node of current template. */
+	/** Insert all the nodes in specified `template` before start node of current template. */
 	before(template: Template) {
 		this.range.before(template.range)
 	}
 
-	/** Replace all the nodes in current template with the nodes of specified template. */
+	/** Replace all the nodes in current template with the nodes of specified `template`. */
 	replaceWith(template: Template) {
 		this.range.replaceWith(template.range)
 	}
 
 	/** 
-	 * Removes all the nodes in the template.
+	 * Removes all the nodes in current template.
 	 * Note the child template will not call `remove`.
 	 */
 	remove() {

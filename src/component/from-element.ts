@@ -24,6 +24,28 @@ export function getComponent(el: HTMLElement): Component | null {
 
 
 /**
+ * Get component instance from element as soon as component created,
+ * Before properties applied and before trigging `created` event.
+ * Only for inner usage.
+ * @param el The element to get component instance at.
+ */
+ export function getComponentInCallback(el: HTMLElement, callback: (com: Component | null) => void) {
+	if (el.localName.includes('-')) {
+		let com = elementComponentMap.get(el)
+		if (com) {
+			callback(com)
+		}
+		else {
+			onComponentCreatedAt(el, callback)
+		}
+	}
+	else {
+		callback(null)
+	}
+}
+
+
+/**
  * Get component instance from root element asynchronously.
  * Returns a promise which will be resolved after component created and triggers `created` event.
  * @param el The element to get component instance at.
@@ -75,39 +97,16 @@ export function getClosestComponentOfType<C extends ComponentConstructor>(el: El
 
 
 /**
- * Get component instance from root element as soon as component created,
- * Before properties applied and before trigging `created` event.
- * Or immediately when component already been created.
- * Only for inner use.
- * @param el The element to get component instance at.
- */
-export function getComponentEarly(el: HTMLElement, callback: (com: Component | null) => void) {
-	if (el.localName.includes('-')) {
-		let com = elementComponentMap.get(el)
-		if (com) {
-			callback(com)
-		}
-		else {
-			onComponentCreatedAt(el, callback)
-		}
-	}
-	else {
-		callback(null)
-	}
-}
-
-
-/**
  * Get closest component from the closest ancestor custom element.
- * Only for inner use.
+ * Only for inner usage.
  * @param el The element to search from it and it's ancestors.
  */
-export function getClosestComponentEarly(el: Element, callback: (com: Component | null) => void) {
+export function getClosestComponentInCallback(el: Element, callback: (com: Component | null) => void) {
 	let parent: Element | null = el
 
 	while (parent && parent instanceof HTMLElement) {
 		if (parent.localName.includes('-')) {
-			getComponentEarly(parent, callback)
+			getComponentInCallback(parent, callback)
 			return
 		}
 		

@@ -139,8 +139,9 @@ export abstract class Component<E = any> extends EventEmitter<E & ComponentEvent
 		this.__connected = true
 
 		// Why `update` but not `__updateImmediately`?
-		// On component connected callbacks, may delete a child elements as element of other components.
-		// In this scenorio using `update` will keep it not been updated.
+		// On component connected handlers, may delete a child element,
+		// and the deleted element may be `el` of another components.
+		// In this scenorio `update` later will keep the deleted component not been updated.
 		this.update()
 
 		this.onConnected()
@@ -249,14 +250,14 @@ export abstract class Component<E = any> extends EventEmitter<E & ComponentEvent
 	protected onUpdated() {}
 
 	/** 
-	 * Called when root element was inserted into document.
+	 * Called when component element was inserted into document.
 	 * This will be called for each time you insert the element into document.
 	 * If you need to register global listeners like `resize` when element in document, restore them here.
 	 */
 	protected onConnected() {}
 
 	/**
-	 * Called when root element removed from document.
+	 * Called when component element removed from document.
 	 * This will be called for each time you removed the element into document.
 	 * If you register global listeners like `resize`, don't forget to unregister them here.
 	 */

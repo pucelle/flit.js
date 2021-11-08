@@ -1,8 +1,9 @@
 import {TemplateType} from './template-result'
-import {joinWithOrderMarkers, containsOrderMarker, parseOrderMarkers, splitByOrderMarkers, extendsAttributes} from './utils'
+import {joinWithOrderMarkers, containsOrderMarker, parseOrderMarkers, splitByOrderMarkers} from './helpers/template'
 import {trim} from '../helpers/utils'
 import {parseToHTMLTokens, HTMLTokenType} from '../internals/html-token-parser'
 import {getScopedClassNames} from '../internals/style-parser'
+import {extendsAttributes} from './helpers/element'
 
 
 /** Type of each slot, respresent the type of `????=${...}`. */
@@ -42,12 +43,12 @@ export interface ParsedResult {
 	/** All the slots included in template, each one respresent a `${...}`. */
 	slots: Slot[]
 
-	/** Nodes that each slot place at. */
+	/** Nodes that each slot placed at, map slots one by one. */
 	nodes: Node[]
 }
 
 /** Already parsed result, can be shared with all the templates that having same strings. */
-export interface SharedParsedReulst {
+interface SharedParsedReulst {
 
 	/** The template element contains all the nodes that parsed from template strings. */
 	template: HTMLTemplateElement
@@ -81,7 +82,7 @@ export interface Slot {
 	 */
 	valueIndices: number[] | null
 
-	/** Index of the node the slot place at within the whole document fragment. */
+	/** Index of the node the slot placed at within the document fragment. */
 	nodeIndex: number
 }
 
@@ -152,21 +153,11 @@ export function parseTemplate(type: TemplateType, strings: TemplateStringsArray 
 }
 
 
-/** Create a template element with `html` as content. */
-function createTemplateFromHTML(html: string) {
-	let template = document.createElement('template')
-	template.innerHTML = html
-
-	return template
-}
-
-
 class HTMLAndSVGTemplateParser {
 
 	private readonly scopeName: string
 	private readonly scopedClassNameSet: Set<string> | undefined
 
-	private nodeIndexs: number[] = []
 	private slots: Slot[] = []
 	private currentNodeIndex = 0
 
@@ -261,6 +252,8 @@ class HTMLAndSVGTemplateParser {
 		const attrRE = /([.:?@\w-]+)\s*(?:=\s*(".*?"|'.*?'|\{flit:\d+\})\s*)?|\{flit:(\d+)\}\s*/g
 
 		return attr.replace(attrRE, (m0, name: string, value: string = '', markerId: string) => {
+
+			// `<tag ${...}>`
 			if (markerId) {
 				this.slots.push({
 					type: SlotType.DynamicBinding,
@@ -270,10 +263,11 @@ class HTMLAndSVGTemplateParser {
 					nodeIndex: this.currentNodeIndex,
 				})
 
-				this.nodeIndexs.push(this.currentNodeIndex)
 				return ''
 			}
 
+			// `<tag ...=${...}>
+			// `<tag ...=...>
 			let type: SlotType | undefined
 			let hasMarker = containsOrderMarker(value)
 
@@ -334,8 +328,6 @@ class HTMLAndSVGTemplateParser {
 					})
 				}
 
-				this.nodeIndexs.push(this.currentNodeIndex)
-
 				if (type === SlotType.Attr) {
 					return name + '="" '
 				}
@@ -363,14 +355,11 @@ class HTMLAndSVGTemplateParser {
 	/** Parses `<tag>${...}</tag>`. */
 	private parseText(text: string): string {
 		// `text` has already been trimmed here when parsing as tokens.
-		if (!text) {
-			return text
-		}
 
 		if (containsOrderMarker(text)) {
 			let {strings, valueIndices} = splitByOrderMarkers(text)
 
-			// Each hole may be a string, or a `TemplateResult`, so must unique them, but can't join them to a string.
+			// Hole may include a `TemplateResult`, so must process each seperately, can't join them to a string.
 			for (let i = 1; i < strings.length; i++) {
 				this.slots.push({
 					type: SlotType.Node,
@@ -380,7 +369,6 @@ class HTMLAndSVGTemplateParser {
 					nodeIndex: this.currentNodeIndex,
 				})
 
-				this.nodeIndexs.push(this.currentNodeIndex)
 				this.currentNodeIndex += 1
 			}
 
@@ -393,13 +381,25 @@ class HTMLAndSVGTemplateParser {
 	/** Clean properties for next time parsing. */
 	private clean() {
 		this.slots = []
-		this.nodeIndexs = []
 		this.currentNodeIndex = 0
 	}
 }
 
 
-/** Clone parsed result fragment and link it with node indices from the parsed result. */
+/** Create a template element with `html` as content. */
+function createTemplateFromHTML(html: string) {
+	let template = document.createElement('template')
+	template.innerHTML = html
+
+	return template
+}
+
+
+/** 
+ * Clone parsed result,
+ * copy fragment and all the nodes,
+ * links slots to those nodes with cached node indices.
+ */
 function cloneParsedResult(sharedResult: SharedParsedReulst, el: HTMLElement | null): ParsedResult {
 	let {template, slots, rootAttributes} = sharedResult
 	let fragment = template.content.cloneNode(true) as DocumentFragment
@@ -418,7 +418,7 @@ function cloneParsedResult(sharedResult: SharedParsedReulst, el: HTMLElement | n
 		let slotIndex = 0
 		let walker = document.createTreeWalker(fragment, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_COMMENT, null)
 		let node: Node | null
-		let end = false
+		let ended = false
 
 		if (rootAttributes) {
 			while (slotIndex < slots.length && slots[slotIndex].nodeIndex === 0) {
@@ -435,12 +435,12 @@ function cloneParsedResult(sharedResult: SharedParsedReulst, el: HTMLElement | n
 					slotIndex++
 					
 					if (slotIndex === slots.length) {
-						end = true
+						ended = true
 						break
 					}
 				}
 
-				if (end) {
+				if (ended) {
 					break
 				}
 
