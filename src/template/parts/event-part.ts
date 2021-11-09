@@ -30,7 +30,7 @@ export class EventPart implements Part {
 	private bindListener() {
 		if (this.isComEvent) {
 			getComponentEarly(this.el as HTMLElement, com => {
-				com!.on(this.name, this.triggerHandler, this)
+				(com as any).on(this.name, this.triggerHandler, this)
 			})
 		}
 		else {

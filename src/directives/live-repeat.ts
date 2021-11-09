@@ -42,10 +42,10 @@ export interface LiveRepeatEvents<T> {
 	 * Trigger after every time live data updated.
 	 * Note elements are not rendered yet, if you'd want, just uses `liveDataRendered` event.
 	 */
-	liveDataUpdated: (liveData: T[], startIndex: number, scrollDirection: 'up' | 'down') => void
+	liveDataUpdated: (liveData: T[], startIndex: number, scrollDirection: 'up' | 'down' | null) => void
 
 	/** Trigger after every time live data updated and rendered. */
-	liveDataRendered: (liveData: T[], startIndex: number, scrollDirection: 'up' | 'down') => void
+	liveDataRendered: (liveData: T[], startIndex: number, scrollDirection: 'up' | 'down' | null) => void
 }
 
 
@@ -56,7 +56,7 @@ const DefaultLiveRepeatOptions: LiveRepeatOptions = {
 }
 
 
-export class LiveRepeatDirective<T, E = any> extends EventEmitter<LiveRepeatEvents<T> & E> implements Directive, RepetitiveTemplateSource<T> {
+export class LiveRepeatDirective<T = any, E = {}> extends EventEmitter<LiveRepeatEvents<T> & E> implements Directive, RepetitiveTemplateSource<T> {
 
 	protected readonly anchor: NodeAnchor
 	protected readonly context: Context
@@ -222,7 +222,7 @@ export class LiveRepeatDirective<T, E = any> extends EventEmitter<LiveRepeatEven
 	}
 
 	/** Returns a promise which will be resolved after data updated and renderer. */
-	protected untilDataUpdatedAndRendered() {
+	protected untilDataUpdatedAndRendered(this: LiveRepeatDirective) {
 		return new Promise(resolve => {
 			this.once('liveDataRendered', resolve)
 		})
@@ -290,7 +290,7 @@ export class LiveRepeatDirective<T, E = any> extends EventEmitter<LiveRepeatEven
 		}
 	}
 
-	protected triggerLiveDataEvents(scrollDirection: 'up' | 'down' | null) {
+	protected triggerLiveDataEvents(this: LiveRepeatDirective, scrollDirection: 'up' | 'down' | null) {
 		this.emit('liveDataUpdated', this.liveData, this.startIndex, scrollDirection)
 
 		untilRenderComplete().then(async () => {

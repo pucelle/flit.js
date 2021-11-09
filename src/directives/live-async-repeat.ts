@@ -22,17 +22,16 @@ export interface LiveAsyncRepeatDataOptions<T> {
 	readonly immediateDataGetter?: ImmediatePageDataGetter<T>
 }
 
-
 export interface LiveAsyncRepeatEvents<T> {
 
 	/** 
 	 * Trigger after every time live data updated.
 	 * Note elements are not rendered yet, if you'd want, just uses `liveDataRendered` event.
 	 */
-	liveDataUpdated: (liveData: T[], startIndex: number, scrollDirection: 'up' | 'down', fresh: boolean) => void
+	liveDataUpdated: (liveData: T[], startIndex: number, scrollDirection: 'up' | 'down' | null, fresh: boolean) => void
 
 	/** Trigger after every time live data updated and rendered. */
-	liveDataRendered: (liveData: T[], startIndex: number, scrollDirection: 'up' | 'down', fresh: boolean) => void
+	liveDataRendered: (liveData: T[], startIndex: number, scrollDirection: 'up' | 'down' | null, fresh: boolean) => void
 }
 
 /** Compare to `TempalteFn` in `liveRepeat`, it can accpets `null` as parameter when data is still loading. */
@@ -52,7 +51,7 @@ export type LiveTemplateFn<T> = (item: T | null, index: number) => TemplateResul
 // And it also cause cached paged data doesn't have fixed size,
 // such that we must count size of cached data of each page to fetch the data from `startIndex` to `endIndex`.
 
-export class LiveAsyncRepeatDirective<T> extends LiveRepeatDirective<T, LiveAsyncRepeatEvents<T>> {
+export class LiveAsyncRepeatDirective<T = any> extends LiveRepeatDirective<T, LiveAsyncRepeatEvents<T>> {
 
 	/** If specified, we can avoid duplicate items with same key shown in same time. */
 	protected readonly key: keyof T | null = null
@@ -224,16 +223,16 @@ export class LiveAsyncRepeatDirective<T> extends LiveRepeatDirective<T, LiveAsyn
 	}
 
 	/** Resolved until `liveDataUpdated` triggered with fresh data. */
-	untilFreshUpdated() {
+	untilFreshUpdated(this: LiveAsyncRepeatDirective) {
 		return new Promise(resolve => {
 			let listener = (_liveData: any, _startIndex: any, _scrollDirection: any, fresh: boolean) => {
 				if (fresh) {
-					this.off('liveDataUpdated', listener)
+					this.off('liveDataUpdated', listener as any)
 					resolve()
 				}
 			}
 
-			this.once('liveDataUpdated', listener)
+			this.once('liveDataUpdated', listener as any)
 		}) as Promise<void>
 	}
 
@@ -245,16 +244,16 @@ export class LiveAsyncRepeatDirective<T> extends LiveRepeatDirective<T, LiveAsyn
 	}
 
 	/** Resolved until `liveDataRendered` triggered with fresh data. */
-	untilFreshRendered() {
+	untilFreshRendered(this: LiveAsyncRepeatDirective) {
 		return new Promise(resolve => {
 			let listener = (_liveData: any, _startIndex: any, _scrollDirection: any, fresh: boolean) => {
 				if (fresh) {
-					this.off('liveDataRendered', listener)
+					this.off('liveDataRendered', listener as any)
 					resolve()
 				}
 			}
 
-			this.once('liveDataRendered', listener)
+			this.once('liveDataRendered', listener as any)
 		}) as Promise<void>
 	}
 }

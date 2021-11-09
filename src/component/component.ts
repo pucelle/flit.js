@@ -54,7 +54,7 @@ export interface ComponentEvents {
  * Super class of all the components, create automacially when element appearance in the document.
  * @typeparam E Event interface in `{eventName: (...args) => void}` format.
  */
-export abstract class Component<E = any> extends EventEmitter<E & ComponentEvents> implements UpdatableContext {
+export abstract class Component<E = {}> extends EventEmitter<E & ComponentEvents> implements UpdatableContext {
 	
 
 	__getAttactedDomElement() {
@@ -121,7 +121,7 @@ export abstract class Component<E = any> extends EventEmitter<E & ComponentEvent
 	}
 
 	/** Called after component created and properties assigned. */
-	__emitCreated() {
+	__emitCreated(this: Component) {
 		// Not called from constructor function because properties of child classes are not prepared yet.
 
 		this.onCreated()
@@ -129,7 +129,7 @@ export abstract class Component<E = any> extends EventEmitter<E & ComponentEvent
 	}
 
 	/** Called after connected each time, also after `__emitCreated`. */
-	__emitConnected(isFirstTimeConnected: boolean) {
+	__emitConnected(this: Component, isFirstTimeConnected: boolean) {
 		if (!isFirstTimeConnected) {
 			if (this.__watcherGroup) {
 				this.__watcherGroup.connect()
@@ -151,7 +151,7 @@ export abstract class Component<E = any> extends EventEmitter<E & ComponentEvent
 	}
 
 	/** Called after disconnected each time. */
-	__emitDisconnected() {
+	__emitDisconnected(this: Component) {
 		clearDependenciesOf(this)
 
 		if (this.__watcherGroup) {
@@ -170,7 +170,7 @@ export abstract class Component<E = any> extends EventEmitter<E & ComponentEvent
 	 * Called from a global queued stack to do updating.
 	 * Set `force` to `true` to force updating happens even in a document fragment.
 	 */
-	__updateImmediately(force: boolean = false) {
+	__updateImmediately(this: Component, force: boolean = false) {
 		// Don't update after disconnected, or the watcher will be observed and do meaningless updating.
 		if (!(this.__connected || force)) {
 			return
@@ -264,14 +264,14 @@ export abstract class Component<E = any> extends EventEmitter<E & ComponentEvent
 	protected onDisconnected() {}
 
 	/** Returns promise which will be resolved after component is ready. */
-	protected async untilReady() {
+	protected async untilReady(this: Component) {
 		if (this.__ready) {
 			return
 		}
 		else {
 			return new Promise(resolve => {
 				this.once('ready', resolve)
-			})
+			}) as Promise<void>
 		}
 	}
 
