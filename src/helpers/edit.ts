@@ -1,13 +1,13 @@
-import {TwoWayMap} from "./two-way-map"
+import {TwoWayMap} from './two-way-map'
 
 
 // We want to reduce times of moving elements, the best way is:
 // http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.4.6927&rep=rep1&type=pdf
 
-// But we don't want it complex, and just want a enough way to handle single place inserting or mutiple places removing.
-// So just provide very simple a O(N) method.
+// But we don't want it complex, and just need a way to handle single place inserting or mutiple places removing.
+// So just provide a very simple O(N) method.
 
-// Reference to: https://github.com/Polymer/lit-html/blob/master/src/directives/repeat.ts
+// Another solution is here: https://github.com/Polymer/lit-html/blob/master/src/directives/repeat.ts
 
 
 /** A edit to indicete how to process current item. */
@@ -16,13 +16,19 @@ export interface EditRecord {
 	/** Current Edit type. */
 	type: EditType
 
-	/** Index of the current old item if uses it, or next old item. */
+	/** 
+	 * Index of the current old item in old item list if decided to use or remove it.
+	 * Be position of the next old item if will insert a new item before this position.
+	 */
 	fromIndex: number
 
-	/** Index of the new item. */
+	/** 
+	 * Index of the new item in new item list.
+	 * Be `-1` if will delete the item.
+	 */
 	toIndex: number
 
-	/** Index of the moved item. */
+	/** Index of the item in old item list if decided to reuse it, whether will modify. */
 	moveFromIndex: number
 }
 
@@ -31,7 +37,7 @@ export enum EditType {
 
 	/** 
 	 * Ignores, will be used later as a matched item or reuse it.
-	 * Used internal, no need to handle it in your code.
+	 * Uses in internal, no need to handle it in your code.
 	 */
 	Skip,
 
@@ -41,7 +47,7 @@ export enum EditType {
 	/** Moves same item from it's old index to current index. */
 	Move,
 
-	// /** Modify item and not move it, not supported because we don't validate position of reuseable element. */
+	/** Modify item and not move it, deprecated because we don't validate position of reuseable element. */
 	// Modify,
 
 	/** Move + Modify. */
@@ -50,7 +56,7 @@ export enum EditType {
 	/** Insert a new one. */
 	Insert,
 
-	/** Delete. */
+	/** Delete old one. */
 	Delete,
 }
 
