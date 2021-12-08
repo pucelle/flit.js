@@ -68,6 +68,7 @@ function keyEventFilter(e: KeyboardEvent, modifiers: string[]): boolean {
 
 	return codeModifiers.length === 0
 		|| codeModifiers.includes(e.code.toLowerCase())
+		|| codeModifiers.includes(e.key.toLowerCase())
 }
 
 /** Limit mouse event triggering. */
@@ -99,7 +100,7 @@ function mouseEventFilter(e: MouseEvent, modifiers: string[]): boolean {
 
 /** Limit key event triggering from control keys. */
 function isControlKeyMatchModifier(e: KeyboardEvent | MouseEvent, modifier: string) {
-	if (modifier === 'ctrl' && !e.ctrlKey
+	if (modifier === 'ctrl' && (!e.ctrlKey && !e.metaKey)
 		|| modifier === 'shift' && !e.shiftKey
 		|| modifier === 'alt' && !e.altKey
 	) {
