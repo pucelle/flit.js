@@ -215,41 +215,6 @@ function bindEvent(once: boolean, el: EventTarget, rawName: string, handler:　E
 }
 
 
-/**
- * Unregister an event listener on element.
- * @param el The element to unregister listener on.
- * @param name The event name with or without modifiers.
- * @param handler The event handler.
- * @param scope The event context used to call handler. If specified, it must be match too.
- */
-export function off(el: EventTarget, name: string, handler: EventHandler, scope?: object) {
-	let eventMap = ElementEventListenerCache.get(el)
-	if (!eventMap) {
-		return
-	}
-
-	name = name.replace(/\..+/, '')
-
-	let events = eventMap[name]
-	if (!events) {
-		return
-	}
-	
-	for (let i = events.length - 1; i >= 0; i--) {
-		let event = events[i]
-		
-		let isHandlerMatch = !handler
-			|| event.handler === handler
-			|| event.handler.hasOwnProperty('__original') && (event.handler as any).__original === handler
-
-		if (isHandlerMatch && (!scope || event.scope === scope)) {
-			el.removeEventListener(name, event.wrappedHandler, event.capture)
-			events.splice(i, 1)
-		}
-	}
-}
-
-
 /** Wrap handler according to global modifiers. */
 function wrapHandler(once: boolean, modifiers: string[] | null, el: EventTarget, name: string, handler: EventHandler, scope?: object): EventHandler {
 	let filterModifiers = modifiers?.filter(m => !GlobalEventModifiers.includes(m))
@@ -288,4 +253,37 @@ function wrapHandler(once: boolean, modifiers: string[] | null, el: EventTarget,
 }
 
 
+/**
+ * Unregister an event listener on element.
+ * @param el The element to unregister listener on.
+ * @param name The event name with or without modifiers.
+ * @param handler The event handler.
+ * @param scope The event context used to call handler. If specified, it must be match too.
+ */
+export function off(el: EventTarget, name: string, handler: EventHandler, scope?: object) {
+	let eventMap = ElementEventListenerCache.get(el)
+	if (!eventMap) {
+		return
+	}
+
+	name = name.replace(/\..+/, '')
+
+	let events = eventMap[name]
+	if (!events) {
+		return
+	}
+	
+	for (let i = events.length - 1; i >= 0; i--) {
+		let event = events[i]
+		
+		let isHandlerMatch = !handler
+			|| event.handler === handler
+			|| event.handler.hasOwnProperty('__original') && (event.handler as any).__original === handler
+
+		if (isHandlerMatch && (!scope || event.scope === scope)) {
+			el.removeEventListener(name, event.wrappedHandler, event.capture)
+			events.splice(i, 1)
+		}
+	}
+}
 
