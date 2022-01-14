@@ -122,6 +122,9 @@ export class RepeatDirective<T> implements Directive, RepetitiveTemplateSource<T
 				this.moveRepTemBefore(fromRepTem!, nextOldRepTem)
 				this.useMatchedRepTem(fromRepTem!, newItem!, toIndex)
 			}
+			else if (type === EditType.Modify) {
+				this.reuseRepTem(fromRepTem!, newItem!, toIndex)
+			}
 			else if (type === EditType.MoveModify) {
 				this.moveRepTemBefore(fromRepTem!, nextOldRepTem)
 				this.reuseRepTem(fromRepTem!, newItem!, toIndex)

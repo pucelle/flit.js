@@ -192,6 +192,7 @@ function getNormalEditRecord<T>(oldItems: T[], newItems: T[], willReuse: boolean
 			newIndex++
 		}
 
+		// No need to record `Skip`.
 		if (type !== EditType.Skip) {
 			edit.push({
 				type,
@@ -263,11 +264,11 @@ class ReadonlyStack<T> {
 	}
 
 	getNext() {
-		return this.items[this.offset++]
+		return this.items[this.offset++] ?? -1
 	}
 
 	peekNext() {
-		return this.items[this.offset]
+		return this.items[this.offset] ?? -1
 	}
 }
 
