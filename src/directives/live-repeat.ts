@@ -252,34 +252,32 @@ export class LiveRepeatDirective<T = any, E = {}> extends EventEmitter<LiveRepea
 		this.repTems = []
 
 		for (let record of editRecord) {
-			let {type, fromIndex, toIndex, moveFromIndex} = record
-			let oldRepTem = fromIndex < oldRepTems.length && fromIndex !== -1 ? oldRepTems[fromIndex] : null
+			let {type, nextOldIndex, toIndex, fromIndex} = record
+			let nextOldRepTem = this.getRepItemInIndex(oldRepTems, nextOldIndex)
+			let fromRepTem = this.getRepItemInIndex(oldRepTems, fromIndex)
+			let newItem = toIndex >= 0 ? newData[toIndex] : null
 
-			if (type === EditType.Delete) {
-				this.removeRepTemAndMayPlayLeave(oldRepTem!, shouldPaly)
+			if (type === EditType.Leave) {
+				this.useMatchedRepTem(fromRepTem!, newItem!, toIndex)
 			}
-			else {
-				let newItem = newData[toIndex]
-
-				if (type === EditType.Leave) {
-					this.useMatchedRepTem(oldRepTem!, newItem, toIndex)
+			else if (type === EditType.Move) {
+				this.moveRepTemBefore(fromRepTem!, nextOldRepTem)
+				this.useMatchedRepTem(fromRepTem!, newItem!, toIndex)
+			}
+			else if (type === EditType.MoveModify) {
+				this.moveRepTemBefore(fromRepTem!, nextOldRepTem)
+				this.reuseRepTem(fromRepTem!, newItem!, toIndex)
+			}
+			else if (type === EditType.Insert) {
+				let newRepTem = this.createRepTem(newItem!, toIndex)
+				this.moveRepTemBefore(newRepTem, nextOldRepTem)
+				
+				if (shouldPaly) {
+					this.mayPlayEnter(newRepTem)
 				}
-				else if (type === EditType.Move) {
-					this.moveRepTemBefore(oldRepTems[moveFromIndex], oldRepTem)
-					this.useMatchedRepTem(oldRepTems[moveFromIndex], newItem, toIndex)
-				}
-				else if (type === EditType.MoveModify) {
-					this.moveRepTemBefore(oldRepTems[moveFromIndex], oldRepTem)
-					this.reuseRepTem(oldRepTems[moveFromIndex], newItem, toIndex)
-				}
-				else if (type === EditType.Insert) {
-					let newRepTem = this.createRepTem(newItem, toIndex)
-					this.moveRepTemBefore(newRepTem, oldRepTem)
-					
-					if (shouldPaly) {
-						this.mayPlayEnter(newRepTem)
-					}
-				}
+			}
+			else if (type === EditType.Delete) {
+				this.removeRepTemAndMayPlayLeave(fromRepTem!, shouldPaly)
 			}
 		}
 
@@ -287,6 +285,15 @@ export class LiveRepeatDirective<T = any, E = {}> extends EventEmitter<LiveRepea
 			untilIdle().then(() => {
 				this.doPreRendering(scrollDirection)
 			})
+		}
+	}
+
+	protected getRepItemInIndex(items: RepetitiveTemplate<T>[], index: number): RepetitiveTemplate<T> | null {
+		if (index < items.length && index >= 0) {
+			return items[index]
+		}
+		else {
+			return null
 		}
 	}
 

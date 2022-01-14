@@ -17,8 +17,16 @@ export interface EditRecord {
 	type: EditType
 
 	/** 
-	 * Index of the current old item in old item list if decided to use or remove it.
-	 * Be position of the next old item if will insert a new item before this position.
+	 * Index in the old item that currently handling.
+	 * Be position of the next old item if decide to insert a new item,
+	 * or move another item before it.
+	 * May exceed old item count, will never be `-1`.
+	 */
+	nextOldIndex: number
+
+	/** 
+	 * Index of the old item if decided to reuse or delete it.
+	 * Be `-1` when doing inserting.
 	 */
 	fromIndex: number
 
@@ -27,9 +35,6 @@ export interface EditRecord {
 	 * Be `-1` if will delete the item.
 	 */
 	toIndex: number
-
-	/** Index of the item in old item list if decided to reuse it, whether will modify. */
-	moveFromIndex: number
 }
 
 
@@ -47,8 +52,8 @@ export enum EditType {
 	/** Moves same item from it's old index to current index. */
 	Move,
 
-	/** Modify item and not move it, deprecated because we don't validate position of reuseable element. */
-	// Modify,
+	/** Modify item and not move it. */
+	Modify,
 
 	/** Move + Modify. */
 	MoveModify,
@@ -67,9 +72,9 @@ export function getEditRecord<T>(oldItems: T[], newItems: T[], willReuse: boolea
 		return oldItems.map((_item, index) => {
 			return {
 				type: EditType.Delete,
+				nextOldIndex: index,
 				fromIndex: index,
 				toIndex: -1,
-				moveFromIndex: -1,
 			}
 		})
 	}
@@ -77,9 +82,9 @@ export function getEditRecord<T>(oldItems: T[], newItems: T[], willReuse: boolea
 		return newItems.map((_item, index) => {
 				return {
 					type: EditType.Insert,
-					fromIndex: 0,
+					nextOldIndex: 0,
+					fromIndex: -1,
 					toIndex: index,
-					moveFromIndex: -1,
 				}
 			})
 	}
@@ -95,20 +100,23 @@ export function getEditRecord<T>(oldItems: T[], newItems: T[], willReuse: boolea
  */
 function getNormalEditRecord<T>(oldItems: T[], newItems: T[], willReuse: boolean): EditRecord[] {
 
-	// indexMap: old index <-> new index.
+	// two way index map: old index <=> new index.
 	let {indexMap, restOldIndices} = makeTwoWayIndexMap(oldItems, newItems)
 
-	// All the new index that have an old index map, and order by their order in the `oldItems`.
-	let indicesInNew: number[] = []
+	// All the new indices that have an old index mapped to, and order by the orders in the `oldItems`.
+	let newIndicesHaveOldMapped: number[] = []
+
 	for (let oldIndex of indexMap.getAllLeft()) {
 		let indexInNew = indexMap.getFromLeft(oldIndex)!
-		indicesInNew.push(indexInNew)
+		newIndicesHaveOldMapped.push(indexInNew)
 	}
 
-	// Get a increased sequence from new indices that have an old index map, so no need move this part.
-	let stableNewIndexStack = new ReadonlyStack(findLongestIncreasedSequence(indicesInNew))
+	// Get a long enough incremental new indices sequence,
+	// from new indices that have an old index mapped to,
+	// so no need move this part.
+	let stableNewIndexStack = new ReadonlyStack(findLongestIncreasedSequence(newIndicesHaveOldMapped))
 
-	// Count of items that will be reused.
+	// Old item indices that will be reused.
 	let restOldIndicesStack = new ReadonlyStack(restOldIndices)
 
 	// Another optimization:
@@ -119,75 +127,90 @@ function getNormalEditRecord<T>(oldItems: T[], newItems: T[], willReuse: boolean
 	let oldIndex = 0
 	let newIndex = 0
 	let nextStableNewIndex = stableNewIndexStack.getNext()
-	let nextStableOldIndex = indexMap.getFromRight(nextStableNewIndex)!
+	let nextStableOldIndex = indexMap.getFromRight(nextStableNewIndex) ?? -1
+	let lastStableOldIndex = -1
 
 	while (oldIndex < oldItems.length || newIndex < newItems.length) {
 		let type: EditType
-		let moveFromIndex = -1
-		let fromIndex = oldIndex
+		let handingOldIndex = oldIndex
+		let fromIndex = -1
 		let toIndex = newIndex
 
-		// New ended, delete old.
+		// New item list ended, delete rest old items.
 		if (newIndex === newItems.length) {
 			type = EditType.Skip
 			oldIndex++
 		}
+		
+		// If should reuse, and already an old item exist and before next stable position,
+		// and also after last stable position,
+		// leave old item at current position, then modify.
+		else if (willReuse && newIndex !== nextStableNewIndex && !restOldIndicesStack.isEnded()
+			&& restOldIndicesStack.peekNext() > lastStableOldIndex
+			&& (restOldIndicesStack.peekNext() < nextStableOldIndex || nextStableOldIndex === -1))
+		{
+			type = EditType.Modify
+			fromIndex = restOldIndicesStack.getNext()
+			oldIndex++
+			newIndex++
+		}
 
-		// Old not matches, leaves old to be reused or deletes it.
+		// Old item doesn't match, leaves old item for reusing or deleting it later.
 		else if (oldIndex !== nextStableOldIndex && oldIndex < oldItems.length) {
 			type = EditType.Skip
 			oldIndex++
 		}
 
-		// Old and new matches, skip them all.
+		// Old and new items matches each other, skip them all.
 		else if (newIndex === nextStableNewIndex) {
 			type = EditType.Leave
+			fromIndex = oldIndex
 			oldIndex++
 			newIndex++
 			nextStableNewIndex = stableNewIndexStack.isEnded() ? -1 : stableNewIndexStack.getNext()
+			lastStableOldIndex = nextStableOldIndex
 			nextStableOldIndex = nextStableNewIndex === -1 ? -1 : indexMap.getFromRight(nextStableNewIndex)!
 		}
 
-		// Moves old to new position.
+		// Moves matched old item to the new position, no need to modify.
 		else if (indexMap.hasRight(newIndex)) {
 			type = EditType.Move
-			moveFromIndex = indexMap.getFromRight(newIndex)!
+			fromIndex = indexMap.getFromRight(newIndex)!
 			newIndex++
 		}
 		
-		// Reuses old.
+		// Reuses old item, moves them to the new position, then modify.
 		else if (willReuse && !restOldIndicesStack.isEnded()) {
 			type = EditType.MoveModify
-			moveFromIndex = restOldIndicesStack.getNext()
+			fromIndex = restOldIndicesStack.getNext()
 			newIndex++
 		}
 
-		// Creates new.
+		// No old items can be reused, creates new item.
 		else {
 			type = EditType.Insert
-			moveFromIndex = -1
 			newIndex++
 		}
 
 		if (type !== EditType.Skip) {
 			edit.push({
 				type,
+				nextOldIndex: handingOldIndex,
 				fromIndex,
 				toIndex,
-				moveFromIndex,
 			})
 		}
 	}
 
 	// Removes not used items.
 	while (!restOldIndicesStack.isEnded()) {
-		let fromIndex = restOldIndicesStack.getNext()
+		let handingOldIndex = restOldIndicesStack.getNext()
 
 		edit.push({
 			type: EditType.Delete,
-			fromIndex,
+			nextOldIndex: handingOldIndex,
+			fromIndex: handingOldIndex,
 			toIndex: -1,
-			moveFromIndex: -1,
 		})
 	}
 
@@ -241,6 +264,10 @@ class ReadonlyStack<T> {
 
 	getNext() {
 		return this.items[this.offset++]
+	}
+
+	peekNext() {
+		return this.items[this.offset]
 	}
 }
 

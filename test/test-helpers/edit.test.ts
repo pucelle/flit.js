@@ -7,13 +7,16 @@ function restoredGraphEdit<T>(oldItems: T[], newItems: T[], willReuse: boolean) 
 
 	for (let r of record) {
 		if (r.type === EditType.Leave) {
-			restored.push(oldItems[r.fromIndex])
+			restored.push(oldItems[r.handingIndex])
 		}
 		else if (r.type === EditType.Skip) {
 			
 		}
 		else if (r.type === EditType.Move) {
-			restored.push(oldItems[r.moveFromIndex])
+			restored.push(oldItems[r.fromIndex])
+		}
+		else if (r.type === EditType.Modify) {
+			restored.push(newItems[r.toIndex])
 		}
 		else if (r.type === EditType.MoveModify) {
 			restored.push(newItems[r.toIndex])
@@ -36,15 +39,15 @@ describe('Test Graph Edit', () => {
 		let b: number[] = []
 		
 		expect(getEditRecord(a, b, true)).toEqual([
-			{type: EditType.Delete, fromIndex: 0, toIndex: -1, moveFromIndex: -1},
-			{type: EditType.Delete, fromIndex: 1, toIndex: -1, moveFromIndex: -1},
-			{type: EditType.Delete, fromIndex: 2, toIndex: -1, moveFromIndex: -1},
+			{type: EditType.Delete, handingIndex: 0, fromIndex: 0, toIndex: -1},
+			{type: EditType.Delete, handingIndex: 1, fromIndex: 1, toIndex: -1},
+			{type: EditType.Delete, handingIndex: 2, fromIndex: 2, toIndex: -1},
 		])
 
 		expect(getEditRecord(b, a, true)).toEqual([
-			{type: EditType.Insert, fromIndex: 0, toIndex: 0, moveFromIndex: -1},
-			{type: EditType.Insert, fromIndex: 0, toIndex: 1, moveFromIndex: -1},
-			{type: EditType.Insert, fromIndex: 0, toIndex: 2, moveFromIndex: -1},
+			{type: EditType.Insert, handingIndex: 0, fromIndex: -1, toIndex: 0},
+			{type: EditType.Insert, handingIndex: 0, fromIndex: -1, toIndex: 1},
+			{type: EditType.Insert, handingIndex: 0, fromIndex: -1, toIndex: 2},
 		])
 
 		expect(restoredGraphEdit(a, b, true)).toEqual(b)
@@ -58,9 +61,9 @@ describe('Test Graph Edit', () => {
 		let b: number[] = [1, 2, 3]
 		
 		expect(getEditRecord(a, b, true)).toEqual([
-			{type: EditType.Leave, fromIndex: 0, toIndex: 0, moveFromIndex: -1},
-			{type: EditType.Leave, fromIndex: 1, toIndex: 1, moveFromIndex: -1},
-			{type: EditType.Leave, fromIndex: 2, toIndex: 2, moveFromIndex: -1},
+			{type: EditType.Leave, handingIndex: 0, fromIndex: 0, toIndex: 0},
+			{type: EditType.Leave, handingIndex: 1, fromIndex: 1, toIndex: 1},
+			{type: EditType.Leave, handingIndex: 2, fromIndex: 2, toIndex: 2},
 		])
 
 		expect(restoredGraphEdit(a, b, true)).toEqual(b)
@@ -78,15 +81,15 @@ describe('Test Graph Edit', () => {
 		// any two of them can generate all elements in the group.
 		
 		expect(getEditRecord(a, b, true)).toEqual([
-			{type: EditType.Move, fromIndex: 0, toIndex: 0, moveFromIndex: 2},
-			{type: EditType.Leave, fromIndex: 0, toIndex: 1, moveFromIndex: -1},
-			{type: EditType.Leave, fromIndex: 1, toIndex: 2, moveFromIndex: -1},
+			{type: EditType.Move, handingIndex: 0, fromIndex: 2, toIndex: 0},
+			{type: EditType.Leave, handingIndex: 0, fromIndex: 0, toIndex: 1},
+			{type: EditType.Leave, handingIndex: 1, fromIndex: 1, toIndex: 2},
 		])
 
 		expect(getEditRecord(b, a, true)).toEqual([
-			{type: EditType.Leave, fromIndex: 1, toIndex: 0, moveFromIndex: -1},
-			{type: EditType.Leave, fromIndex: 2, toIndex: 1, moveFromIndex: -1},
-			{type: EditType.Move, fromIndex: 3, toIndex: 2, moveFromIndex: 0},
+			{type: EditType.Leave, handingIndex: 1, fromIndex: 1, toIndex: 0},
+			{type: EditType.Leave, handingIndex: 2, fromIndex: 2, toIndex: 1},
+			{type: EditType.Move, handingIndex: 3, fromIndex: 0, toIndex: 2},
 		])
 
 		expect(restoredGraphEdit(a, b, true)).toEqual(b)
@@ -100,29 +103,45 @@ describe('Test Graph Edit', () => {
 		let b: number[] = [4, 1, 2]
 
 		expect(getEditRecord(a, b, true)).toEqual([
-			{type: EditType.MoveModify, fromIndex: 0, toIndex: 0, moveFromIndex: 2},
-			{type: EditType.Leave, fromIndex: 0, toIndex: 1, moveFromIndex: -1},
-			{type: EditType.Leave, fromIndex: 1, toIndex: 2, moveFromIndex: -1},
+			{type: EditType.MoveModify, handingIndex: 0, fromIndex: 2, toIndex: 0},
+			{type: EditType.Leave, handingIndex: 0, fromIndex: 0, toIndex: 1},
+			{type: EditType.Leave, handingIndex: 1, fromIndex: 1, toIndex: 2},
 		])
 
 		expect(getEditRecord(b, a, true)).toEqual([
-			{type: EditType.Leave, fromIndex: 1, toIndex: 0, moveFromIndex: -1},
-			{type: EditType.Leave, fromIndex: 2, toIndex: 1, moveFromIndex: -1},
-			{type: EditType.MoveModify, fromIndex: 3, toIndex: 2, moveFromIndex: 0},
+			{type: EditType.Leave, handingIndex: 1, fromIndex: 1, toIndex: 0},
+			{type: EditType.Leave, handingIndex: 2, fromIndex: 2, toIndex: 1},
+			{type: EditType.MoveModify, handingIndex: 3, fromIndex: 0, toIndex: 2},
 		])
 
 		expect(getEditRecord(a, b, false)).toEqual([
-			{type: EditType.Insert, fromIndex: 0, toIndex: 0, moveFromIndex: -1},
-			{type: EditType.Leave, fromIndex: 0, toIndex: 1, moveFromIndex: -1},
-			{type: EditType.Leave, fromIndex: 1, toIndex: 2, moveFromIndex: -1},
-			{type: EditType.Delete, fromIndex: 2, toIndex: -1, moveFromIndex: -1},
+			{type: EditType.Insert, handingIndex: 0, fromIndex: -1, toIndex: 0},
+			{type: EditType.Leave, handingIndex: 0, fromIndex: 0, toIndex: 1},
+			{type: EditType.Leave, handingIndex: 1, fromIndex: 1, toIndex: 2},
+			{type: EditType.Delete, handingIndex: 2, fromIndex: 2, toIndex: -1},
 		])
 
 		expect(getEditRecord(b, a, false)).toEqual([
-			{type: EditType.Leave, fromIndex: 1, toIndex: 0, moveFromIndex: -1},
-			{type: EditType.Leave, fromIndex: 2, toIndex: 1, moveFromIndex: -1},
-			{type: EditType.Insert, fromIndex: 3, toIndex: 2, moveFromIndex: -1},
-			{type: EditType.Delete, fromIndex: 0, toIndex: -1, moveFromIndex: -1},
+			{type: EditType.Leave, handingIndex: 1, fromIndex: 1, toIndex: 0},
+			{type: EditType.Leave, handingIndex: 2, fromIndex: 2, toIndex: 1},
+			{type: EditType.Insert, handingIndex: 3, fromIndex: -1, toIndex: 2},
+			{type: EditType.Delete, handingIndex: 0, fromIndex: 0, toIndex: -1},
+		])
+
+		expect(restoredGraphEdit(a, b, true)).toEqual(b)
+		expect(restoredGraphEdit(b, a, true)).toEqual(a)
+		expect(restoredGraphEdit(a, b, false)).toEqual(b)
+		expect(restoredGraphEdit(b, a, false)).toEqual(a)
+	})
+
+	it('Test modify', () => {
+		let a: number[] = [1, 2, 3]
+		let b: number[] = [1, 2, 4]
+
+		expect(getEditRecord(a, b, true)).toEqual([
+			{type: EditType.Leave, handingIndex: 0, fromIndex: 0, toIndex: 0},
+			{type: EditType.Leave, handingIndex: 1, fromIndex: 1, toIndex: 1},
+			{type: EditType.Modify, handingIndex: 2, fromIndex: 2, toIndex: 2},
 		])
 
 		expect(restoredGraphEdit(a, b, true)).toEqual(b)
@@ -136,17 +155,17 @@ describe('Test Graph Edit', () => {
 		let b: number[] = [4, 5, 1, 2]
 
 		expect(getEditRecord(a, b, true)).toEqual([
-			{type: EditType.MoveModify, fromIndex: 0, toIndex: 0, moveFromIndex: 2},
-			{type: EditType.Insert, fromIndex: 0, toIndex: 1, moveFromIndex: -1},
-			{type: EditType.Leave, fromIndex: 0, toIndex: 2, moveFromIndex: -1},
-			{type: EditType.Leave, fromIndex: 1, toIndex: 3, moveFromIndex: -1},
+			{type: EditType.MoveModify, handingIndex: 0, fromIndex: 2, toIndex: 0},
+			{type: EditType.Insert, handingIndex: 0, fromIndex: -1, toIndex: 1},
+			{type: EditType.Leave, handingIndex: 0, fromIndex: 0, toIndex: 2},
+			{type: EditType.Leave, handingIndex: 1, fromIndex: 1, toIndex: 3},
 		])
 
 		expect(getEditRecord(b, a, true)).toEqual([
-			{type: EditType.Leave, fromIndex: 2, toIndex: 0, moveFromIndex: -1},
-			{type: EditType.Leave, fromIndex: 3, toIndex: 1, moveFromIndex: -1},
-			{type: EditType.MoveModify, fromIndex: 4, toIndex: 2, moveFromIndex: 0},
-			{type: EditType.Delete, fromIndex: 1, toIndex: -1, moveFromIndex: -1},
+			{type: EditType.Leave, handingIndex: 2, fromIndex: 2, toIndex: 0},
+			{type: EditType.Leave, handingIndex: 3, fromIndex: 3, toIndex: 1},
+			{type: EditType.MoveModify, handingIndex: 4, fromIndex: 0, toIndex: 2},
+			{type: EditType.Delete, handingIndex: 1, fromIndex: 1, toIndex: -1},
 		])
 
 		expect(restoredGraphEdit(a, b, true)).toEqual(b)
@@ -160,15 +179,15 @@ describe('Test Graph Edit', () => {
 		let b: number[] = [1, 1, 2]
 
 		expect(getEditRecord(a, b, true)).toEqual([
-			{type: EditType.MoveModify, fromIndex: 0, toIndex: 0, moveFromIndex: 2},
-			{type: EditType.Leave, fromIndex: 0, toIndex: 1, moveFromIndex: -1},
-			{type: EditType.Leave, fromIndex: 1, toIndex: 2, moveFromIndex: -1},
+			{type: EditType.MoveModify, handingIndex: 0, fromIndex: 2, toIndex: 0},
+			{type: EditType.Leave, handingIndex: 0, fromIndex: 0, toIndex: 1},
+			{type: EditType.Leave, handingIndex: 1, fromIndex: 1, toIndex: 2},
 		])
 
 		expect(getEditRecord(b, a, true)).toEqual([
-			{type: EditType.Leave, fromIndex: 0, toIndex: 0, moveFromIndex: -1},
-			{type: EditType.Leave, fromIndex: 2, toIndex: 1, moveFromIndex: -1},
-			{type: EditType.MoveModify, fromIndex: 3, toIndex: 2, moveFromIndex: 1},
+			{type: EditType.Leave, handingIndex: 0, fromIndex: 0, toIndex: 0},
+			{type: EditType.Leave, handingIndex: 2, fromIndex: 2, toIndex: 1},
+			{type: EditType.MoveModify, handingIndex: 3, fromIndex: 1, toIndex: 2},
 		])
 
 		expect(restoredGraphEdit(a, b, true)).toEqual(b)
