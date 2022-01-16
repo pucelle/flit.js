@@ -7,7 +7,8 @@ export type TemplateType = 'html' | 'css' | 'svg'
 
 /** 
  * Returns a HTML template literal, can be used to render or update a component.
- * Use it like:
+ * Uses it like:
+ * 
  * ```ts
  * html`...`
  * ```
@@ -19,7 +20,8 @@ export function html(strings: TemplateStringsArray, ...values: any[]): TemplateR
 
 /** 
  * Returns a SVG template literal, can be used to render or update a component.
- * Use it like:
+ * Uses it like:
+ * 
  * ```ts
  * svg`...`
  * ```
@@ -31,7 +33,8 @@ export function svg(strings: TemplateStringsArray, ...values: any[]): TemplateRe
 
 /** 
  * Returns a CSS template literal, can be used as component's static style property.
- * Use it like:
+ * Uses it like:
+ * 
  * ```ts
  * css`...`
  * ```
