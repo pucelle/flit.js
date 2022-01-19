@@ -87,8 +87,8 @@ export function untilNextFrame() {
 /** Resolves until CPU is idle or next frame. */
 export function untilIdle() {
 	return new Promise(resolve => {
-		if (requestIdleCallback) {
-			requestIdleCallback(resolve)
+		if ((window as any).requestIdleCallback) {
+			(window as any).requestIdleCallback(resolve)
 		}
 		else {
 			setTimeout(resolve, 0)
