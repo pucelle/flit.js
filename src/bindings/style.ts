@@ -80,9 +80,8 @@ export class StyleBinding implements Binding<string | StyleObject> {
 		else if (unit === 'url') {
 			value = 'url("' + value + '")'
 		}
-
-		if (typeof value === 'number') {
-			value = value + 'px'
+		else {
+			value = String(value)
 		}
 
 		(this.el.style as any)[name] = value
