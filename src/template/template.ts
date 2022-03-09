@@ -145,6 +145,14 @@ export class Template {
 		return true
 	}
 
+	/** 
+	 * In very few scenarios, must revalidate context and make sure they are equals.
+	 * e.g., sharing a popup menu across different context. 
+	 */
+	canPatchByContextual(result: TemplateResult, context: Context): boolean {
+		return this.context === context && this.canPatchBy(result)
+	}
+
 	/** Patch current template by `result`. */
 	patch(result: TemplateResult) {
 		for (let {part, strings, valueIndices} of this.parts) {
