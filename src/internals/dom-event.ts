@@ -1,6 +1,3 @@
-/** Target that can register events. */
-type EventTarget = Node | Window
-
 /** Event handler type. */
 type EventHandler = (e: Event) => void
 
