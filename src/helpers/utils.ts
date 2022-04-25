@@ -16,8 +16,8 @@ export function trim(text: string) {
 
 
 /**
- * Find the closest index in a sorted array in where to insert new item.
- * Returned index betweens `0 - array.length`, and if `array[index]` exist, `fn(array[index]) >= 0`.
+ * Find the closest index in a ASC ordered array in where to insert new item.
+ * Returned index betweens `0 ~ array.length`, and will choose lower index if at critical position.
  * @param array The sorted array.
  * @param fn The function to accept item in array as argument and returns `-1` to move left, `1` to move right.
  */
@@ -25,42 +25,34 @@ export function binaryFindIndexToInsert<T>(array: ArrayLike<T>, fn: (item: T) =>
 	if (array.length === 0) {
 		return 0
 	}
-
-	let result = fn(array[0])
-	if (result === 0 || result === -1) {
+	else if (fn(array[0]) <= 0) {
 		return 0
 	}
-	if (array.length === 1) {
-		return 1
-	}
-
-	result = fn(array[array.length - 1])
-	if (result === 0) {
-		return array.length - 1
-	}
-	if (result === 1) {
+	else if (fn(array[array.length - 1]) > 0) {
 		return array.length
 	}
+	else {
+		let start = 0
+		let end = array.length - 1
 
-	let start = 0
-	let end = array.length - 1
+		while (start + 1 < end) {
+			let center = Math.floor((end + start) / 2)
+			let centerResult = fn(array[center])
 
-	while (start < end) {
-		let center = Math.floor((end + start) / 2)
-		let result = fn(array[center])
+			if (centerResult === 0) {
+				return center
+			}
+			else if (centerResult < 0) {
+				end = center
+			}
+			else {
+				start = center
+			}
+		}
 
-		if (result === 0) {
-			return center
-		}
-		else if (result < 0) {
-			end = center
-		}
-		else {
-			start = center + 1
-		}
+		// `array[start]` always lower, so choose `array[end]`. 
+		return end
 	}
-
-	return end
 }
 
 
