@@ -1,3 +1,6 @@
+import {DoubleKeysWeakMap} from '../helpers/double-key-map'
+
+
 /** Event handler type. */
 type EventHandler = (e: Event) => void
 
@@ -41,7 +44,7 @@ const EventFilters = {
 }
 
 /** To cache all event listeners for element. */
-const ElementEventListenerCache: WeakMap<EventTarget, Record<string, EventListener[]>> = new WeakMap()
+const ElementEventListenerCache: DoubleKeysWeakMap<EventTarget, string, EventListener[]> = new DoubleKeysWeakMap()
 
 
 /** Limit key event triggering. */
@@ -160,7 +163,7 @@ function validateModifiers(propertyName: string, name: string, modifiers: string
  * @param handler The event handler.
  * @param scope The event context used to call handler. You can remove it easily by specify the same scope.
  */
-export function on(el: EventTarget, name: string, handler:　EventHandler, scope?: object) {
+export function on(el: EventTarget, name: string, handler: EventHandler, scope?: object) {
 	bindEvent(false, el, name, handler, scope)
 }
 
@@ -172,12 +175,12 @@ export function on(el: EventTarget, name: string, handler:　EventHandler, scope
  * @param handler The event handler.
  * @param scope The event context used to call handler. You can remove it easily by specify the same scope.
  */
-export function once(el: EventTarget, name: string, handler:　EventHandler, scope?: object) {
+export function once(el: EventTarget, name: string, handler: EventHandler, scope?: object) {
 	bindEvent(true, el, name, handler, scope)
 }
 
 
-function bindEvent(once: boolean, el: EventTarget, rawName: string, handler:　EventHandler, scope?: object) {
+function bindEvent(once: boolean, el: EventTarget, rawName: string, handler: EventHandler, scope: object | undefined) {
 	let name = rawName
 	let modifiers: string[] | null = null
 
@@ -193,12 +196,11 @@ function bindEvent(once: boolean, el: EventTarget, rawName: string, handler:　E
 	// Wheel event use passive mode by default and can't be prevented.
 	let options = passive || name === 'wheel' ? {capture, passive} : capture
 
-	let eventMap = ElementEventListenerCache.get(el)
-	if (!eventMap) {
-		eventMap = {}
-		ElementEventListenerCache.set(el, eventMap)
+	let events = ElementEventListenerCache.get(el, name)
+	if (!events) {
+		events = []
+		ElementEventListenerCache.set(el, name, events)
 	}
-	let events = eventMap[name] || (eventMap[name] = [])
 
 	events.push({
 		name: rawName,
@@ -258,14 +260,9 @@ function wrapHandler(once: boolean, modifiers: string[] | null, el: EventTarget,
  * @param scope The event context used to call handler. If specified, it must be match too.
  */
 export function off(el: EventTarget, name: string, handler: EventHandler, scope?: object) {
-	let eventMap = ElementEventListenerCache.get(el)
-	if (!eventMap) {
-		return
-	}
-
 	name = name.replace(/\..+/, '')
 
-	let events = eventMap[name]
+	let events = ElementEventListenerCache.get(el, name)
 	if (!events) {
 		return
 	}
