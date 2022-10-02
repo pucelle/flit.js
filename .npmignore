@@ -3,7 +3,6 @@ node_modules
 docs
 src
 test
-gulpfile.js
 tsconfig.json
 typedoc.json
 README.md

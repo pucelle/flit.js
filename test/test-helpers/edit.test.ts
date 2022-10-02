@@ -7,7 +7,7 @@ function restoredGraphEdit<T>(oldItems: T[], newItems: T[], willReuse: boolean) 
 
 	for (let r of record) {
 		if (r.type === EditType.Leave) {
-			restored.push(oldItems[r.handingIndex])
+			restored.push(oldItems[r.nextOldIndex])
 		}
 		else if (r.type === EditType.Skip) {
 			
