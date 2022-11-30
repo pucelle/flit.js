@@ -237,14 +237,14 @@ export class PartialRenderingProcessor {
 	 * Must wait for render completed.
 	 */
 	private updatePlaceholderHeightProgressive() {
-		let renderCount = this.endIndex - this.startIndex
-
-		if (renderCount > 0 && this.endIndex >= this.itemCountWhenUpdatePlaceholderHeight || this.endIndex === this.totalDataCount) {
+		if (this.endIndex > 0 && this.endIndex >= this.itemCountWhenUpdatePlaceholderHeight || this.endIndex === this.totalDataCount) {
 			let scrollerRect = this.getScrollerClientRect()
 			let sliderRect = this.slider.getBoundingClientRect()
 			let scrollHeight = this.scroller.scrollTop + sliderRect.bottom - scrollerRect.top
 
-			this.averageItemHeight = scrollHeight / renderCount
+			// In the first time running here, item height was not measured yet, so the height is the rendering part, not total.
+			this.averageItemHeight = this.averageItemHeight > 0 ? scrollHeight / this.endIndex : scrollHeight / (this.endIndex - this.startIndex)
+
 			this.palceholder.style.height = this.averageItemHeight * this.totalDataCount + 'px'
 			this.itemCountWhenUpdatePlaceholderHeight = this.endIndex
 		}
